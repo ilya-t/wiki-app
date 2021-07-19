@@ -1,8 +1,9 @@
-package com.testspace
+package com.tsourcecode.wiki.app
 
 import android.app.Activity
 import android.os.Bundle
 import android.widget.EditText
+import com.testspace.R
 import io.noties.markwon.Markwon
 
 class MainActivity : Activity() {
