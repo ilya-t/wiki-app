@@ -1,0 +1,21 @@
+version: "3.7"
+services:
+  backend:
+    build: app
+    networks:
+      default:
+        aliases:
+          - "test-backend"
+    environment:
+      - ASSERTS=false
+    volumes:
+      - ./tests/test_repo:/app/repo-store/repo
+  tests:
+    build: tests
+    volumes:
+      - ./build_artifacts:/app/reports
+    networks:
+      - default  
+
+networks:
+  default:    

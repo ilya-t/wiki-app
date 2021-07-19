@@ -1,0 +1,5 @@
+app/__pycache__
+app/db
+.env
+./build_artifacts
+build_artifacts
