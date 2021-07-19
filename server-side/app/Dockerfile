@@ -4,9 +4,11 @@ EXPOSE 80
 RUN apk add --no-cache git=2.24.4-r0
 
 RUN mkdir /app
-WORKDIR /app
-COPY ./app /app
-RUN mkdir -p /app/repo-store/repo
 
+RUN mkdir -p /app/repo-store/repo
+COPY ./repo-store /app/repo-store
+COPY ./src /app/src
+
+WORKDIR /app/src
 RUN go build -o /app/backend_app
 CMD /app/backend_app
