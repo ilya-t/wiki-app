@@ -3,12 +3,13 @@ package com.tsourcecode.wiki.app
 import android.app.Activity
 import android.os.Bundle
 import android.widget.EditText
-import com.testspace.R
+import com.tsourcecode.wiki.app.backend.BackendController
 import io.noties.markwon.Markwon
 
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        BackendController(this)
         setContentView(R.layout.main_layout)
         val textView = findViewById<EditText>(R.id.tv_markwon)
         val markwon = Markwon.create(this)
