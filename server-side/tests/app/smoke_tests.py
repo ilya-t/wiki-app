@@ -63,6 +63,7 @@ class ChatAcceptanceTests(unittest.TestCase):
             file.write(response.content)
 
         output_dir = "/tmp/" + self._testMethodName
+        os.system("rm -rf "+output_dir)
         with zipfile.ZipFile(output_file, 'r') as zip_ref:
             zip_ref.extractall(output_dir)
         dir_contents = subprocess.check_output('tree -a ' + output_dir, universal_newlines=True, shell=True)

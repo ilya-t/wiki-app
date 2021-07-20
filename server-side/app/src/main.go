@@ -41,36 +41,40 @@ func getLastRevision(w http.ResponseWriter, req *http.Request) {
 	revision, e := LastRevision()
 
 	if e != nil {
-		writeError(w, e, revision)
+		writeError(w, "revision resolve failed", e, revision)
 		return
 	}
 
 	revision_zip := "/tmp/" + revision + ".zip"
 	execute("rm " + revision_zip)
-	command := "zip -r " + revision_zip + " repo --exclude '*.git*'"
-	r, e := executeAt(command, CWD+"/..")
+	command := "zip -r " + revision_zip + " repo --exclude \"repo/.git/*\""
+	// executing "zip" through  "/bin/sh -c" cause somehow same "zip" command
+	// cannot match excluded files correctly (command.Dir = CWD break everything)
+	r, e := exec.Command("/bin/sh", "-c", "cd "+CWD+"/.. && "+command).Output()
 
 	if e != nil {
-		reso, _ := execute(("ls " + CWD))
-		writeError(w, e, "\nzip command: "+command+"\ncommand output: "+r+"\nls: "+reso)
+		writeError(w, "zipping failed", e, "\nzip command: "+command+"\ncommand output: "+string(r))
 		return
 	}
 
+	// o, _ := execute("zip -sf " + revision_zip)
+	// fmt.Println("cmd: ", command, "out:", string(o))
+
+	fmt.Println("cmd out: ", command, string(r))
 	writeFile(revision+".zip", revision_zip, w, req)
 }
 
 func writeFile(filename string, file string, w http.ResponseWriter, req *http.Request) {
 	// grab the generated receipt.pdf file and stream it to browser
-	streamPDFbytes, err := ioutil.ReadFile(file)
+	streamFileBytes, err := ioutil.ReadFile(file)
 
 	if err != nil {
-		writeError(w, err, "")
+		writeError(w, "file writing failed", err, "")
 		return
 	}
 
-	b := bytes.NewBuffer(streamPDFbytes)
+	b := bytes.NewBuffer(streamFileBytes)
 
-	// stream straight to client(browser)
 	w.Header().Set("Content-type", "application/zip")
 	w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 
@@ -79,8 +83,8 @@ func writeFile(filename string, file string, w http.ResponseWriter, req *http.Re
 	}
 }
 
-func writeError(w http.ResponseWriter, err error, extra string) {
-	fmt.Fprintf(w, "{\"error\": \"%v\nOutput:%v\" }", err, extra)
+func writeError(w http.ResponseWriter, msg string, err error, extra string) {
+	fmt.Fprintf(w, "{\"error\": \"%s - %v\noutput:%v\" }", msg, err, extra)
 }
 
 func getHealth(w http.ResponseWriter, req *http.Request) {

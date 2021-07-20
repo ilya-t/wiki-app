@@ -23,11 +23,11 @@ jobs:
 
     # Runs a single command using the runners shell
     - name: testrun
-      run: /bin/bash -c "cd $GITHUB_WORKSPACE/server-side && ./testrun.sh"
+      run: /bin/bash -x -c "cd $GITHUB_WORKSPACE/server-side && ./testrun.sh"
 
     - name: tests artifacts
       if: ${{ always() }}
       uses: actions/upload-artifact@v1
       with:
         name: unit tests artifacts
-        path: $GITHUB_WORKSPACE/server-side/build_artifacts
+        path: server-side/build_artifacts
