@@ -8,7 +8,6 @@ import os
 
 HOST = 'http://test-backend'
 LATEST = HOST + '/api/1/revision/latest'
-INITIAL_COMMIT_HASH = '85f439fffceaf58f612374522b0b66d508b9a2e7'
 
 
 class ChatAcceptanceTests(unittest.TestCase):
@@ -24,9 +23,10 @@ class ChatAcceptanceTests(unittest.TestCase):
 
         content_disposition = response.headers["Content-Disposition"]
         file_name = content_disposition[content_disposition.index("=") + 1:]
-
-        self.assertEqual(INITIAL_COMMIT_HASH + ".zip", file_name,
-                         msg='Expected same payload, but got: ' + content_disposition)
+        head_commit_hash = os.environ['HEAD_COMMIT']
+        self.assertNotEqual("", head_commit_hash)
+        self.assertEqual(head_commit_hash + ".zip", file_name,
+                         msg='Expected "'+head_commit_hash+'" payload, but got: ' + file_name)
 
     def test_latest_revision_zip_content_not_contains_git(self):
         def git_folder_excluded(dir):

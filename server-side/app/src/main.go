@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -13,24 +15,36 @@ const (
 	CWD = "/app/repo-store/repo"
 )
 
-func executeAt(cmd string, cwd string) (string, error) {
+func execute(cmd string) (string, error) {
 	args := strings.Split(cmd, " ")
-	// command := exec.Command("cd " + CWD + " && " + cmd)
 	command := exec.Command(args[0], args[1:]...)
-	command.Dir = cwd
+	command.Dir = CWD
 	out, err := command.Output()
 
 	return string(out), err
 }
 
-func execute(cmd string) (string, error) {
-	return executeAt(cmd, CWD)
+func printOutput(cmd string) {
+	out, err := execute(cmd)
+	if err != nil {
+		fmt.Println("cmd: ", cmd, "\noutput: ", "ERROR("+err.Error()+"): "+out)
+		return
+	}
+
+	fmt.Println("cmd: ", cmd, "\noutput: ", out)
 }
 
 func LastRevision() (string, error) {
+	if _, err := os.Stat(CWD + "/.git"); os.IsNotExist(err) {
+		return "", errors.New("repo's .git not found!")
+	}
+
 	result, err := execute("git rev-parse HEAD~0")
 
 	if err != nil {
+		printOutput("pwd")
+		printOutput("ls -l")
+		printOutput("git log -1")
 		return result, err
 	}
 

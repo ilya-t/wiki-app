@@ -1,6 +1,7 @@
 app/__pycache__
 app/db
 tests/app/.idea
+tests/test_repo
 .env
 ./build_artifacts
 build_artifacts
