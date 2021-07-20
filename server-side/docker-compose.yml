@@ -2,6 +2,8 @@ version: "3.7"
 services:
   app:
     build: app
+    ports:
+      - 80:80
     networks:
       default:
         aliases:
