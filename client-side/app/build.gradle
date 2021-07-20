@@ -44,6 +44,7 @@ dependencies {
 
     implementation "androidx.appcompat:appcompat:$androidxVersion"
     implementation "io.noties.markwon:core:$markwonVersion"
+    implementation "io.noties.markwon:editor:$markwonVersion"
 
     implementation "com.squareup.retrofit2:retrofit:2.9.0"
 

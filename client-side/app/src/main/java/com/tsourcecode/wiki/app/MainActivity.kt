@@ -3,17 +3,35 @@ package com.tsourcecode.wiki.app
 import android.app.Activity
 import android.os.Bundle
 import android.widget.EditText
-import com.tsourcecode.wiki.app.backend.BackendController
+import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
+import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
 import io.noties.markwon.Markwon
+import io.noties.markwon.editor.MarkwonEditor
+import io.noties.markwon.editor.MarkwonEditorTextWatcher
+import io.noties.markwon.editor.handler.EmphasisEditHandler
+import io.noties.markwon.editor.handler.StrongEmphasisEditHandler
+import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        BackendController(this)
+//        BackendController(this)
         setContentView(R.layout.main_layout)
         val textView = findViewById<EditText>(R.id.tv_markwon)
         val markwon = Markwon.create(this)
-        markwon.setMarkdown(textView, MARKDOWN_SAMPLE)
+        val editor = MarkwonEditor
+                .builder(markwon)
+                .useEditHandler(HeadingEditHandler())
+                .useEditHandler(EmphasisEditHandler())
+                .useEditHandler(StrongEmphasisEditHandler())
+                .useEditHandler(CodeEditHandler())
+//                .useEditHandler(StrikethroughEditHandler())
+//                .useEditHandler(BlockQuoteEditHandler())
+//                .useEditHandler(CodeEditHandler())
+                .build()
+        textView.addTextChangedListener(MarkwonEditorTextWatcher.withPreRender(
+                editor, Executors.newSingleThreadExecutor(), textView));
+        textView.setText(MARKDOWN_SAMPLE.subSequence(0, MARKDOWN_SAMPLE.length - 1))
     }
 
     companion object {
