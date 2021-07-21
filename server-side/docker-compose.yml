@@ -3,7 +3,7 @@ services:
   app:
     build: app
     ports:
-      - 80:80
+      - $host_port:80
     networks:
       default:
         aliases:

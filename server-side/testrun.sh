@@ -9,6 +9,7 @@ commit=$(git rev-parse HEAD~0)
 cd ../..
 set +e
 echo "head_commit=$commit" > .env
+echo "host_port=80" >> .env
 docker-compose up --build --abort-on-container-exit
 RESULT=$?
 docker-compose logs > ./build_artifacts/compose.log
