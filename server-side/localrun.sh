@@ -11,7 +11,7 @@ if [ "$REPO" == "" ]; then
 fi
 
 echo "host_port=$PORT" > .env
-echo "target_repo=$REPO" > .env
+echo "target_repo=$REPO" >> .env
 docker-compose up --build --detach
 echo "server-side is running locally. Check url:"
 echo "      http://localhost:$PORT/api/health"
