@@ -13,6 +13,7 @@
 
     <EditText
         android:id="@+id/tv_markwon"
+        android:gravity="top"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 

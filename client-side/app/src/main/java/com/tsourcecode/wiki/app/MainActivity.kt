@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import com.tsourcecode.wiki.app.backend.BackendController
+import com.tsourcecode.wiki.app.documents.DocumentContentProvider
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
 import io.noties.markwon.Markwon
@@ -16,23 +17,31 @@ import io.noties.markwon.editor.handler.StrongEmphasisEditHandler
 import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
+    private val docContentProvider = DocumentContentProvider()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        BackendController(this)
         setContentView(R.layout.main_layout)
+        bootBackend()
         configureEditor()
-        DocumentsController(
-                container = findViewById<ViewGroup>(R.id.files_container),
-                openDelegate = {
-                    editMd(it.fullText())
-                }
-        )
         findViewById<View>(R.id.btn_files).setOnClickListener {
             setFilesOpened(true)
         }
 
         setFilesOpened(true)
-//        editMd(MARKDOWN_SAMPLE)
+    }
+
+    private fun bootBackend() {
+        BackendController(
+                context = this,
+                documentsController = DocumentsController(
+                        container = findViewById<ViewGroup>(R.id.files_container),
+                        openDelegate = {
+                            editMd(docContentProvider.getContent(it))
+                        },
+                        docContentProvider,
+                ),
+        )
     }
 
     private fun configureEditor() {
