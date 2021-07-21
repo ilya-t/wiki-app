@@ -2,6 +2,8 @@ package com.tsourcecode.wiki.app
 
 import android.app.Activity
 import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
@@ -17,6 +19,22 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 //        BackendController(this)
         setContentView(R.layout.main_layout)
+        configureEditor()
+        DocumentsController(
+                container = findViewById<ViewGroup>(R.id.files_container),
+                openDelegate = {
+                    editMd(it.fullText())
+                }
+        )
+        findViewById<View>(R.id.btn_files).setOnClickListener {
+            setFilesOpened(true)
+        }
+
+        setFilesOpened(true)
+//        editMd(MARKDOWN_SAMPLE)
+    }
+
+    private fun configureEditor() {
         val textView = findViewById<EditText>(R.id.tv_markwon)
         val markwon = Markwon.create(this)
         val editor = MarkwonEditor
@@ -25,48 +43,40 @@ class MainActivity : Activity() {
                 .useEditHandler(EmphasisEditHandler())
                 .useEditHandler(StrongEmphasisEditHandler())
                 .useEditHandler(CodeEditHandler())
-//                .useEditHandler(StrikethroughEditHandler())
-//                .useEditHandler(BlockQuoteEditHandler())
-//                .useEditHandler(CodeEditHandler())
+                //                .useEditHandler(StrikethroughEditHandler())
+                //                .useEditHandler(BlockQuoteEditHandler())
+                //                .useEditHandler(CodeEditHandler())
                 .build()
         textView.addTextChangedListener(MarkwonEditorTextWatcher.withPreRender(
                 editor, Executors.newSingleThreadExecutor(), textView));
-        textView.setText(MARKDOWN_SAMPLE.subSequence(0, MARKDOWN_SAMPLE.length - 1))
     }
 
-    companion object {
-        private val MARKDOWN_SAMPLE = """
-            # Tiny App for quick Android-based experiments
+    private fun setFilesOpened(opened: Boolean) {
+        if (opened) {
+            findViewById<View>(R.id.files_container).visibility = View.VISIBLE
+            findViewById<EditText>(R.id.tv_markwon).visibility = View.GONE
+            findViewById<View>(R.id.btn_files).visibility = View.GONE
+        } else {
+            findViewById<View>(R.id.files_container).visibility = View.GONE
+            findViewById<EditText>(R.id.tv_markwon).visibility = View.VISIBLE
+            findViewById<View>(R.id.btn_files).visibility = View.VISIBLE
 
-            This tiny app that builds fast and can be used for any kind of __reusable__ prototype or draft.
-
-            Start experiment by
-
-            ```bash
-            ./start_experiment.sh my_experiment
-            ```
-            it will make a checkout to branch with given name that is based on master. Unsaved changes from previous experiment will be automatically commited and now you may do whatever you want!
-
-            ### But wait! Here are couple of fancy tricks!
-            Take a look at `com.testspace.CurrentExperiment`, for example:
-
-            ```kotlin
-            class CurrentExperiment(a: ExperimentActivity) : Experiment(a) {
-                init {
-                    a.addTriggers(
-                            { a.tvOutput.setText("Trigger#1 pressed") },
-                            NamedTrigger("T2") { Static.output("Trigger#2 pressed!") }
-                    );
-                }
-
-                @LayoutRes
-                override fun getExperimentLayout() = R.layout.basic_layout
-            }
-            ```
-
-            For each trigger a button will be created, this button may be clicked or triggered by keyboard button 1 - to pull first trigger, 2 - to pull second.
-            This could be very useful at emulators.
-
-        """.trimIndent()
+        }
     }
+
+    private fun editMd(md: String) {
+        setFilesOpened(false)
+        val textView = findViewById<EditText>(R.id.tv_markwon)
+        textView.setText(md.subSequence(0, md.length - 1))
+    }
+
+    override fun onBackPressed() {
+        if (areFilesOpened()) {
+            super.onBackPressed()
+        } else {
+            setFilesOpened(true)
+        }
+    }
+
+    private fun areFilesOpened() = findViewById<View>(R.id.btn_files).visibility != View.VISIBLE
 }
