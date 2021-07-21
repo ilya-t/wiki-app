@@ -12,7 +12,7 @@ import java.util.concurrent.Executors
 
 class BackendController(private val context: Context) {
     private val retrofit = Retrofit.Builder()
-            .baseUrl("http://localhost/")
+            .baseUrl("http://duke-nucem/")
             .build()
     private val backendApi: WikiBackendAPIs = retrofit.create(WikiBackendAPIs::class.java)
     init {

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import com.tsourcecode.wiki.app.backend.BackendController
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
 import io.noties.markwon.Markwon
@@ -17,7 +18,7 @@ import java.util.concurrent.Executors
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        BackendController(this)
+        BackendController(this)
         setContentView(R.layout.main_layout)
         configureEditor()
         DocumentsController(
