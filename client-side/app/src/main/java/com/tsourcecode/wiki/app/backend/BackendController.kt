@@ -23,7 +23,7 @@ class BackendController(
     private val defaultProjectDir = context.filesDir.absolutePath + "/default_project"
     init {
         if (File(defaultProjectDir).exists()) {
-            documentsController.notifyProjectUpdated(defaultProjectDir)
+            documentsController.notifyProjectUpdated(defaultProjectDir+"/repo")
         }
 
         Executors.newSingleThreadExecutor().execute {

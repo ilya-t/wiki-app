@@ -7,7 +7,14 @@
         android:id="@+id/files_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="gone">
+        >
+
+        <ProgressBar
+            android:id="@+id/files_trobber"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_gravity="center"
+            />
 
     </FrameLayout>
 
