@@ -48,12 +48,6 @@ class DecompressorTest {
 
     private fun checkOutput(cmd: String): String {
         val processBuilder = ProcessBuilder()
-        val cmdAndArgs = cmd.split(" ")
-        val args = if (cmdAndArgs.size > 1) {
-            cmdAndArgs.subList(1, cmdAndArgs.size)
-        } else {
-            emptyList()
-        }
         processBuilder.command("/bin/sh", "-c", "-x", cmd)
         val lines = StringBuilder()
 
