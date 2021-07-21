@@ -11,7 +11,7 @@ services:
     environment:
       - ASSERTS=false
     volumes:
-      - ./tests/test_repo:/app/repo-store/repo
+      - $target_repo:/app/repo-store/repo
   tests:
     build: tests
     environment:
