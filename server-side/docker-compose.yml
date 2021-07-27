@@ -18,6 +18,7 @@ services:
       - HEAD_COMMIT=$head_commit
     volumes:
       - ./build_artifacts:/app/reports
+      - $target_repo:/app/repo
     networks:
       - default  
 

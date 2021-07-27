@@ -1,3 +1,4 @@
+import base64
 import subprocess
 import unittest
 
@@ -8,6 +9,7 @@ import os
 
 HOST = 'http://test-backend'
 LATEST = HOST + '/api/1/revision/latest'
+STAGE_API = HOST + '/api/1/stage'
 
 
 class ChatAcceptanceTests(unittest.TestCase):
@@ -73,6 +75,20 @@ class ChatAcceptanceTests(unittest.TestCase):
             self.fail(failure + "\n" + dir_contents)
         print(dir_contents, flush=True)
 
+    def test_staging(self):
+        expected_contents = "# README.md STAGED"
+        requests.post(STAGE_API, json={
+            'files': [
+                {
+                    'path': 'README.md',
+                    'content': base64.b64encode(expected_contents.encode('utf-8')).decode("utf-8"),
+                }
+            ]
+        })
+
+        actual_contents = subprocess.check_output('cat /app/repo/README.md', universal_newlines=True, shell=True)
+
+        self.assertEqual(expected_contents, actual_contents)
 
 if __name__ == '__main__':
     unittest.main()

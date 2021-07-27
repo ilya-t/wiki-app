@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -109,6 +111,43 @@ func postCommit(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func stageFiles(w http.ResponseWriter, req *http.Request) {
+	r, e := ioutil.ReadAll(req.Body)
+
+	if e != nil {
+		panic(e)
+	}
+
+	var staging *Staging
+	err := json.Unmarshal(r, &staging)
+
+	if err != nil {
+		panic(err)
+	}
+
+	for _, f := range staging.Files {
+		stage(f)
+	}
+}
+
+func stage(f *FileContent) {
+	decoded, _ := base64.StdEncoding.DecodeString(f.Content)
+	e := ioutil.WriteFile(CWD+"/"+f.Path, []byte(decoded), os.ModePerm)
+
+	if e != nil {
+		panic(e)
+	}
+}
+
+type Staging struct {
+	Files []*FileContent `json:"files"`
+}
+
+type FileContent struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
 func headers(w http.ResponseWriter, req *http.Request) {
 	for name, headers := range req.Header {
 		for _, h := range headers {
@@ -120,6 +159,7 @@ func headers(w http.ResponseWriter, req *http.Request) {
 func main() {
 	http.HandleFunc("/api/1/revision/latest", getLastRevision)
 	http.HandleFunc("/api/1/commit", postCommit)
+	http.HandleFunc("/api/1/stage", stageFiles)
 	http.HandleFunc("/api/health", getHealth)
 
 	http.ListenAndServe(":80", nil)
