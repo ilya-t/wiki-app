@@ -8,8 +8,11 @@ sealed class Element(
 )
 
 data class Document(
+        private val projectDir: File,
         private val f: File,
-) : Element(f)
+) : Element(f) {
+    val relativePath: String = f.absolutePath.substring(projectDir.absolutePath.length + 1)
+}
 
 data class Folder(
         private val f: File,

@@ -132,11 +132,19 @@ func stageFiles(w http.ResponseWriter, req *http.Request) {
 
 func stage(f *FileContent) {
 	decoded, _ := base64.StdEncoding.DecodeString(f.Content)
-	e := ioutil.WriteFile(CWD+"/"+f.Path, []byte(decoded), os.ModePerm)
+	filePath := CWD + "/" + f.Path
+	e := ioutil.WriteFile(filePath, []byte(decoded), os.ModePerm)
 
 	if e != nil {
 		panic(e)
 	}
+
+	_, err := execute("git add " + filePath)
+
+	if err != nil {
+		panic(e)
+	}
+
 }
 
 type Staging struct {

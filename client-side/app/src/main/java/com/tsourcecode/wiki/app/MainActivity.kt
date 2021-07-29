@@ -2,10 +2,13 @@ package com.tsourcecode.wiki.app
 
 import android.app.Activity
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import com.tsourcecode.wiki.app.backend.BackendController
+import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.documents.DocumentContentProvider
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
@@ -18,6 +21,7 @@ import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
     private val docContentProvider = DocumentContentProvider()
+    private lateinit var documentsController: DocumentsController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,15 +36,17 @@ class MainActivity : Activity() {
     }
 
     private fun bootBackend() {
-        BackendController(
+        val backend = BackendController(
                 context = this,
-                documentsController = DocumentsController(
-                        container = findViewById<ViewGroup>(R.id.files_container),
-                        openDelegate = {
-                            editMd(docContentProvider.getContent(it))
-                        },
-                        docContentProvider,
-                ),
+        )
+
+        documentsController = DocumentsController(
+                container = findViewById<ViewGroup>(R.id.files_container),
+                openDelegate = {
+                    editMd(it)
+                },
+                docContentProvider,
+                backend,
         )
     }
 
@@ -74,10 +80,20 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun editMd(md: String) {
+    private fun editMd(d: Document) {
+        val md = docContentProvider.getContent(d)
         setFilesOpened(false)
         val textView = findViewById<EditText>(R.id.tv_markwon)
         textView.setText(md.subSequence(0, md.length - 1))
+        textView.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+
+            override fun afterTextChanged(s: Editable?) {
+                documentsController.save(d, textView.text.toString())
+            }
+        })
     }
 
     override fun onBackPressed() {

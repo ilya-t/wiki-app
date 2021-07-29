@@ -1,7 +1,6 @@
 package com.tsourcecode.wiki.app
 
-import android.graphics.Canvas
-import android.graphics.Rect
+import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,6 +8,7 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.tsourcecode.wiki.app.backend.BackendController
 import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.documents.DocumentContentProvider
 import com.tsourcecode.wiki.app.documents.Element
@@ -19,19 +19,25 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.lang.RuntimeException
+import java.util.*
 
 class DocumentsController(
         container: ViewGroup,
         openDelegate: (Document) -> Unit,
         private val docContentProvider: DocumentContentProvider,
+        private val backendController: BackendController,
 ) {
-    fun notifyProjectUpdated(projectDir: String) {
+    init {
+        backendController.observeProjectUpdates { notifyProjectUpdated(it) }
+    }
+
+    private fun notifyProjectUpdated(projectDir: String) {
         GlobalScope.launch {
             val dir = File(projectDir)
             if (!dir.isDirectory) {
                 throw RuntimeException("Project dir($projectDir) is file!")
             }
-            val folder = parseFolder(dir)
+            val folder = parseFolder(dir, dir)
             withContext(Dispatchers.Main) {
                 progressBar.visibility = View.GONE
                 docAdapter.update(folder.documents)
@@ -39,18 +45,27 @@ class DocumentsController(
         }
     }
 
-    private fun parseFolder(dir: File): Folder {
+    private fun parseFolder(projectDir: File, dir: File): Folder {
         return Folder(
                 dir,
-                dir.safeListFiles().map { parseElement(it) },
+                dir.safeListFiles().map { parseElement(projectDir, it) },
         )
     }
 
-    private fun parseElement(f: File): Element {
+    private fun parseElement(projectDir: File, f: File): Element {
         return if (f.isDirectory) {
-            parseFolder(f)
+            parseFolder(projectDir, f)
         } else {
-            Document(f)
+            Document(projectDir, f)
+        }
+    }
+
+    fun save(d: Document, content: String) {
+        GlobalScope.launch {
+            d.file.writeText(content)
+            val b64 = Base64.encodeToString(content.toByteArray(), Base64.DEFAULT)
+
+            backendController.stage(d.relativePath, b64)
         }
     }
 
