@@ -7,11 +7,12 @@ import android.text.TextWatcher
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import com.tsourcecode.wiki.app.backend.BackendController
+import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.app.documents.Document
-import com.tsourcecode.wiki.app.documents.DocumentContentProvider
+import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
+import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
 import io.noties.markwon.Markwon
 import io.noties.markwon.editor.MarkwonEditor
 import io.noties.markwon.editor.MarkwonEditorTextWatcher
@@ -36,17 +37,13 @@ class MainActivity : Activity() {
     }
 
     private fun bootBackend() {
-        val backend = BackendController(
-                context = this,
-        )
-
         documentsController = DocumentsController(
                 container = findViewById<ViewGroup>(R.id.files_container),
                 openDelegate = {
                     editMd(it)
                 },
                 docContentProvider,
-                backend,
+                AppComponent.INSTANCE.backendController,
         )
     }
 

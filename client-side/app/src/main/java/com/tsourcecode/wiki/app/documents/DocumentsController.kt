@@ -1,4 +1,4 @@
-package com.tsourcecode.wiki.app
+package com.tsourcecode.wiki.lib.domain.documents
 
 import android.util.Base64
 import android.view.LayoutInflater
@@ -8,9 +8,9 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.tsourcecode.wiki.app.backend.BackendController
+import com.tsourcecode.wiki.app.R
+import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.app.documents.Document
-import com.tsourcecode.wiki.app.documents.DocumentContentProvider
 import com.tsourcecode.wiki.app.documents.Element
 import com.tsourcecode.wiki.app.documents.Folder
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.lang.RuntimeException
-import java.util.*
 
 class DocumentsController(
         container: ViewGroup,

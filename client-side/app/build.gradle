@@ -39,6 +39,7 @@ android {
 
 dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.2.1'
+    implementation project(path: ':lib-domain')
     androidTestImplementation('androidx.test.espresso:espresso-core:3.1.0', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
@@ -47,7 +48,6 @@ dependencies {
     implementation "io.noties.markwon:core:$markwonVersion"
     implementation "io.noties.markwon:editor:$markwonVersion"
 
-    implementation "com.squareup.retrofit2:retrofit:2.9.0"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.2"
 

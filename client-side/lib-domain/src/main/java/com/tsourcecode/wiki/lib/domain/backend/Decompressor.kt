@@ -1,4 +1,4 @@
-package com.tsourcecode.wiki.app.backend
+package com.tsourcecode.wiki.lib.domain.backend
 
 import java.io.File
 import java.io.FileInputStream

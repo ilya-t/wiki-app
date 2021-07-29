@@ -1,26 +1,25 @@
-package com.tsourcecode.wiki.app.backend
+package com.tsourcecode.wiki.lib.domain.backend
 
-import android.content.Context
-import android.os.Handler
-import android.os.Looper
+import com.tsourcecode.wiki.lib.domain.PlatformDeps
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
-import java.lang.RuntimeException
 import java.util.concurrent.Executors
 
-
 class BackendController(
-        private val context: Context,
+        private val platformDeps: PlatformDeps,
 ) {
     private var projectObserver: ((String) -> Unit)? = null
     private val retrofit = Retrofit.Builder()
             .baseUrl("http://duke-nucem:8181/")
             .build()
     private val backendApi: WikiBackendAPIs = retrofit.create(WikiBackendAPIs::class.java)
-    private val defaultProjectDir = context.filesDir.absolutePath + "/default_project"
+    private val defaultProjectDir = platformDeps.filesDir.absolutePath + "/default_project"
 
     fun observeProjectUpdates(observer: (String) -> Unit) {
         projectObserver = observer
@@ -30,19 +29,19 @@ class BackendController(
     }
 
     init {
-
         Executors.newSingleThreadExecutor().execute {
             try {
                 requestAndSave()?.let {
                     Decompressor.decompress(it, defaultProjectDir)
-                    Handler(Looper.getMainLooper()).post {
+
+                    GlobalScope.launch(Dispatchers.Main) {
                         projectObserver?.invoke(defaultProjectDir + "/repo")
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 //Log.that("Unhandled exception: ", e)
-                Handler(Looper.getMainLooper()).post {
+                GlobalScope.launch(Dispatchers.Main) {
                     throw e
                 }
             }
@@ -50,7 +49,7 @@ class BackendController(
     }
 
     private fun requestAndSave(): String? {
-        val file = context.filesDir.absolutePath + "/revision.zip" //TODO: remove hardcode
+        val file = platformDeps.filesDir.absolutePath + "/revision.zip" //TODO: remove hardcode
         try {
             //Log.that("1. Requesting")
             val response = backendApi.latestRevision().execute()

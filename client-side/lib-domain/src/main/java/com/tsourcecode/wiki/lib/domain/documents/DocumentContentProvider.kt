@@ -1,6 +1,6 @@
-package com.tsourcecode.wiki.app.documents
+package com.tsourcecode.wiki.lib.domain.documents
 
-import android.content.Context
+import com.tsourcecode.wiki.app.documents.Document
 import java.io.*
 
 class DocumentContentProvider {

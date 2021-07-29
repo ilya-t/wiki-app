@@ -1,4 +1,4 @@
-package com.tsourcecode.wiki.app.backend
+package com.tsourcecode.wiki.lib.domain.backend
 
 import org.junit.Assert
 import org.junit.Test

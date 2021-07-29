@@ -1,4 +1,4 @@
-package com.tsourcecode.wiki.app.backend
+package com.tsourcecode.wiki.lib.domain.backend
 
 import okhttp3.ResponseBody
 import retrofit2.Call
