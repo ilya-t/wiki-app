@@ -91,7 +91,7 @@ class BackendController(
     fun commit() {
         val response = backendApi.commit().execute()
         if (response.code() != 200) {
-            throw RuntimeException("Staging failed with ${response.body()?.string()}")
+            throw RuntimeException("Commit failed with ${response.errorBody()?.string()}")
         }
 
     }

@@ -178,6 +178,16 @@ func headers(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	_, e := execute("git config --local user.email \"wiki-app@tsourcecode.com\"")
+	if e != nil {
+		panic(e)
+	}
+
+	_, err := execute("git config --local user.name \"Wiki Committer\"")
+	if err != nil {
+		panic(err)
+	}
+
 	http.HandleFunc("/api/1/revision/latest", getLastRevision)
 	http.HandleFunc("/api/1/commit", postCommit)
 	http.HandleFunc("/api/1/stage", stageFiles)
