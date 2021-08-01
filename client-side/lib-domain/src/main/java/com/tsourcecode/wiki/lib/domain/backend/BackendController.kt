@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -17,6 +18,7 @@ class BackendController(
     private var projectObserver: ((String) -> Unit)? = null
     private val retrofit = Retrofit.Builder()
             .baseUrl("http://duke-nucem:8181/")
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
     private val backendApi: WikiBackendAPIs = retrofit.create(WikiBackendAPIs::class.java)
     private val defaultProjectDir = platformDeps.filesDir.absolutePath + "/default_project"
@@ -74,9 +76,12 @@ class BackendController(
     }
 
     fun stage(relativePath: String, b64: String) {
-        val response = backendApi.stage(listOf(
-                WikiBackendAPIs.FileStaging(relativePath, b64)
-        )).execute()
+        val response = backendApi.stage(WikiBackendAPIs.Staging(
+                listOf(
+                        WikiBackendAPIs.FileStaging(relativePath, b64)
+                )
+        )
+                ).execute()
 
         if (response.code() != 200) {
             throw RuntimeException("Staging failed with $response")

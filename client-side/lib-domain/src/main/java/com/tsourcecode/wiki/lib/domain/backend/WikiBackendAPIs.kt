@@ -12,7 +12,11 @@ interface WikiBackendAPIs {
     @GET("/api/1/revision/latest")
     fun latestRevision(): Call<ResponseBody>
     @POST("/api/1/stage")
-    fun stage(@Body files: List<FileStaging>): Call<ResponseBody>
+    fun stage(@Body staging: Staging): Call<ResponseBody>
+
+    data class Staging(
+            val files: List<FileStaging>
+    )
 
     data class FileStaging(
             val path: String,
