@@ -33,4 +33,13 @@
         android:layout_margin="32dp"
         />
 
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_commit"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="commit"
+        android:layout_gravity="end|top"
+        android:layout_margin="32dp"
+        android:visibility="gone"
+        />
 </FrameLayout>

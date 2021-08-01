@@ -13,10 +13,7 @@ import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.documents.Element
 import com.tsourcecode.wiki.app.documents.Folder
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.io.File
 import java.lang.RuntimeException
 
@@ -65,11 +62,32 @@ class DocumentsController(
             val b64 = Base64.encodeToString(content.toByteArray(), Base64.DEFAULT)
 
             backendController.stage(d.relativePath, b64)
+
+            withContext(Dispatchers.Main) {
+                btnCommit.visibility = View.VISIBLE
+                btnCommit.isEnabled = true
+            }
         }
+    }
+
+    private fun commit() {
+        backendController.commit()
     }
 
     private val context = container.context
     private val progressBar = container.findViewById<View>(R.id.files_trobber)
+    private val btnCommit = (container.parent as View).findViewById<View>(R.id.btn_commit).apply {
+        setOnClickListener {
+            it.isEnabled = false
+            GlobalScope.launch {
+                commit()
+                withContext(Dispatchers.Main) {
+                    visibility = View.GONE
+                    it.isEnabled = true
+                }
+            }
+        }
+    }
     private val docAdapter = DocumentsAdapter(docContentProvider, openDelegate)
     private val rv = RecyclerView(context).apply {
         layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)

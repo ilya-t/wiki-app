@@ -13,6 +13,8 @@ interface WikiBackendAPIs {
     fun latestRevision(): Call<ResponseBody>
     @POST("/api/1/stage")
     fun stage(@Body staging: Staging): Call<ResponseBody>
+    @POST("/api/1/commit")
+    fun commit(): Call<ResponseBody>
 
     data class Staging(
             val files: List<FileStaging>

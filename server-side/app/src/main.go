@@ -116,7 +116,7 @@ func postCommit(w http.ResponseWriter, req *http.Request) {
 	message := "auto-commit from wiki-app"
 	output, err := execute("git commit --message=\"" + message + "\"")
 	if err != nil {
-		fmt.Fprint(w, "{ \"error\": \""+err.Error()+"\n"+output+"\"}")
+		http.Error(w, err.Error()+"\n"+output, 500)
 		return
 	}
 
