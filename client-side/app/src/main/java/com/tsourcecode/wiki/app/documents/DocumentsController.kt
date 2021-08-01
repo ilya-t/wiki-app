@@ -16,6 +16,8 @@ import com.tsourcecode.wiki.app.documents.Folder
 import kotlinx.coroutines.*
 import java.io.File
 import java.lang.RuntimeException
+import java.util.*
+import kotlin.Comparator
 
 class DocumentsController(
         container: ViewGroup,
@@ -23,6 +25,8 @@ class DocumentsController(
         private val docContentProvider: DocumentContentProvider,
         private val backendController: BackendController,
 ) {
+    private var currentFolder: Folder? = null
+    private val navigationStack = Stack<Folder>()
     init {
         backendController.observeProjectUpdates { notifyProjectUpdated(it) }
     }
@@ -34,9 +38,10 @@ class DocumentsController(
                 throw RuntimeException("Project dir($projectDir) is file!")
             }
             val folder = parseFolder(dir, dir)
+            currentFolder = folder
             withContext(Dispatchers.Main) {
                 progressBar.visibility = View.GONE
-                docAdapter.update(folder.documents)
+                docAdapter.update(folder.elements)
             }
         }
     }
@@ -44,10 +49,32 @@ class DocumentsController(
     private fun parseFolder(projectDir: File, dir: File): Folder {
         return Folder(
                 dir,
-                dir.safeListFiles().map { parseElement(projectDir, it) },
+                dir.safeListFiles()
+                        .map { parseElement(projectDir, it) }
+                        .sortedWith(FoldersFirst),
         )
     }
 
+
+    private object FoldersFirst: Comparator<Element> {
+        override fun compare(o1: Element, o2: Element): Int {
+            val orderByType = o1.intType().compareTo(o2.intType())
+
+            return if (orderByType == 0) {
+                o1.file.name.compareTo(o2.file.name)
+            } else {
+                orderByType
+            }
+        }
+
+        private fun Element.intType(): Int {
+            return when (this) {
+                is Folder -> 0
+                is Document -> 1
+            }
+        }
+
+    }
     private fun parseElement(projectDir: File, f: File): Element {
         return if (f.isDirectory) {
             parseFolder(projectDir, f)
@@ -74,6 +101,18 @@ class DocumentsController(
         backendController.commit()
     }
 
+    fun navigateBackward(): Boolean {
+        if (navigationStack.isEmpty()) {
+            return false
+        }
+
+        navigationStack.pop().let {
+            currentFolder = it
+            docAdapter.update(it.elements)
+        }
+        return true
+    }
+
     private val context = container.context
     private val progressBar = container.findViewById<View>(R.id.files_trobber)
     private val btnCommit = (container.parent as View).findViewById<View>(R.id.btn_commit).apply {
@@ -88,7 +127,25 @@ class DocumentsController(
             }
         }
     }
-    private val docAdapter = DocumentsAdapter(docContentProvider, openDelegate)
+    private val docAdapter = DocumentsAdapter(docContentProvider).also { adapter ->
+        adapter.openDelegate = {
+            when (it) {
+                is Document -> openDelegate(it)
+                is Folder -> {
+                    navigateTo(it)
+                }
+            }
+        }
+    }
+
+    private fun navigateTo(it: Folder) {
+        currentFolder?.let {
+            navigationStack.push(it)
+        }
+        currentFolder = it
+        docAdapter.update(it.elements)
+    }
+
     private val rv = RecyclerView(context).apply {
         layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
         adapter = docAdapter
@@ -107,10 +164,10 @@ private fun File.safeListFiles(): Array<File> {
 
 class DocumentsAdapter(
         private val docContentProvider: DocumentContentProvider,
-        private val openDelegate: (Document) -> Unit
 ) : RecyclerView.Adapter<DocumentViewHolder>() {
-    private val items = mutableListOf<Document>()
-    fun update(newItems: List<Document>) {
+    var openDelegate: (Element) -> Unit = {}
+    private val items = mutableListOf<Element>()
+    fun update(newItems: List<Element>) {
         items.clear()
         items.addAll(newItems)
         notifyDataSetChanged()
@@ -131,33 +188,38 @@ class DocumentsAdapter(
 
 class DocumentViewHolder(
         itemView: View,
-        private val openDelegate: (Document) -> Unit,
+        private val openDelegate: (Element) -> Unit,
         private val docContentProvider: DocumentContentProvider
 ) : RecyclerView.ViewHolder(itemView) {
-    private var boundedDoc: Document? = null
+    private var boundedElement: Element? = null
     private val tvTitle = itemView.findViewById<AppCompatTextView>(R.id.tv_title)
     private val tvPreview = itemView.findViewById<AppCompatTextView>(R.id.tv_preview)
-    fun bind(doc: Document) {
-        boundedDoc = doc
-        tvTitle.text = doc.file.name
-        tvPreview.text = "..."
-        GlobalScope.launch(Dispatchers.IO) {
-            val full = docContentProvider.getContent(doc)
-            val preview = if (full.length > 300) {
-                full.substring(0..300)
-            } else {
-                full
-            }
+    fun bind(element: Element) {
+        boundedElement = element
+        tvTitle.text = element.file.name
 
-            withContext(Dispatchers.Main) {
-                if (doc == boundedDoc) {
-                    tvPreview.text = preview
+        if (element is Document) {
+            tvPreview.text = "..."
+            GlobalScope.launch(Dispatchers.IO) {
+                val full = docContentProvider.getContent(element)
+                val preview = if (full.length > 300) {
+                    full.substring(0..300)
+                } else {
+                    full
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (element == boundedElement) {
+                        tvPreview.text = preview
+                    }
                 }
             }
+        } else {
+            tvPreview.text = "(folder)"
         }
 
         itemView.setOnClickListener {
-            openDelegate.invoke(doc)
+            openDelegate.invoke(element)
         }
     }
 }

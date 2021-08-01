@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.EditText
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.app.documents.Document
+import com.tsourcecode.wiki.app.documents.Folder
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
@@ -95,6 +96,9 @@ class MainActivity : Activity() {
 
     override fun onBackPressed() {
         if (areFilesOpened()) {
+            if (documentsController.navigateBackward()) {
+                return
+            }
             super.onBackPressed()
         } else {
             setFilesOpened(true)
