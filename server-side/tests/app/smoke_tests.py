@@ -10,25 +10,13 @@ import os
 HOST = 'http://test-backend'
 LATEST = HOST + '/api/1/revision/latest'
 STAGE_API = HOST + '/api/1/stage'
+COMMIT_API = HOST + '/api/1/commit'
 
 
 class ChatAcceptanceTests(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         backend.wait_boot()
-
-    def test_latest_revision_zip_file(self):
-        response = requests.get(LATEST)
-        if response.headers["Content-Type"] != "application/zip":
-            self.fail(msg='Wrong content received: ' + response.text)
-            return
-
-        content_disposition = response.headers["Content-Disposition"]
-        file_name = content_disposition[content_disposition.index("=") + 1:]
-        head_commit_hash = os.environ['HEAD_COMMIT']
-        self.assertNotEqual("", head_commit_hash)
-        self.assertEqual(head_commit_hash + ".zip", file_name,
-                         msg='Expected "'+head_commit_hash+'" payload, but got: ' + file_name)
 
     def test_latest_revision_zip_content_not_contains_git(self):
         def git_folder_excluded(dir):
@@ -47,7 +35,7 @@ class ChatAcceptanceTests(unittest.TestCase):
                 first_line = f.readline()
 
             if not first_line.startswith("# Sample Repo for Tests"):
-                return "Concrete README.md must be at root! Instead got: '" + first_line + "'"
+                return "README.md must start with: '# Sample Repo for Tests'!\nInstead got: '" + first_line + "'"
             return None
 
         self.assertRevisionContains(condition=root_contains_concrete_readme)
@@ -76,7 +64,7 @@ class ChatAcceptanceTests(unittest.TestCase):
         print(dir_contents, flush=True)
 
     def test_staging(self):
-        expected_contents = "# README.md STAGED"
+        expected_contents = "# Sample Repo for Tests\nSTAGED!"
         requests.post(STAGE_API, json={
             'files': [
                 {
@@ -89,6 +77,25 @@ class ChatAcceptanceTests(unittest.TestCase):
         actual_contents = subprocess.check_output('cat /app/repo/README.md', universal_newlines=True, shell=True)
 
         self.assertEqual(expected_contents, actual_contents)
+
+    def test_commitment(self):
+        requests.post(STAGE_API, json={
+            'files': [
+                {
+                    'path': 'new_file.md',
+                    'content': base64.b64encode("# sample content".encode('utf-8')).decode("utf-8"),
+                }
+            ]
+        })
+
+        response = requests.post(COMMIT_API, json={})
+
+        expected_message = "auto-commit from wiki-app"
+
+        actual_message = subprocess.check_output('cd /app/repo && git log -1', universal_newlines=True, shell=True)
+
+        if expected_message not in actual_message:
+            self.fail("'"+expected_message + "' not found in:\n" + actual_message + "\n commit response:\n"+response.text)
 
 if __name__ == '__main__':
     unittest.main()

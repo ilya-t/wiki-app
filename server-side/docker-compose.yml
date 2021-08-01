@@ -14,8 +14,6 @@ services:
       - $target_repo:/app/repo-store/repo
   tests:
     build: tests
-    environment:
-      - HEAD_COMMIT=$head_commit
     volumes:
       - ./build_artifacts:/app/reports
       - $target_repo:/app/repo

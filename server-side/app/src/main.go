@@ -18,10 +18,15 @@ const (
 )
 
 func execute(cmd string) (string, error) {
-	args := strings.Split(cmd, " ")
-	command := exec.Command(args[0], args[1:]...)
+	command := exec.Command("/bin/sh", "-c", cmd)
 	command.Dir = CWD
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
 	out, err := command.Output()
+
+	if err != nil {
+		return stderr.String(), err
+	}
 
 	return string(out), err
 }
@@ -108,7 +113,15 @@ func getHealth(w http.ResponseWriter, req *http.Request) {
 }
 
 func postCommit(w http.ResponseWriter, req *http.Request) {
+	message := "auto-commit from wiki-app"
+	output, err := execute("git commit --message=\"" + message + "\"")
+	if err != nil {
+		fmt.Fprint(w, "{ \"error\": \""+err.Error()+"\n"+output+"\"}")
+		return
+	}
 
+	execute("git push origin master")
+	fmt.Fprint(w, "{ \"result\": \"true\"")
 }
 
 func stageFiles(w http.ResponseWriter, req *http.Request) {
