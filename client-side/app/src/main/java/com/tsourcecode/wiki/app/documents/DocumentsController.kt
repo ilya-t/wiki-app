@@ -138,6 +138,10 @@ class DocumentsController(
                 .setView(EditText(context))
                 .setPositiveButton("OK") { dialog, which ->
                     val commitMessage = input.text.toString()
+
+                    if (commitMessage.isEmpty()) {
+                        return                        
+                    }
                     GlobalScope.launch {
                         commit(commitMessage)
                         withContext(Dispatchers.Main) {

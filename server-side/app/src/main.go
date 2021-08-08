@@ -119,8 +119,6 @@ type Commitment struct {
 }
 
 func postCommit(w http.ResponseWriter, req *http.Request) {
-	message := "auto-commit from wiki-app"
-
 	r, e := ioutil.ReadAll(req.Body)
 
 	if e != nil {
@@ -136,11 +134,12 @@ func postCommit(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if commitment.Message != "" {
-		message = commitment.Message
+	if commitment.Message == "" {
+		writeError(w, "no commit message specified", nil, string(r))
+		return
 	}
 
-	commitOut, commitErr := execute("git commit --message=\"" + message + "\"")
+	commitOut, commitErr := execute("git commit --message=\"" + commitment.Message + "\"")
 	if commitErr != nil {
 		writeError(w, "committing", commitErr, commitOut)
 		return
