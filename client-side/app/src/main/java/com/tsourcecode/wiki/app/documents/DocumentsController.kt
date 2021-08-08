@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
+import android.app.AlertDialog
 import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
@@ -18,6 +19,12 @@ import java.io.File
 import java.lang.RuntimeException
 import java.util.*
 import kotlin.Comparator
+import android.content.DialogInterface
+
+import android.text.InputType
+
+import android.widget.EditText
+
 
 class DocumentsController(
         container: ViewGroup,
@@ -27,6 +34,7 @@ class DocumentsController(
 ) {
     private var currentFolder: Folder? = null
     private val navigationStack = Stack<Folder>()
+
     init {
         backendController.observeProjectUpdates { notifyProjectUpdated(it) }
     }
@@ -56,7 +64,7 @@ class DocumentsController(
     }
 
 
-    private object FoldersFirst: Comparator<Element> {
+    private object FoldersFirst : Comparator<Element> {
         override fun compare(o1: Element, o2: Element): Int {
             val orderByType = o1.intType().compareTo(o2.intType())
 
@@ -75,6 +83,7 @@ class DocumentsController(
         }
 
     }
+
     private fun parseElement(projectDir: File, f: File): Element {
         return if (f.isDirectory) {
             parseFolder(projectDir, f)
@@ -97,8 +106,8 @@ class DocumentsController(
         }
     }
 
-    private fun commit() {
-        backendController.commit()
+    private fun commit(message: String) {
+        backendController.commit(message)
     }
 
     fun navigateBackward(): Boolean {
@@ -118,15 +127,37 @@ class DocumentsController(
     private val btnCommit = (container.parent as View).findViewById<View>(R.id.btn_commit).apply {
         setOnClickListener {
             it.isEnabled = false
-            GlobalScope.launch {
-                commit()
-                withContext(Dispatchers.Main) {
-                    visibility = View.GONE
-                    it.isEnabled = true
-                }
-            }
+            showCommitDialog()
         }
     }
+
+    private fun showCommitDialog() {
+        val input = EditText(context)
+        AlertDialog.Builder(context)
+                .setTitle("Enter commit message:")
+                .setView(EditText(context))
+                .setPositiveButton("OK") { dialog, which ->
+                    val commitMessage = input.text.toString()
+                    GlobalScope.launch {
+                        commit(commitMessage)
+                        withContext(Dispatchers.Main) {
+                            btnCommit.visibility = View.GONE
+                            btnCommit.isEnabled = true
+                        }
+                    }
+                }
+                .setNegativeButton("Cancel") { dialog, which ->
+                    dialog.cancel()
+                    btnCommit.visibility = View.VISIBLE
+                    btnCommit.isEnabled = true
+                }
+                .setOnDismissListener {
+                    btnCommit.visibility = View.VISIBLE
+                    btnCommit.isEnabled = true
+                }
+                .show()
+    }
+
     private val docAdapter = DocumentsAdapter(docContentProvider).also { adapter ->
         adapter.openDelegate = {
             when (it) {
@@ -159,7 +190,7 @@ class DocumentsController(
 }
 
 private fun File.safeListFiles(): Array<File> {
-    return this.listFiles()?: emptyArray()
+    return this.listFiles() ?: emptyArray()
 }
 
 class DocumentsAdapter(
@@ -172,6 +203,7 @@ class DocumentsAdapter(
         items.addAll(newItems)
         notifyDataSetChanged()
     }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
             DocumentViewHolder(createItemView(parent), openDelegate, docContentProvider)
 

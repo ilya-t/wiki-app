@@ -31,7 +31,11 @@ class BackendController(
     }
 
     init {
-        Executors.newSingleThreadExecutor().execute {
+        sync()
+    }
+
+    fun sync() {
+        GlobalScope.launch(Dispatchers.IO) {
             try {
                 requestAndSave()?.let {
                     Decompressor.decompress(it, defaultProjectDir)
@@ -44,9 +48,11 @@ class BackendController(
                 e.printStackTrace()
                 //Log.that("Unhandled exception: ", e)
                 GlobalScope.launch(Dispatchers.Main) {
+
                     throw e
                 }
             }
+
         }
     }
 
@@ -88,8 +94,10 @@ class BackendController(
         }
     }
 
-    fun commit() {
-        val response = backendApi.commit().execute()
+    fun commit(message: String) {
+        val response = backendApi.commit(
+                WikiBackendAPIs.Commitment(message)
+        ).execute()
         if (response.code() != 200) {
             throw RuntimeException("Commit failed with ${response.errorBody()?.string()}")
         }

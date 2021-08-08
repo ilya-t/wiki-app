@@ -14,10 +14,16 @@ interface WikiBackendAPIs {
     @POST("/api/1/stage")
     fun stage(@Body staging: Staging): Call<ResponseBody>
     @POST("/api/1/commit")
-    fun commit(): Call<ResponseBody>
+    fun commit(@Body c: Commitment): Call<ResponseBody>
 
     data class Staging(
             val files: List<FileStaging>
+    )
+
+    data class Commitment(
+            val message: String,
+            val user: String? = null,
+            val email: String? = null,
     )
 
     data class FileStaging(
