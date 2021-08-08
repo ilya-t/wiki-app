@@ -52,7 +52,5 @@
         android:textColor="@android:color/white"
         android:background="@android:color/holo_blue_light"
         android:gravity="center"
-        android:layout_gravity="bottom"
-        tools:text="Commited"
         />
 </FrameLayout>

@@ -1,5 +1,7 @@
 package com.tsourcecode.wiki.app
 
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatTextView
 import com.tsourcecode.wiki.lib.domain.QuickStatus
@@ -16,6 +18,20 @@ class QuickStatusViewModel(
         quickStatusController.listener = { status ->
             tvStatus.post {
                 updateStatus(status)
+            }
+        }
+
+        tvStatus.setOnClickListener {
+            if (tvStatus.layoutParams.height == FrameLayout.LayoutParams.WRAP_CONTENT) {
+                tvStatus.layoutParams = FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        activity.resources.getDimensionPixelSize(R.dimen.status_height),
+                )
+            } else {
+                tvStatus.layoutParams = FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                )
             }
         }
     }
