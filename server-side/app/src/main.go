@@ -104,23 +104,58 @@ func writeFile(filename string, file string, w http.ResponseWriter, req *http.Re
 	}
 }
 
-func writeError(w http.ResponseWriter, msg string, err error, extra string) {
-	fmt.Fprintf(w, "{\"error\": \"%s - %v\noutput:%v\" }", msg, err, extra)
+func writeError(w http.ResponseWriter, stage string, err error, extra string) {
+	e := fmt.Sprintf("{\"error\": \"%s - %v\noutput:%v\" }", stage, err, extra)
+	http.Error(w, e, 500)
 }
 
 func getHealth(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "OK!")
 }
 
+type Commitment struct {
+	Message string `json:"message"`
+}
+
 func postCommit(w http.ResponseWriter, req *http.Request) {
 	message := "auto-commit from wiki-app"
-	output, err := execute("git commit --message=\"" + message + "\"")
-	if err != nil {
-		http.Error(w, err.Error()+"\n"+output, 500)
+
+	r, e := ioutil.ReadAll(req.Body)
+
+	if e != nil {
+		writeError(w, "unexpected request body", e, string(r))
 		return
 	}
 
-	execute("git push origin master")
+	var commitment *Commitment
+	err := json.Unmarshal(r, &commitment)
+
+	if err != nil {
+		writeError(w, "request body parsing", err, string(r))
+		return
+	}
+
+	if commitment.Message != "" {
+		message = commitment.Message
+	}
+
+	commitOut, commitErr := execute("git commit --message=\"" + message + "\"")
+	if commitErr != nil {
+		writeError(w, "committing", commitErr, commitOut)
+		return
+	}
+
+	pullOut, pullErr := execute("git pull --rebase origin master")
+	if pullErr != nil {
+		writeError(w, "pulling", pullErr, pullOut)
+		return
+	}
+
+	pushOut, pushErr := execute("git push origin master")
+	if pushErr != nil {
+		writeError(w, "pushing", pullErr, pushOut)
+		return
+	}
 	fmt.Fprint(w, "{ \"result\": \"true\"")
 }
 

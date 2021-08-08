@@ -88,11 +88,13 @@ class ChatAcceptanceTests(unittest.TestCase):
             ]
         })
 
-        response = requests.post(COMMIT_API, json={})
-
-        expected_message = "auto-commit from wiki-app"
+        expected_message = 'custom commit message!'
+        response = requests.post(COMMIT_API, json={ 'message': expected_message })
 
         actual_message = subprocess.check_output('cd /app/repo && git log -1', universal_newlines=True, shell=True)
+
+        if response.status_code != 200:
+            self.fail("response returned non-200 code: " + str(response.status_code) + "\n response body:\n"+response.text)
 
         if expected_message not in actual_message:
             self.fail("'"+expected_message + "' not found in:\n" + actual_message + "\n commit response:\n"+response.text)

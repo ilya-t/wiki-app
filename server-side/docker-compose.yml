@@ -12,6 +12,7 @@ services:
       - ASSERTS=false
     volumes:
       - $target_repo:/app/repo-store/repo
+      - /tmp/test_repo.git:/tmp/test_repo.git
   tests:
     build: tests
     volumes:
