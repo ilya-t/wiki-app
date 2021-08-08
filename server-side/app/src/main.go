@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	CWD = "/app/repo-store/repo"
+	CWD    = "/app/repo-store/repo"
+	BRANCH = "wiki_dev"
 )
 
 func execute(cmd string) (string, error) {
@@ -145,13 +146,13 @@ func postCommit(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	pullOut, pullErr := execute("git pull --rebase origin master")
+	pullOut, pullErr := execute("git pull --rebase origin " + BRANCH)
 	if pullErr != nil {
 		writeError(w, "pulling", pullErr, pullOut)
 		return
 	}
 
-	pushOut, pushErr := execute("git push origin master")
+	pushOut, pushErr := execute("git push origin " + BRANCH)
 	if pushErr != nil {
 		writeError(w, "pushing", pullErr, pushOut)
 		return
@@ -220,6 +221,11 @@ func main() {
 
 	_, err := execute("git config --local user.name \"Wiki Committer\"")
 	if err != nil {
+		panic(err)
+	}
+
+	_, checkoutErr := execute("git checkout " + BRANCH)
+	if checkoutErr != nil {
 		panic(err)
 	}
 
