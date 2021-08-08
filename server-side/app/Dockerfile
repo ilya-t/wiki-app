@@ -3,6 +3,7 @@ FROM golang:1.14.1-alpine3.11
 EXPOSE 80
 RUN apk add --no-cache git=2.24.4-r0
 RUN apk add --no-cache zip
+RUN apk add --no-cache openssh
 
 RUN mkdir /app
 
