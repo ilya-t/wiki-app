@@ -1,6 +1,5 @@
 package com.tsourcecode.wiki.app
 
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatTextView
@@ -47,7 +46,6 @@ class QuickStatusViewModel(
                     activity.resources.getColor(status.status.color())
                     )
             tvStatus.text = status.status.name
-
         }
     }
 

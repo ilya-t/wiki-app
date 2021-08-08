@@ -135,12 +135,12 @@ class DocumentsController(
         val input = EditText(context)
         AlertDialog.Builder(context)
                 .setTitle("Enter commit message:")
-                .setView(EditText(context))
+                .setView(input)
                 .setPositiveButton("OK") { dialog, which ->
                     val commitMessage = input.text.toString()
 
                     if (commitMessage.isEmpty()) {
-                        return                        
+                        return@setPositiveButton
                     }
                     GlobalScope.launch {
                         commit(commitMessage)
