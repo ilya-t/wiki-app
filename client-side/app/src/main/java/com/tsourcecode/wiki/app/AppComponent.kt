@@ -6,6 +6,7 @@ import com.tsourcecode.wiki.lib.domain.DomainComponent
 class AppComponent(private val appContext: Context) {
     private val domain = DomainComponent(AndroidPlatformDeps(appContext))
     val backendController = domain.backendController
+    val quickStatusController = domain.quickStatusController
 
     companion object {
         private var appContext: Context? = null

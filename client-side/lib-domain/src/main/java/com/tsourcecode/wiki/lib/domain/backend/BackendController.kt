@@ -1,6 +1,8 @@
 package com.tsourcecode.wiki.lib.domain.backend
 
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
+import com.tsourcecode.wiki.lib.domain.QuickStatus
+import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -14,6 +16,7 @@ import java.util.concurrent.Executors
 
 class BackendController(
         private val platformDeps: PlatformDeps,
+        private val quickStatusController: QuickStatusController,
 ) {
     private var projectObserver: ((String) -> Unit)? = null
     private val retrofit = Retrofit.Builder()
@@ -37,19 +40,21 @@ class BackendController(
     fun sync() {
         GlobalScope.launch(Dispatchers.IO) {
             try {
+                quickStatusController.udpate(QuickStatus.SYNC)
                 requestAndSave()?.let {
+                    quickStatusController.udpate(QuickStatus.DECOMPRESS)
                     Decompressor.decompress(it, defaultProjectDir)
 
                     GlobalScope.launch(Dispatchers.Main) {
                         projectObserver?.invoke(defaultProjectDir + "/repo")
+                        quickStatusController.udpate(QuickStatus.SYNCED)
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 //Log.that("Unhandled exception: ", e)
                 GlobalScope.launch(Dispatchers.Main) {
-
-                    throw e
+                    quickStatusController.error(QuickStatus.SYNC, e)
                 }
             }
 
@@ -82,6 +87,8 @@ class BackendController(
     }
 
     fun stage(relativePath: String, b64: String) {
+        quickStatusController.udpate(QuickStatus.STAGE)
+
         val response = backendApi.stage(WikiBackendAPIs.Staging(
                 listOf(
                         WikiBackendAPIs.FileStaging(relativePath, b64)
@@ -90,16 +97,28 @@ class BackendController(
                 ).execute()
 
         if (response.code() != 200) {
-            throw RuntimeException("Staging failed with $response")
+            quickStatusController.error(QuickStatus.STAGE,
+                    RuntimeException("Staging failed with ${response.errorBody()?.string()}")
+            )
+
+        } else {
+            quickStatusController.udpate(QuickStatus.STAGED)
         }
     }
 
     fun commit(message: String) {
+        quickStatusController.udpate(QuickStatus.COMMIT)
         val response = backendApi.commit(
                 WikiBackendAPIs.Commitment(message)
         ).execute()
         if (response.code() != 200) {
-            throw RuntimeException("Commit failed with ${response.errorBody()?.string()}")
+            quickStatusController.error(
+                    QuickStatus.COMMITED,
+                    RuntimeException("Commit failed with ${response.errorBody()?.string()}")
+            )
+
+        } else {
+            quickStatusController.udpate(QuickStatus.COMMITED)
         }
 
     }
