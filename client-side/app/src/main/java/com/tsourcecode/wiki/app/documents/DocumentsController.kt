@@ -1,6 +1,7 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
 import android.app.AlertDialog
+import android.content.Context
 import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
@@ -24,16 +25,17 @@ import android.content.DialogInterface
 import android.text.InputType
 
 import android.widget.EditText
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import com.tsourcecode.wiki.app.EditStateController
 
 
 class DocumentsController(
-        container: ViewGroup,
-        openDelegate: (Document) -> Unit,
-        private val docContentProvider: DocumentContentProvider,
         private val backendController: BackendController,
+        private val editStateController: EditStateController,
 ) {
-    private var currentFolder: Folder? = null
-    private val navigationStack = Stack<Folder>()
+    private val _data = MutableLiveData<Folder>()
+    val data: LiveData<Folder> = _data
 
     init {
         backendController.observeProjectUpdates { notifyProjectUpdated(it) }
@@ -46,10 +48,8 @@ class DocumentsController(
                 throw RuntimeException("Project dir($projectDir) is file!")
             }
             val folder = parseFolder(dir, dir)
-            currentFolder = folder
             withContext(Dispatchers.Main) {
-                progressBar.visibility = View.GONE
-                docAdapter.update(folder.elements)
+                _data.value = folder
             }
         }
     }
@@ -100,96 +100,9 @@ class DocumentsController(
             backendController.stage(d.relativePath, b64)
 
             withContext(Dispatchers.Main) {
-                btnCommit.visibility = View.VISIBLE
-                btnCommit.isEnabled = true
+                editStateController.enableCommit()
             }
         }
-    }
-
-    private fun commit(message: String) {
-        backendController.commit(message)
-    }
-
-    fun navigateBackward(): Boolean {
-        if (navigationStack.isEmpty()) {
-            return false
-        }
-
-        navigationStack.pop().let {
-            currentFolder = it
-            docAdapter.update(it.elements)
-        }
-        return true
-    }
-
-    private val context = container.context
-    private val progressBar = container.findViewById<View>(R.id.files_trobber)
-    private val btnCommit = (container.parent as View).findViewById<View>(R.id.btn_commit).apply {
-        setOnClickListener {
-            it.isEnabled = false
-            showCommitDialog()
-        }
-    }
-
-    private fun showCommitDialog() {
-        val input = EditText(context)
-        AlertDialog.Builder(context)
-                .setTitle("Enter commit message:")
-                .setView(input)
-                .setPositiveButton("OK") { dialog, which ->
-                    val commitMessage = input.text.toString()
-
-                    if (commitMessage.isEmpty()) {
-                        return@setPositiveButton
-                    }
-                    GlobalScope.launch {
-                        commit(commitMessage)
-                        withContext(Dispatchers.Main) {
-                            btnCommit.visibility = View.GONE
-                            btnCommit.isEnabled = true
-                        }
-                    }
-                }
-                .setNegativeButton("Cancel") { dialog, which ->
-                    dialog.cancel()
-                    btnCommit.visibility = View.VISIBLE
-                    btnCommit.isEnabled = true
-                }
-                .setOnDismissListener {
-                    btnCommit.visibility = View.VISIBLE
-                    btnCommit.isEnabled = true
-                }
-                .show()
-    }
-
-    private val docAdapter = DocumentsAdapter(docContentProvider).also { adapter ->
-        adapter.openDelegate = {
-            when (it) {
-                is Document -> openDelegate(it)
-                is Folder -> {
-                    navigateTo(it)
-                }
-            }
-        }
-    }
-
-    private fun navigateTo(it: Folder) {
-        currentFolder?.let {
-            navigationStack.push(it)
-        }
-        currentFolder = it
-        docAdapter.update(it.elements)
-    }
-
-    private val rv = RecyclerView(context).apply {
-        layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
-        adapter = docAdapter
-
-        addItemDecoration(DividerItemDecoration(context, DividerItemDecoration.VERTICAL))
-    }
-
-    init {
-        container.addView(rv, 0)
     }
 }
 

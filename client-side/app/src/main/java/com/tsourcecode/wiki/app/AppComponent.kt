@@ -7,6 +7,7 @@ class AppComponent(private val appContext: Context) {
     private val domain = DomainComponent(AndroidPlatformDeps(appContext))
     val backendController = domain.backendController
     val quickStatusController = domain.quickStatusController
+    val docContentProvider = domain.docContentProvider
 
     companion object {
         private var appContext: Context? = null

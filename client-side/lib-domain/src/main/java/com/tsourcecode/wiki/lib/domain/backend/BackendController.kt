@@ -89,12 +89,15 @@ class BackendController(
     fun stage(relativePath: String, b64: String) {
         quickStatusController.udpate(QuickStatus.STAGE)
 
-        val response = backendApi.stage(WikiBackendAPIs.Staging(
-                listOf(
-                        WikiBackendAPIs.FileStaging(relativePath, b64)
-                )
-        )
-                ).execute()
+        val response = try {
+            backendApi.stage(WikiBackendAPIs.Staging(
+                    listOf(WikiBackendAPIs.FileStaging(relativePath, b64))
+            )).execute()
+        } catch (e: IOException) {
+            e.printStackTrace()
+            quickStatusController.error(QuickStatus.STAGE, e)
+            return
+        }
 
         if (response.code() != 200) {
             quickStatusController.error(QuickStatus.STAGE,

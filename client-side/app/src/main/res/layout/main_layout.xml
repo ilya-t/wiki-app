@@ -1,56 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    xmlns:tools="http://schemas.android.com/tools">
-
+    android:layout_height="match_parent">
     <FrameLayout
-        android:id="@+id/files_container"
+        android:id="@+id/content_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        >
+        />
 
-        <ProgressBar
-            android:id="@+id/files_trobber"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_gravity="center"
+    <LinearLayout
+        android:id="@+id/control_bar"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/control_bar_height"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_files"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:text="files" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_commit"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:text="commit"
             />
 
-    </FrameLayout>
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_config"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:text="config"
+            tools:visibility="visible" />
+    </LinearLayout>
 
-    <EditText
-        android:id="@+id/tv_markwon"
-        android:gravity="top"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btn_files"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:text="files"
-        android:layout_gravity="end|bottom"
-        android:layout_margin="32dp"
-        />
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btn_commit"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:text="commit"
-        android:layout_gravity="end|top"
-        android:layout_margin="32dp"
-        android:visibility="gone"
-        />
 
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/tv_status"
         android:layout_width="match_parent"
         android:layout_height="@dimen/status_height"
-        android:textSize="12dp"
-        android:textColor="@android:color/white"
         android:background="@android:color/holo_blue_light"
         android:gravity="center"
-        />
+        android:textColor="@android:color/white"
+        android:textSize="12dp" />
 </FrameLayout>
