@@ -15,7 +15,7 @@ import (
 
 const (
 	CWD    = "/app/repo-store/repo"
-	BRANCH = "wiki_dev"
+	BRANCH = "master"
 )
 
 func execute(cmd string) (string, error) {
