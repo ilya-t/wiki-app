@@ -9,7 +9,7 @@ services:
         aliases:
           - "test-backend"
     environment:
-      - ASSERTS=false
+      - ASSERTS=true
     volumes:
       - $target_repo:/app/repo-store/repo
       - $target_ssh_keys:/root/.ssh
