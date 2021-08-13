@@ -2,6 +2,7 @@ package com.tsourcecode.wiki.app
 
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import com.tsourcecode.wiki.app.config.ConfigScreenController
 import com.tsourcecode.wiki.app.documents.FileManagerScreenController
 import com.tsourcecode.wiki.app.editor.EditorScreenController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
@@ -49,6 +50,11 @@ class ActivityComponent(
             appComponent.docContentProvider,
             appComponent.backendController,
             editorScreenController,
+    )
+
+    private val configScreenController = ConfigScreenController(
+            activity,
+            navigator
     )
 
     fun dispatchBackPressed(): Boolean {
