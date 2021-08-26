@@ -86,7 +86,7 @@ class BackendController(
         return file
     }
 
-    fun stage(relativePath: String, b64: String) {
+    fun stage(relativePath: String, b64: String): Boolean {
         quickStatusController.udpate(QuickStatus.STAGE)
 
         val response = try {
@@ -96,16 +96,17 @@ class BackendController(
         } catch (e: IOException) {
             e.printStackTrace()
             quickStatusController.error(QuickStatus.STAGE, e)
-            return
+            return false
         }
 
         if (response.code() != 200) {
             quickStatusController.error(QuickStatus.STAGE,
                     RuntimeException("Staging failed with ${response.errorBody()?.string()}")
             )
-
+            return false
         } else {
             quickStatusController.udpate(QuickStatus.STAGED)
+            return true
         }
     }
 

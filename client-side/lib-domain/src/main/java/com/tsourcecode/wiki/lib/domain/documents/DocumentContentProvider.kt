@@ -1,13 +1,20 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
 import com.tsourcecode.wiki.app.documents.Document
+import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import java.io.*
 
-class DocumentContentProvider {
+class DocumentContentProvider(
+        private val changedFilesController: ChangedFilesController,
+) {
     private val inMemoryStore = mutableMapOf<Document, String>()
 
     fun getContent(d: Document): String {
         return inMemoryStore.getOrPut(d) {
+            changedFilesController.getChangedFile(d)?.let {
+                return@getOrPut getStringFromFile(it)
+            }
+
             getStringFromFile(d.file)
         }
     }

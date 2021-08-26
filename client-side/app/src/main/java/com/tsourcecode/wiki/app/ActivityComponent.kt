@@ -8,6 +8,7 @@ import com.tsourcecode.wiki.app.editor.EditorScreenController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
+import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 
 class ActivityComponent(
         private val activity: AppCompatActivity,
@@ -35,6 +36,7 @@ class ActivityComponent(
     private val documentsController = DocumentsController(
             appComponent.backendController,
             editStateController,
+            appComponent.changedFilesController,
     )
 
 

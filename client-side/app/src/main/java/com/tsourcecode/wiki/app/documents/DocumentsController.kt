@@ -1,14 +1,10 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
-import android.app.AlertDialog
-import android.content.Context
 import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.recyclerview.widget.DividerItemDecoration
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
@@ -18,21 +14,18 @@ import com.tsourcecode.wiki.app.documents.Folder
 import kotlinx.coroutines.*
 import java.io.File
 import java.lang.RuntimeException
-import java.util.*
 import kotlin.Comparator
-import android.content.DialogInterface
 
-import android.text.InputType
-
-import android.widget.EditText
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.tsourcecode.wiki.app.EditStateController
+import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 
 
 class DocumentsController(
         private val backendController: BackendController,
         private val editStateController: EditStateController,
+        private val changedFilesController: ChangedFilesController,
 ) {
     private val _data = MutableLiveData<Folder>()
     val data: LiveData<Folder> = _data
@@ -94,10 +87,13 @@ class DocumentsController(
 
     fun save(d: Document, content: String) {
         GlobalScope.launch {
-            d.file.writeText(content)
+            changedFilesController.markChanged(d, content)
+
             val b64 = Base64.encodeToString(content.toByteArray(), Base64.DEFAULT)
 
-            backendController.stage(d.relativePath, b64)
+            if (backendController.stage(d.relativePath, b64)) {
+                changedFilesController.markStaged(d)
+            }
 
             withContext(Dispatchers.Main) {
                 editStateController.enableCommit()
