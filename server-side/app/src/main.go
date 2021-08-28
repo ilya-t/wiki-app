@@ -2,15 +2,11 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"os/exec"
-	"strings"
 )
 
 const (
@@ -18,49 +14,14 @@ const (
 	BRANCH = "master"
 )
 
-func execute(cmd string) (string, error) {
-	command := exec.Command("/bin/sh", "-c", cmd)
-	command.Dir = CWD
-	var stderr bytes.Buffer
-	command.Stderr = &stderr
-	out, err := command.Output()
-
-	if err != nil {
-		return stderr.String(), err
-	}
-
-	return string(out), err
-}
-
-func printOutput(cmd string) {
-	out, err := execute(cmd)
-	if err != nil {
-		fmt.Println("cmd: ", cmd, "\noutput: ", "ERROR("+err.Error()+"): "+out)
-		return
-	}
-
-	fmt.Println("cmd: ", cmd, "\noutput: ", out)
-}
-
-func LastRevision() (string, error) {
-	if _, err := os.Stat(CWD + "/.git"); os.IsNotExist(err) {
-		return "", errors.New("repo's .git not found!")
-	}
-
-	result, err := execute("git rev-parse HEAD~0")
-
-	if err != nil {
-		printOutput("pwd")
-		printOutput("ls -l")
-		printOutput("git log -1")
-		return result, err
-	}
-
-	return strings.Replace(result, "\n", "", -1), nil
-}
+var (
+	git   = NewGit(CWD)
+	shell = &Shell{
+		Cwd: CWD}
+)
 
 func getLastRevision(w http.ResponseWriter, req *http.Request) {
-	revision, e := LastRevision()
+	revision, e := git.LastRevision()
 
 	if e != nil {
 		writeError(w, "revision resolve failed", e, revision)
@@ -68,7 +29,7 @@ func getLastRevision(w http.ResponseWriter, req *http.Request) {
 	}
 
 	revision_zip := "/tmp/" + revision + ".zip"
-	execute("rm " + revision_zip)
+	shell.Execute("rm " + revision_zip)
 	command := "zip -r " + revision_zip + " repo --exclude \"repo/.git/*\""
 	// executing "zip" through  "/bin/sh -c" cause somehow same "zip" command
 	// cannot match excluded files correctly (command.Dir = CWD break everything)
@@ -139,19 +100,19 @@ func postCommit(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	commitOut, commitErr := execute("git commit --message=\"" + commitment.Message + "\"")
+	commitOut, commitErr := shell.Execute("git commit --message=\"" + commitment.Message + "\"")
 	if commitErr != nil {
 		writeError(w, "committing", commitErr, commitOut)
 		return
 	}
 
-	pullOut, pullErr := execute("git pull --rebase origin " + BRANCH)
+	pullOut, pullErr := shell.Execute("git pull --rebase origin " + BRANCH)
 	if pullErr != nil {
 		writeError(w, "pulling", pullErr, pullOut)
 		return
 	}
 
-	pushOut, pushErr := execute("git push origin " + BRANCH)
+	pushOut, pushErr := shell.Execute("git push origin " + BRANCH)
 	if pushErr != nil {
 		writeError(w, "pushing", pullErr, pushOut)
 		return
@@ -174,34 +135,8 @@ func stageFiles(w http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, f := range staging.Files {
-		stage(f)
+		git.Stage(f)
 	}
-}
-
-func stage(f *FileContent) {
-	decoded, _ := base64.StdEncoding.DecodeString(f.Content)
-	filePath := CWD + "/" + f.Path
-	e := ioutil.WriteFile(filePath, []byte(decoded), os.ModePerm)
-
-	if e != nil {
-		panic(e)
-	}
-
-	_, err := execute("git add " + filePath)
-
-	if err != nil {
-		panic(e)
-	}
-
-}
-
-type Staging struct {
-	Files []*FileContent `json:"files"`
-}
-
-type FileContent struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
 }
 
 func headers(w http.ResponseWriter, req *http.Request) {
@@ -213,17 +148,17 @@ func headers(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	_, e := execute("git config --local user.email \"wiki-app@tsourcecode.com\"")
+	_, e := shell.Execute("git config --local user.email \"wiki-app@tsourcecode.com\"")
 	if e != nil {
 		panic(e)
 	}
 
-	_, err := execute("git config --local user.name \"Wiki Committer\"")
+	_, err := shell.Execute("git config --local user.name \"Wiki Committer\"")
 	if err != nil {
 		panic(err)
 	}
 
-	_, checkoutErr := execute("git checkout " + BRANCH)
+	_, checkoutErr := shell.Execute("git checkout " + BRANCH)
 	if checkoutErr != nil {
 		panic(err)
 	}
