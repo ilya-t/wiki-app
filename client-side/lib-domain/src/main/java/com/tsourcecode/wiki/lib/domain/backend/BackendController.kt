@@ -5,6 +5,8 @@ import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -12,7 +14,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
-import java.util.concurrent.Executors
 
 class BackendController(
         private val platformDeps: PlatformDeps,
@@ -23,6 +24,8 @@ class BackendController(
             .baseUrl("http://duke-nucem:8181/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    private val _refreshFlow = MutableStateFlow(false)
+    val refreshFlow: StateFlow<Boolean> = _refreshFlow
     private val backendApi: WikiBackendAPIs = retrofit.create(WikiBackendAPIs::class.java)
     private val defaultProjectDir = platformDeps.filesDir.absolutePath + "/default_project"
 
@@ -38,7 +41,9 @@ class BackendController(
     }
 
     fun sync() {
+
         GlobalScope.launch(Dispatchers.IO) {
+            _refreshFlow.compareAndSet(expect = false, update = true)
             try {
                 quickStatusController.udpate(QuickStatus.SYNC)
                 requestAndSave()?.let {
@@ -57,7 +62,7 @@ class BackendController(
                     quickStatusController.error(QuickStatus.SYNC, e)
                 }
             }
-
+            _refreshFlow.compareAndSet(expect = true, update = false)
         }
     }
 
