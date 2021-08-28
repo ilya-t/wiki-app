@@ -41,6 +41,10 @@ class DocumentsController(
                 throw RuntimeException("Project dir($projectDir) is file!")
             }
             val folder = parseFolder(dir, dir)
+            folder.onEachDocument {
+                changedFilesController.notifyFileSynced(it)
+            }
+
             withContext(Dispatchers.Main) {
                 _data.value = folder
             }
@@ -98,6 +102,15 @@ class DocumentsController(
             withContext(Dispatchers.Main) {
                 editStateController.enableCommit()
             }
+        }
+    }
+}
+
+private fun Folder.onEachDocument(action: (Document) -> Unit) {
+    this.elements.forEach {
+        when (it) {
+            is Document -> action(it)
+            is Folder -> it.onEachDocument(action)
         }
     }
 }

@@ -1,11 +1,16 @@
 plugins {
     id 'java-library'
     id 'kotlin'
+    id "org.jetbrains.kotlin.plugin.allopen"
 }
 
 java {
     sourceCompatibility JavaVersion.VERSION_1_8
     targetCompatibility JavaVersion.VERSION_1_8
+}
+
+allOpen {
+    annotation("com.tsourcecode.wiki.lib.domain.tests.OpenInTest")
 }
 
 dependencies {
@@ -16,4 +21,6 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.3.0'
 
     testImplementation 'junit:junit:4.12'
+    testImplementation "org.mockito:mockito-core:3.8.0"
+    testImplementation "org.mockito.kotlin:mockito-kotlin:2.2.8"
 }

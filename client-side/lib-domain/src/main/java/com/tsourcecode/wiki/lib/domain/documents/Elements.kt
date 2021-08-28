@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.app.documents
 
+import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
 import java.io.File
 
 
@@ -7,6 +8,7 @@ sealed class Element(
         val file: File,
 )
 
+@OpenInTest
 data class Document(
         private val projectDir: File,
         private val f: File,

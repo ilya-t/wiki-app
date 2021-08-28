@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.lib.domain.backend
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
+import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +42,6 @@ class BackendController(
     }
 
     fun sync() {
-
         GlobalScope.launch(Dispatchers.IO) {
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
