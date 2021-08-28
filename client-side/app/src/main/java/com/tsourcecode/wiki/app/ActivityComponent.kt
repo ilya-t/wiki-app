@@ -22,8 +22,12 @@ class ActivityComponent(
         data.observeForever {
             btnFiles.isEnabled = it.screen != Screen.FILE_MANAGER
         }
-
     }
+
+    private val ptrTrigger = PullToRefreshTrigger(
+            activity,
+            appComponent.backendController,
+    )
     private val quickStateController = QuickStatusViewModel(
             activity,
             appComponent.quickStatusController)
