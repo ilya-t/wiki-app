@@ -1,6 +1,7 @@
 FROM thyrlian/android-sdk:6.0
 
 COPY ./app /app
+COPY ./run.sh /app/run.sh
 WORKDIR /app
 
 RUN apt-get update && apt-get install zip=3.0-11build1

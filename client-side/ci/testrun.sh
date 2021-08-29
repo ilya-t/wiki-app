@@ -5,6 +5,6 @@ cd client_side_env
 cd -
 
 docker run \
-    --volume $(pwd)/build_artifacts:/app/app/build/reports \
-    client_side_env:latest \
-    ./gradlew test #lint
+    --volume $(pwd)/build_artifacts:/tmp/build_artifacts \
+    client_side_env:latest
+    /app/run.sh
