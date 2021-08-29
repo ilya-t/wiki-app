@@ -19,6 +19,7 @@ services:
     volumes:
       - ./build_artifacts:/app/reports
       - $target_repo:/app/repo
+      - /tmp/test_repo.git:/tmp/test_repo.git
     networks:
       - default  
 

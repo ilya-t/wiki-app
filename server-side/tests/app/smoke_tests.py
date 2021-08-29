@@ -1,103 +1,84 @@
-import base64
+import json
 import subprocess
 import unittest
 
-import requests
+import api
 import backend
-import zipfile
-import os
 
 HOST = 'http://test-backend'
-LATEST = HOST + '/api/1/revision/latest'
-STAGE_API = HOST + '/api/1/stage'
-COMMIT_API = HOST + '/api/1/commit'
+REPO_DIR = "/app/repo"
+BARE_REPO_PATH = "/tmp/test_repo.git"
 
 
-class ChatAcceptanceTests(unittest.TestCase):
+class AcceptanceTests(unittest.TestCase):
+
     def setUp(self) -> None:
         super().setUp()
+        self.api_user = api.RestApi(HOST)
+        self.repo_user = api.GitApi(origin=BARE_REPO_PATH, dir="/tmp/repo_user")
         backend.wait_boot()
 
     def test_latest_revision_zip_content_not_contains_git(self):
-        def git_folder_excluded(dir):
-            if os.path.exists(dir + "/.git"):
-                return ".git included to snapshot!"
-            return None
-
-        self.assertRevisionContains(condition=git_folder_excluded)
+        _, files = self.api_user.latest_revision()
+        self.assertFalse('.git' in files, msg=json.dumps(files, indent=4))
 
     def test_latest_revision_zip_content_contains_root_content(self):
-        def root_contains_concrete_readme(dir):
-            if not os.path.exists(dir + '/README.md'):
-                return "README.md not found at root!"
-
-            with open(dir + '/README.md') as f:
-                first_line = f.readline()
-
-            if not first_line.startswith("# Sample Repo for Tests"):
-                return "README.md must start with: '# Sample Repo for Tests'!\nInstead got: '" + first_line + "'"
-            return None
-
-        self.assertRevisionContains(condition=root_contains_concrete_readme)
-
-    def assertRevisionContains(self, condition):
-        response = requests.get(LATEST)
-        if response.headers["Content-Type"] != "application/zip":
-            self.fail(msg='Wrong content received: ' + response.text)
-            return
-
-        content_disposition = response.headers["Content-Disposition"]
-        file_name = content_disposition[content_disposition.index("=") + 1:]
-        output_file = "/tmp/" + file_name
-        with open(output_file, "wb") as file:
-            file.write(response.content)
-
-        output_dir = "/tmp/" + self._testMethodName
-        os.system("rm -rf "+output_dir)
-        with zipfile.ZipFile(output_file, 'r') as zip_ref:
-            zip_ref.extractall(output_dir)
-        dir_contents = subprocess.check_output('tree -a ' + output_dir, universal_newlines=True, shell=True)
-        failure = condition(output_dir + "/repo")
-
-        if failure:
-            self.fail(failure + "\n" + dir_contents)
-        print(dir_contents, flush=True)
+        _, files = self.api_user.latest_revision()
+        self.assertTrue('README.md' in files, msg=json.dumps(files, indent=4))
+        readme = files['README.md']
+        self.assertEqual('# Sample Repo for Tests\n', readme)
 
     def test_staging(self):
-        expected_contents = "# Sample Repo for Tests\nSTAGED!"
-        requests.post(STAGE_API, json={
-            'files': [
-                {
-                    'path': 'README.md',
-                    'content': base64.b64encode(expected_contents.encode('utf-8')).decode("utf-8"),
-                }
-            ]
-        })
-
-        actual_contents = subprocess.check_output('cat /app/repo/README.md', universal_newlines=True, shell=True)
+        expected_contents = '# Sample Repo for Tests\nSTAGED!'
+        self.api_user.stage(file='README.md', content=expected_contents)
+        actual_contents = subprocess.check_output('cat ' + REPO_DIR + '/README.md', universal_newlines=True, shell=True)
 
         self.assertEqual(expected_contents, actual_contents)
 
     def test_commitment(self):
-        requests.post(STAGE_API, json={
-            'files': [
-                {
-                    'path': 'new_file.md',
-                    'content': base64.b64encode("# sample content".encode('utf-8')).decode("utf-8"),
-                }
-            ]
-        })
-
+        self.api_user.stage(file='new_file.md', content='# sample content')
         expected_message = 'custom commit message!'
-        response = requests.post(COMMIT_API, json={ 'message': expected_message })
+        response = self.api_user.commit(message=expected_message)
 
-        actual_message = subprocess.check_output('cd /app/repo && git log -1', universal_newlines=True, shell=True)
+        actual_message = subprocess.check_output('cd ' + REPO_DIR + ' && git log -1', universal_newlines=True,
+                                                 shell=True)
 
         if response.status_code != 200:
-            self.fail("response returned non-200 code: " + str(response.status_code) + "\n response body:\n"+response.text)
+            self.fail(
+                "response returned non-200 code: " + str(response.status_code) + "\n response body:\n" + response.text)
 
         if expected_message not in actual_message:
-            self.fail("'"+expected_message + "' not found in:\n" + actual_message + "\n commit response:\n"+response.text)
+            self.fail(
+                "'" + expected_message + "' not found in:\n" + actual_message + "\n commit response:\n" + response.text)
+
+    def test_rebase_after_stage(self):
+        self.api_user.stage(file='api_file.md', content='content by api')
+        self.repo_user.submit(file='test_rebase_after_stage.md', content='# content by git')
+        self.api_user.stage(file='api_file.md', content='# content by api')
+
+        _, files = self.api_user.latest_revision()
+
+        self.assertEqual('# content by api', files['api_file.md'], msg=json.dumps(files, indent=4))
+        self.assertEqual('# content by git', files['test_rebase_after_stage.md'], msg=json.dumps(files, indent=4))
+
+    def test_rebase_after_commit(self):
+        self.api_user.stage(file='api_file.md', content='content by api')
+        self.repo_user.submit(file='git_file.md', content='# content by git')
+        self.api_user.stage(file='api_file.md', content='# content by api')
+        self.api_user.commit(message='content by api commited!')
+
+        _, files = self.api_user.latest_revision()
+
+        self.assertEqual('# content by git', files['git_file.md'], msg=json.dumps(files, indent=4))
+
+    def test_push_after_commit(self):
+        self.api_user.stage(file='api_file.md', content='# content by api')
+        self.api_user.commit(message='content by api commited!')
+        files = self.repo_user.latest_revision()
+        self.assertTrue('api_file.md' in files, msg=json.dumps(files, indent=4))
+        self.assertEqual('# content by api', files['api_file.md'])
+
+
 
 if __name__ == '__main__':
     unittest.main()
