@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -21,10 +22,16 @@ var (
 )
 
 func getLastRevision(w http.ResponseWriter, req *http.Request) {
+	e := git.Rebase()
+	if e != nil {
+		writeError(w, "Rebase failed", e)
+		return
+	}
+
 	revision, e := git.LastRevision()
 
 	if e != nil {
-		writeError(w, "revision resolve failed", e, revision)
+		writeError(w, "revision resolve failed", e)
 		return
 	}
 
@@ -36,7 +43,7 @@ func getLastRevision(w http.ResponseWriter, req *http.Request) {
 	r, e := exec.Command("/bin/sh", "-c", "cd "+CWD+"/.. && "+command).Output()
 
 	if e != nil {
-		writeError(w, "zipping failed", e, "\nzip command: "+command+"\ncommand output: "+string(r))
+		writeError(w, "zipping failed", join(e, "\nzip command: "+command+"\ncommand output: "+string(r)))
 		return
 	}
 
@@ -52,7 +59,7 @@ func writeFile(filename string, file string, w http.ResponseWriter, req *http.Re
 	streamFileBytes, err := ioutil.ReadFile(file)
 
 	if err != nil {
-		writeError(w, "file writing failed", err, "")
+		writeError(w, "file writing failed", err)
 		return
 	}
 
@@ -66,8 +73,8 @@ func writeFile(filename string, file string, w http.ResponseWriter, req *http.Re
 	}
 }
 
-func writeError(w http.ResponseWriter, stage string, err error, extra string) {
-	e := fmt.Sprintf("{\"error\": \"%s - %v\noutput:%v\" }", stage, err, extra)
+func writeError(w http.ResponseWriter, stage string, err error) {
+	e := fmt.Sprintf("{\"error\": \"\nStage: %s\n%v\" }", stage, err)
 	http.Error(w, e, 500)
 }
 
@@ -75,15 +82,15 @@ func getHealth(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "OK!")
 }
 
-type Commitment struct {
-	Message string `json:"message"`
+func join(e error, extra string) error {
+	return errors.New(e.Error() + "\nExtra: " + extra)
 }
 
 func postCommit(w http.ResponseWriter, req *http.Request) {
 	r, e := ioutil.ReadAll(req.Body)
 
 	if e != nil {
-		writeError(w, "unexpected request body", e, string(r))
+		writeError(w, "unexpected request body", join(e, string(r)))
 		return
 	}
 
@@ -91,30 +98,25 @@ func postCommit(w http.ResponseWriter, req *http.Request) {
 	err := json.Unmarshal(r, &commitment)
 
 	if err != nil {
-		writeError(w, "request body parsing", err, string(r))
+		writeError(w, "request body parsing", join(err, string(r)))
 		return
 	}
 
-	if commitment.Message == "" {
-		writeError(w, "no commit message specified", nil, string(r))
-		return
-	}
-
-	commitOut, commitErr := shell.Execute("git commit --message=\"" + commitment.Message + "\"")
+	commitErr := git.Commit(commitment)
 	if commitErr != nil {
-		writeError(w, "committing", commitErr, commitOut)
+		writeError(w, "commit", join(commitErr, string(r)))
 		return
 	}
 
-	pullOut, pullErr := shell.Execute("git pull --rebase origin " + BRANCH)
-	if pullErr != nil {
-		writeError(w, "pulling", pullErr, pullOut)
+	rebaseErr := git.Rebase()
+
+	if rebaseErr != nil {
+		writeError(w, "rebasing", rebaseErr)
 		return
 	}
 
-	pushOut, pushErr := shell.Execute("git push origin " + BRANCH)
-	if pushErr != nil {
-		writeError(w, "pushing", pullErr, pushOut)
+	if pushErr := git.Push(); pushErr != nil {
+		writeError(w, "pushing", pushErr)
 		return
 	}
 	fmt.Fprint(w, "{ \"result\": \"true\"")

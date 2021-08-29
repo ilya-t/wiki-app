@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+const (
+	DEBUG_MESSAGES = true
+)
+
 type Staging struct {
 	Files []*FileContent `json:"files"`
 }
@@ -17,13 +21,21 @@ type FileContent struct {
 	Content string `json:"content"`
 }
 
+type Commitment struct {
+	Message string `json:"message"`
+}
+
 type Git struct {
+	branch  string
+	remote  string
 	repoDir string
 	shell   *Shell
 }
 
 func NewGit(dir string) *Git {
 	return &Git{
+		branch:  "master",
+		remote:  "origin",
 		repoDir: dir,
 		shell:   &Shell{dir}}
 }
@@ -33,13 +45,13 @@ func (g *Git) LastRevision() (string, error) {
 		return "", errors.New("repo's .git not found!")
 	}
 
-	result, err := g.shell.Execute("git rev-parse HEAD~0")
+	result, err := g.execute("git rev-parse HEAD~0")
 
 	if err != nil {
 		g.shell.PrintOutput("pwd")
 		g.shell.PrintOutput("ls -l")
 		g.shell.PrintOutput("git log -1")
-		return result, err
+		return "", err
 	}
 
 	return strings.Replace(result, "\n", "", -1), nil
@@ -59,5 +71,108 @@ func (g *Git) Stage(f *FileContent) {
 	if err != nil {
 		panic(e)
 	}
+}
 
+func (g *Git) Commit(commitment *Commitment) error {
+	if commitment.Message == "" {
+		return errors.New("No commit message specified")
+	}
+
+	if _, commitErr := g.execute("git commit --message=\"" + commitment.Message + "\""); commitErr != nil {
+		return g.maybeIncludeDebugInfo(commitErr)
+	}
+
+	return nil
+}
+
+func (g *Git) maybeIncludeDebugInfo(e error) error {
+	if !DEBUG_MESSAGES {
+		return e
+	}
+
+	status, _ := g.execute("git status")
+	return errors.New(e.Error() + " GIT STATUS: " + status)
+}
+
+func (g *Git) softReset() error {
+	_, e := g.execute("git reset --soft HEAD~1")
+	return e
+
+}
+
+func (g *Git) Rebase() error {
+	hadChanges, changesErr := g.hasUncommitedChanges()
+
+	if changesErr != nil {
+		return changesErr
+	}
+
+	if hadChanges {
+		if err := g.Commit(&Commitment{Message: "temporary commit for rebasement"}); err != nil {
+			return err
+		}
+	}
+
+	_, fetchErr := g.execute("git fetch " + g.remote + " " + g.branch)
+
+	if fetchErr != nil {
+		if hadChanges {
+			if resetErr := g.softReset(); resetErr != nil {
+				return errors.New("Both fetch and reset failed!" +
+					"\nFetch error: " + fetchErr.Error() +
+					"\nReset error: " + resetErr.Error())
+
+			}
+		}
+		return fetchErr
+	}
+
+	if _, rebaseErr := g.execute("git rebase " + g.remote + "/" + g.branch); rebaseErr != nil {
+		if _, abortErr := g.execute("git rebase --abort"); abortErr != nil {
+			return errors.New("Both rebase and abort failed!" +
+				"\nRebase error: " + rebaseErr.Error() +
+				"\nAbort error: " + abortErr.Error())
+		}
+
+		if resetErr := g.softReset(); resetErr != nil {
+			return errors.New("Both rebase and reset failed!" +
+				"\nRebase error: " + rebaseErr.Error() +
+				"\nReset error: " + resetErr.Error())
+		}
+
+		return rebaseErr
+	}
+
+	if hadChanges {
+		if resetErr := g.softReset(); resetErr != nil {
+			return resetErr
+		}
+	}
+
+	return nil
+}
+
+func (g *Git) Push() error {
+	_, e := g.execute("git push " + g.remote + " " + g.branch)
+	return e
+}
+
+func (g *Git) execute(cmd string) (string, error) {
+	out, e := g.shell.Execute(cmd)
+	if e != nil {
+		return out, errors.New("Error: " + e.Error() + "\nCommand: " + cmd + "\nOutput: " + out)
+	}
+
+	return out, nil
+}
+
+func (g *Git) hasUncommitedChanges() (bool, error) {
+	out, e := g.execute("git status --short")
+
+	if e != nil {
+		return false, e
+	}
+
+	out = strings.ReplaceAll(out, "\n", "")
+	return len(out) != 0, nil
 }
