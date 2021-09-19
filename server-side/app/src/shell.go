@@ -33,3 +33,11 @@ func (s *Shell) PrintOutput(cmd string) {
 
 	fmt.Println("cmd: ", cmd, "\noutput: ", out)
 }
+
+func (s *Shell) StrictExecute(cmd string) {
+	out, err := s.Execute(cmd)
+
+	if err != nil {
+		panic("Error executing command: \n" + cmd + "\nError: \n" + err.Error() + "\nOutput:\n" + out)
+	}
+}

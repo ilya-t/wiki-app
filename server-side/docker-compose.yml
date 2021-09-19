@@ -10,6 +10,7 @@ services:
           - "test-backend"
     environment:
       - ASSERTS=true
+      - APP_REPO_LINK=/tmp/test_repo.git
     volumes:
       - $target_repo:/app/repo-store/repo
       - $target_ssh_keys:/root/.ssh

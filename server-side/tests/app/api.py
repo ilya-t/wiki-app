@@ -95,41 +95,61 @@ class GitApi:
         self._push()
 
     def _try_clone(self):
-        if os.path.exists(self._repo_dir):
+        if os.path.exists(self._repo_dir+'/.git'):
             return
+        self._run_cmd('mkdir -p ' + self._repo_dir, working_dir='/')
         cmd = 'git clone ' + self._origin + ' ' + self._repo_dir
-        out = subprocess.check_output(cmd, universal_newlines=True, shell=True)
+        out = self._run_cmd(cmd)
         print('Cloning...', out)
 
     def _make_commit(self, file: str, content: str):
         commit_file = self._repo_dir + '/' + file
-        with open(commit_file, "w") as f:
-            f.write(content)
+        self._run_cmd('echo -n "'+content+'" > ' + commit_file)
+        self._run_cmd('cat '+commit_file)
+        self._run_cmd('git add ' + file)
+        self._run_cmd('git config --local user.email "another@contributor"')
+        self._run_cmd('git config --local user.name "Another Contributor"')
+        self._run_cmd('git status')
+        self._run_cmd('git commit --message="added ' + file + '"')
 
-        cmd = ' && '.join([
-            'cd ' + self._repo_dir,
-            'git add ' + file,
-            'git config --local user.email "another@contributor"',
-            'git config --local user.name "Another Contributor"',
-            'git commit --message="added ' + file + '"'
-        ])
-
-        out = subprocess.check_output(cmd, universal_newlines=True, shell=True)
-        print('Committed:', out)
 
     def _push(self):
-        cmd = 'cd ' + self._repo_dir + ' && git push origin master'
-        out = subprocess.check_output(cmd, universal_newlines=True, shell=True)
-        print('Pushed:', out)
+        self._run_cmd('git push origin master')
         pass
 
     def _pull(self):
-        cmd = 'cd ' + self._repo_dir + ' && git pull origin master'
-        out = subprocess.check_output(cmd, universal_newlines=True, shell=True)
-        print('Pulled:', out)
+        self._run_cmd('git pull origin master')
         pass
 
     def latest_revision(self) -> {}:
         self._try_clone()
         self._pull()
         return scan_dir_relative(self._repo_dir)
+
+    def _run_cmd(self, command: str, working_dir: str = None):
+        if not working_dir:
+            working_dir = self._repo_dir
+        with subprocess.Popen(command,
+                              shell=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              universal_newlines=True,
+                              cwd=working_dir) as p:
+            result = p.wait()
+            output = p.stdout.readlines()
+            error = p.stderr.readlines()
+
+            print('cmd: "', command, '":')
+            for line in output:
+                print(line)
+            if result != 0:
+                print("error output:")
+                for line in error:
+                    print(line)
+
+        if result != 0:
+            raise Exception('shell command failed: ' + command + 
+                '\n with error output: ' + ''.join(error) + 
+                '\nstdout:'+''.join(output))
+        else:
+            return result

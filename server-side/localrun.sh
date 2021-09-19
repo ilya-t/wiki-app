@@ -12,13 +12,16 @@ fi
 
 target_ssh_keys=~/.ssh
 
+# if [[ -d "$REPO" ]]; then
+#     # TODO: mount bare local repo for cloning?
+# fi
+
 docker build ./app --tag wiki_backend
 docker run \
     --detach \
     --publish $PORT:80 \
-    --volume $REPO:/app/repo-store/repo \
+    --env APP_REPO_LINK=$REPO \
     --volume $target_ssh_keys:/root/.ssh \
-    --volume /tmp/test_repo.git:/tmp/test_repo.git \
     wiki_backend:latest
 
 

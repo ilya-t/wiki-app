@@ -150,25 +150,18 @@ func headers(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	_, e := shell.Execute("git config --local user.email \"wiki-app@tsourcecode.com\"")
-	if e != nil {
-		panic(e)
-	}
+	git.TryClone()
 
-	_, err := shell.Execute("git config --local user.name \"Wiki Committer\"")
-	if err != nil {
-		panic(err)
-	}
-
-	_, checkoutErr := shell.Execute("git checkout " + BRANCH)
-	if checkoutErr != nil {
-		panic(err)
-	}
+	fmt.Println("Preparing repo!")
+	shell.StrictExecute("git config --local user.email \"wiki-app@tsourcecode.com\"")
+	shell.StrictExecute("git config --local user.name \"Wiki Committer\"")
+	shell.StrictExecute("git checkout " + BRANCH)
 
 	http.HandleFunc("/api/1/revision/latest", getLastRevision)
 	http.HandleFunc("/api/1/commit", postCommit)
 	http.HandleFunc("/api/1/stage", stageFiles)
 	http.HandleFunc("/api/health", getHealth)
 
+	fmt.Println("Starting server...")
 	http.ListenAndServe(":80", nil)
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 const (
 	DEBUG_MESSAGES = true
+	REPO_LINK_VAR  = "APP_REPO_LINK"
 )
 
 type Staging struct {
@@ -175,4 +177,19 @@ func (g *Git) hasUncommitedChanges() (bool, error) {
 
 	out = strings.ReplaceAll(out, "\n", "")
 	return len(out) != 0, nil
+}
+
+func (g *Git) TryClone() {
+	if _, err := os.Stat(g.repoDir + "/.git"); err == nil {
+		fmt.Println("Repo already cloned: '" + g.repoDir + "'")
+		return
+	}
+
+	repoLink := os.Getenv(REPO_LINK_VAR)
+
+	if repoLink == "" {
+		panic("Env.variable not defined: " + REPO_LINK_VAR + ". Pass repo link for cloing")
+	}
+
+	g.shell.StrictExecute("git clone " + repoLink + " " + g.repoDir)
 }
