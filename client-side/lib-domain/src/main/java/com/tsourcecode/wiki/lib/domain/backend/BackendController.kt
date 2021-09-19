@@ -71,6 +71,14 @@ class BackendController(
         try {
             //Log.that("1. Requesting")
             val response = backendApi.latestRevision().execute()
+
+            if (!response.isSuccessful) {
+                quickStatusController.error(
+                        QuickStatus.SYNC,
+                        IOException("error code(${response.code()}) with error: \n" +
+                                response.errorBody()?.string()))
+                return null
+            }
             //Log.that("  response: ${response.code()}")
             val input: InputStream = response.body()?.byteStream() ?: return null
 
