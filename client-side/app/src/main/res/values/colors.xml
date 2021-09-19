@@ -3,4 +3,7 @@
     <color name="status_ok">#009688</color>
     <color name="status_progress">#FF9800</color>
     <color name="status_error">#F44336</color>
+    <color name="launcher_background">#4043829E</color>
+    <color name="launcher_background_stroke">#4045838A</color>
+    <color name="launcher_literal">#6FEEEF</color>
 </resources>
