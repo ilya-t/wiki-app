@@ -18,12 +18,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = JavaVersion.VERSION_11
         useIR = true
     }
 
@@ -57,7 +57,4 @@ dependencies {
     // kotlin-related dependencies
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$rootProject.ext.kotlin_version"
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit:$rootProject.ext.kotlin_version"
-
-    // UI Tests
-    androidTestImplementation "androidx.ui:ui-test:$androidxVersion"
 }
