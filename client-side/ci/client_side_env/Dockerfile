@@ -1,4 +1,4 @@
-FROM thyrlian/android-sdk:7.1
+FROM thyrlian/android-sdk:6.0
 
 COPY ./app /app
 COPY ./run.sh /app/run.sh
