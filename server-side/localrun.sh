@@ -1,4 +1,5 @@
 set -e
+# USAGE: specify link to remote repo as first arg. For example: ./localrun.sh git@github.com:ilya-t/wiki-app.git
 PORT=8181
 REPO=$1
 
@@ -22,6 +23,7 @@ docker run \
     --publish $PORT:80 \
     --env APP_REPO_LINK=$REPO \
     --volume $target_ssh_keys:/root/.ssh \
+    --name wiki_backend_local \
     wiki_backend:latest
 
 
