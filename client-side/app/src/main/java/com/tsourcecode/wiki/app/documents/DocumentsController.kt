@@ -34,11 +34,10 @@ class DocumentsController(
         backendController.observeProjectUpdates { notifyProjectUpdated(it) }
     }
 
-    private fun notifyProjectUpdated(projectDir: String) {
+    private fun notifyProjectUpdated(dir: File) {
         GlobalScope.launch {
-            val dir = File(projectDir)
             if (!dir.isDirectory) {
-                throw RuntimeException("Project dir($projectDir) is file!")
+                throw RuntimeException("Project dir($dir) is file!")
             }
             val folder = parseFolder(dir, dir)
             folder.onEachDocument {

@@ -1,15 +1,33 @@
 package com.tsourcecode.wiki.lib.domain
 
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
+import com.tsourcecode.wiki.lib.domain.backend.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
+import com.tsourcecode.wiki.lib.domain.project.Project
+import kotlinx.coroutines.GlobalScope
 import java.io.File
+import java.net.URL
 
 class DomainComponent(
         private val platformDeps: PlatformDeps,
 ) {
+    private val workerScope = GlobalScope
+    private val defaultProject = Project(
+            dir = File(platformDeps.filesDir.absolutePath + "/default_project"),
+            url = URL("http://duke-nucem:8181/"),
+    )
     val quickStatusController = QuickStatusController()
-    val backendController = BackendController(platformDeps, quickStatusController)
+    private val elementHashProvider = ElementHashProvider(
+            defaultProject,
+            workerScope,
+    )
+    val backendController = BackendController(
+            platformDeps,
+            quickStatusController,
+            elementHashProvider,
+            defaultProject,
+    )
     val changedFilesController = ChangedFilesController(
             changedFilesDir = File(platformDeps.filesDir, "changed_files"),
             platformDeps.persistentStorageProvider,

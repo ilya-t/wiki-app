@@ -3,7 +3,7 @@ package com.tsourcecode.wiki.lib.domain.backend
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
-import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
+import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,21 +19,23 @@ import java.io.InputStream
 class BackendController(
         private val platformDeps: PlatformDeps,
         private val quickStatusController: QuickStatusController,
+        private val elementHashProvider: ElementHashProvider,
+        private val project: Project,
 ) {
-    private var projectObserver: ((String) -> Unit)? = null
+    private var projectObserver: ((File) -> Unit)? = null
     private val retrofit = Retrofit.Builder()
-            .baseUrl("http://duke-nucem:8181/")
+            .baseUrl(project.url)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     private val _refreshFlow = MutableStateFlow(false)
     val refreshFlow: StateFlow<Boolean> = _refreshFlow
     private val backendApi: WikiBackendAPIs = retrofit.create(WikiBackendAPIs::class.java)
-    private val defaultProjectDir = platformDeps.filesDir.absolutePath + "/default_project"
+    private val scope = GlobalScope
 
-    fun observeProjectUpdates(observer: (String) -> Unit) {
+    fun observeProjectUpdates(observer: (File) -> Unit) {
         projectObserver = observer
-        if (File(defaultProjectDir).exists()) {
-            observer(defaultProjectDir + "/repo")
+        if (project.repo.exists()) {
+            observer(project.repo)
         }
     }
 
@@ -42,23 +44,46 @@ class BackendController(
     }
 
     fun sync() {
-        GlobalScope.launch(Dispatchers.IO) {
+        if (needFullSync()) {
+            fullSync()
+        } else {
+            selectiveSync()
+        }
+    }
+
+    private fun selectiveSync() {
+        TODO("Not yet implemented")
+    }
+
+    private fun needFullSync(): Boolean {
+        if (!project.repo.exists()) {
+            return true
+        }
+        return true//elementHashProvider.
+    }
+
+    private fun fullSync() {
+        scope.launch {
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
                 quickStatusController.udpate(QuickStatus.SYNC)
-                requestAndSave()?.let {
+                requestLastRevisionSnapshot()?.let {
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
-                    Decompressor.decompress(it, defaultProjectDir)
+                    Decompressor.decompress(it, project.dir.absolutePath)
 
-                    GlobalScope.launch(Dispatchers.Main) {
-                        projectObserver?.invoke(defaultProjectDir + "/repo")
+                    scope.launch(Dispatchers.Main) {
+                        projectObserver?.invoke(project.repo)
                         quickStatusController.udpate(QuickStatus.SYNCED)
+                    }
+
+                    scope.launch {
+                        elementHashProvider.notifyProjectFullySynced()
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 //Log.that("Unhandled exception: ", e)
-                GlobalScope.launch(Dispatchers.Main) {
+                scope.launch(Dispatchers.Main) {
                     quickStatusController.error(QuickStatus.SYNC, e)
                 }
             }
@@ -66,7 +91,10 @@ class BackendController(
         }
     }
 
-    private fun requestAndSave(): String? {
+    /**
+     * Heavy way of sync useful as "first-time-sync".
+     */
+    private fun requestLastRevisionSnapshot(): String? {
         val file = platformDeps.filesDir.absolutePath + "/revision.zip" //TODO: remove hardcode
         try {
             //Log.that("1. Requesting")
