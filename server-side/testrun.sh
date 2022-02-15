@@ -17,5 +17,14 @@ docker-compose up --build --abort-on-container-exit
 RESULT=$?
 docker-compose logs > ./build_artifacts/compose.log
 docker-compose down --volumes
+
+set -e
+echo "Running unit tests"
+./build_image.sh
+docker run --rm \
+--name server-side-units \
+server-side-app:latest \
+sh -c "go test -timeout 30s"  > ./build_artifacts/unit_test.log
+
 echo "Tests report ./build_artifacts/report.html"
 exit $RESULT

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os/exec"
 )
 
 const (
@@ -19,6 +18,11 @@ var (
 	git   = NewGit(CWD)
 	shell = &Shell{
 		Cwd: CWD}
+	zipper = &Zipper{
+		shell: shell,
+		cwd:   CWD}
+	diffProvider = &DiffProvider{
+		repoDir: CWD}
 )
 
 func getLastRevision(w http.ResponseWriter, req *http.Request) {
@@ -36,21 +40,56 @@ func getLastRevision(w http.ResponseWriter, req *http.Request) {
 	}
 
 	revision_zip := "/tmp/" + revision + ".zip"
-	shell.Execute("rm " + revision_zip)
-	command := "zip -r " + revision_zip + " repo --exclude \"repo/.git/*\""
-	// executing "zip" through  "/bin/sh -c" cause somehow same "zip" command
-	// cannot match excluded files correctly (command.Dir = CWD break everything)
-	r, e := exec.Command("/bin/sh", "-c", "cd "+CWD+"/.. && "+command).Output()
-
-	if e != nil {
-		writeError(w, "zipping failed", join(e, "\nzip command: "+command+"\ncommand output: "+string(r)))
+	zipErr := zipper.ZipRepo(revision_zip, nil)
+	if zipErr != nil {
+		writeError(w, "zipping failed", e)
 		return
 	}
 
-	// o, _ := execute("zip -sf " + revision_zip)
-	// fmt.Println("cmd: ", command, "out:", string(o))
+	writeFile(revision+".zip", revision_zip, w, req)
+}
 
-	fmt.Println("cmd out: ", command, string(r))
+func getOutdatedAtLastRevision(w http.ResponseWriter, req *http.Request) {
+	e := git.Rebase()
+	if e != nil {
+		writeError(w, "Rebase failed", e)
+		return
+	}
+
+	revision, e := git.LastRevision()
+
+	if e != nil {
+		writeError(w, "revision resolve failed", e)
+		return
+	}
+
+	bodyBytes, bodyErr := ioutil.ReadAll(req.Body)
+
+	if bodyErr != nil {
+		writeError(w, "Body read error: ", e)
+		return
+	}
+
+	var files []*File
+	if err := json.Unmarshal(bodyBytes, &files); err != nil {
+		writeError(w, "Unexpected body: ", err)
+		return
+	}
+
+	outdated, diffErr := diffProvider.ShowOutdated(files)
+
+	if diffErr != nil {
+		writeError(w, "Error getting outdated files: ", diffErr)
+		return
+	}
+
+	revision_zip := "/tmp/" + revision + ".zip"
+	zipErr := zipper.ZipRepo(revision_zip, outdated)
+	if zipErr != nil {
+		writeError(w, "zipping failed", e)
+		return
+	}
+
 	writeFile(revision+".zip", revision_zip, w, req)
 }
 
@@ -158,6 +197,7 @@ func main() {
 	shell.StrictExecute("git checkout " + BRANCH)
 
 	http.HandleFunc("/api/1/revision/latest", getLastRevision)
+	http.HandleFunc("/api/1/revision/sync", getOutdatedAtLastRevision)
 	http.HandleFunc("/api/1/commit", postCommit)
 	http.HandleFunc("/api/1/stage", stageFiles)
 	http.HandleFunc("/api/health", getHealth)
