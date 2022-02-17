@@ -18,6 +18,8 @@ target_ssh_keys=~/.ssh
 # fi
 
 docker build ./app --tag wiki_backend
+docker container rm --force wiki_backend_local
+
 docker run \
     --detach \
     --publish $PORT:80 \
