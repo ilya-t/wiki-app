@@ -1,12 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 )
 
 func TestNothingOutdatedAtPlainStructure(t *testing.T) {
-	reference := NewFile("readme.md", "11", nil)
+	reference := NewFile("readme.md", "11")
 	results, e := ShowOutdated(reference, reference)
 
 	if e != nil {
@@ -20,43 +21,29 @@ func TestNothingOutdatedAtPlainStructure(t *testing.T) {
 }
 
 func TestSomethingOutdatedAtPlainStructure(t *testing.T) {
-	reference := NewFile("readme.md", "ref_hash", nil)
-	subject := NewFile("readme.md", "subj_hash", nil)
+	reference := NewFile("readme.md", "ref_hash")
+	subject := NewFile("readme.md", "subj_hash")
 	results, e := ShowOutdated(reference, subject)
 
 	if e != nil {
 		t.Error(e)
 	}
 
-	if results.hash != "ref_hash" {
+	if results.Hash != "ref_hash" {
 		t.Error("Wrong outdated result", results)
 	}
 
 }
 
 func TestSomethingOutdatedAtNestedStructure(t *testing.T) {
-	reference := NewFile(".", "12", []*File{
-		&File{
-			name:  "up_to_date_file",
-			hash:  "uptodate",
-			files: nil,
-		},
-		&File{
-			name:  "outdated_file",
-			hash:  "outdated_hash",
-			files: nil},
+	reference := NewDir(".", "12", []*File{
+		NewFile("up_to_date_file", "uptodate"),
+		NewFile("outdated_file", "outdated_hash"),
 	},
 	)
-	subject := NewFile(".", "11", []*File{
-		&File{
-			name:  "up_to_date_file",
-			hash:  "uptodate",
-			files: nil,
-		},
-		&File{
-			name:  "outdated_file",
-			hash:  "119",
-			files: nil},
+	subject := NewDir(".", "11", []*File{
+		NewFile("up_to_date_file", "uptodate"),
+		NewFile("outdated_file", "119"),
 	},
 	)
 	results, e := ShowOutdated(reference, subject)
@@ -65,35 +52,24 @@ func TestSomethingOutdatedAtNestedStructure(t *testing.T) {
 		t.Error(e)
 	}
 
-	if len(results.files) != 1 {
-		t.Error("Expecting only one outdated file", results.files)
+	if len(results.Files) != 1 {
+		t.Error("Expecting only one outdated file", results.Files)
 	}
-	outdated := results.files[0]
+	outdated := results.Files[0]
 
-	if outdated.hash != "outdated_hash" {
+	if outdated.Hash != "outdated_hash" {
 		t.Error("Wrong outdated result", outdated)
 	}
 }
 
 func TestSomethingNewAtNestedStructure(t *testing.T) {
-	reference := NewFile(".", "12", []*File{
-		&File{
-			name:  "up_to_date_file",
-			hash:  "uptodate",
-			files: nil,
-		},
-		&File{
-			name:  "new_file",
-			hash:  "new_file",
-			files: nil},
+	reference := NewDir(".", "12", []*File{
+		NewFile("up_to_date_file", "uptodate"),
+		NewFile("new_file", "new_file"),
 	},
 	)
-	subject := NewFile(".", "11", []*File{
-		&File{
-			name:  "up_to_date_file",
-			hash:  "uptodate",
-			files: nil,
-		},
+	subject := NewDir(".", "11", []*File{
+		NewFile("up_to_date_file", "uptodate"),
 	},
 	)
 	results, e := ShowOutdated(reference, subject)
@@ -102,77 +78,46 @@ func TestSomethingNewAtNestedStructure(t *testing.T) {
 		t.Error(e)
 	}
 
-	if len(results.files) != 1 {
-		t.Error("Expecting only one outdated file", results.files)
+	if len(results.Files) != 1 {
+		t.Error("Expecting only one outdated file", results.Files)
 	}
-	new_file := results.files[0]
+	new_file := results.Files[0]
 
-	if new_file.hash != "new_file" {
+	if new_file.Hash != "new_file" {
 		t.Error("Wrong outdated result", new_file)
 	}
 }
 
 func TestSomethingOutdatedAtDeeplyNestedStructure(t *testing.T) {
-	reference := NewFile(".", "12", []*File{
-		&File{
-			name:  "up_to_date_file",
-			hash:  "uptodate",
-			files: nil,
-		},
-		&File{
-			name: "partly_outdated_dir",
-			hash: "partly_outdated_dir",
-			files: []*File{
-				&File{
-					name:  "up_to_date_file2",
-					hash:  "uptodate2",
-					files: nil,
-				},
-				&File{
-					name:  "outdated_file",
-					hash:  "outdated_file",
-					files: nil,
-				},
-			}},
+	reference := NewDir(".", "12", []*File{
+		NewFile("up_to_date_file", "uptodate"),
+		NewDir("partly_outdated_dir", "partly_outdated_dir", []*File{
+			NewFile("up_to_date_file2", "uptodate2"),
+			NewFile("outdated_file", "outdated_file"),
+		}),
 	},
 	)
-	subject := NewFile(".", "11", []*File{
-		&File{
-			name:  "up_to_date_file",
-			hash:  "uptodate",
-			files: nil,
-		},
-		&File{
-			name: "partly_outdated_dir",
-			hash: "__",
-			files: []*File{
-				&File{
-					name:  "up_to_date_file2",
-					hash:  "uptodate2",
-					files: nil,
-				},
-				&File{
-					name:  "outdated_file",
-					hash:  "__",
-					files: nil,
-				},
-			}},
-	},
-	)
+	subject := NewDir(".", "11", []*File{
+		NewFile("up_to_date_file", "uptodate"),
+		NewDir("partly_outdated_dir", "__", []*File{
+			NewFile("up_to_date_file2", "uptodate2"),
+			NewFile("outdated_file", "__"),
+		}),
+	})
 	results, e := ShowOutdated(reference, subject)
 
 	if e != nil {
 		t.Error(e)
 	}
 
-	partly_outdated_dir := results.files[0]
+	partly_outdated_dir := results.Files[0]
 
-	if len(partly_outdated_dir.files) != 1 {
+	if len(partly_outdated_dir.Files) != 1 {
 		t.Error("Expecting only one outdated file. Got: ", partly_outdated_dir)
 	}
-	outdated_file := partly_outdated_dir.files[0]
+	outdated_file := partly_outdated_dir.Files[0]
 
-	if outdated_file.hash != "outdated_file" {
+	if outdated_file.Hash != "outdated_file" {
 		t.Error("Wrong outdated result", outdated_file)
 	}
 }
@@ -201,16 +146,16 @@ func TestFileStructureGeneration(t *testing.T) {
 		t.Error(e)
 	}
 
-	if len(result.files) != 2 {
-		t.Error("Expecting 2 files. Got: ", result.files)
+	if len(result.Files) != 2 {
+		t.Error("Expecting 2 files. Got: ", result.Files)
 	}
 
-	if result.files[0].name != "README.md" {
-		t.Error("Expecting 'README.md' file. Got: ", result.files[0])
+	if result.Files[0].Name != "README.md" {
+		t.Error("Expecting 'README.md' file. Got: ", result.Files[0])
 	}
 
-	note_file := result.files[1].files[0]
-	if note_file.name != "note.md" {
+	note_file := result.Files[1].Files[0]
+	if note_file.Name != "note.md" {
 		t.Error("Expecting 'note.md' file. Got: ", note_file)
 	}
 }
@@ -224,13 +169,55 @@ func TestFileStructureGenerationSkipsGit(t *testing.T) {
 
 	if e != nil {
 		t.Error(e)
+		return
 	}
 
-	if len(result.files) != 1 {
-		t.Error("Expecting 1 files. Got: ", result.files)
+	if len(result.Files) != 1 {
+		t.Error("Expecting 1 files. Got: ", result.Files)
+		return
 	}
 
-	if result.files[0].name != "README.md" {
-		t.Error("Expecting 'README.md' file. Got: ", result.files[0])
+	if result.Files[0].Name != "README.md" {
+		t.Error("Expecting 'README.md' file. Got: ", result.Files[0])
+		return
+	}
+}
+
+func TestHashAlgorithm(t *testing.T) {
+	content := []byte("do not modify this file! is's sha1 is used under tests \n")
+	path := "/tmp/file_with_fixed_sha1"
+	err := os.WriteFile(path, content, 0644)
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	h, e := hashOfFile(path)
+
+	if e != nil {
+		t.Error(e)
+	}
+
+	expected := "0758fe8844f102aaa616c30c94ea4f8eb9326b06"
+	if h != expected {
+		t.Error("Expecting '" + expected + "', Got: " + h)
+	}
+}
+
+func TestParsingFilesJson(t *testing.T) {
+	jsonString := "[{\"name\": \"file_name\", \"hash\": \"some_hash\"}]"
+
+	var files []*File
+	if err := json.Unmarshal([]byte(jsonString), &files); err != nil {
+		t.Error(err)
+		return
+	}
+
+	actual := files[0]
+	expected := NewFile("file_name", "some_hash")
+
+	if expected.Name != actual.Name || expected.Hash != actual.Hash {
+		t.Errorf("Expected: %+v\nGot: %+v\n", expected, actual)
 	}
 }

@@ -2,65 +2,78 @@ package main
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"sort"
 	"strings"
 )
 
 type File struct {
-	name     string  `json:"name"`
-	hash     string  `json:"hash"`
-	files    []*File `json:"files"`
+	Name     string  `json:"name"`
+	Hash     string  `json:"hash"`
+	Files    []*File `json:"files"`
 	filesMap map[string]*File
 }
 
-func NewFile(name string, hash string, files []*File) *File {
+func NewDir(name string, hash string, files []*File) *File {
 	return &File{
-		name:     name,
-		hash:     hash,
-		files:    files,
+		Name:     name,
+		Hash:     hash,
+		Files:    files,
+		filesMap: nil,
+	}
+}
+
+func NewFile(name string, hash string) *File {
+	return &File{
+		Name:     name,
+		Hash:     hash,
+		Files:    nil,
 		filesMap: nil,
 	}
 }
 
 func (f *File) get(name string) *File {
 	if f.filesMap == nil {
-		m := make(map[string]*File)
-		for _, f := range f.files {
-			m[f.name] = f
+		f.filesMap = make(map[string]*File)
+		for _, child := range f.Files {
+			f.filesMap[child.Name] = child
 		}
-		f.filesMap = m
 	}
 	return f.filesMap[name]
 }
 
+func (f *File) IsDir() bool {
+	return f.Files != nil && len(f.Files) > 0
+}
+
 func ShowOutdated(reference *File, subject *File) (*File, error) {
-	if reference.name != subject.name {
-		return nil, errors.New("Comparing different structures. Reference has: " + reference.name + " Subject has: " + subject.name)
+	if reference.Name != subject.Name {
+		return nil, errors.New("Comparing different structures. Reference has: " + reference.Name + " Subject has: " + subject.Name)
 	}
 
-	if reference.hash == subject.hash {
+	if reference.Hash == subject.Hash {
 		return nil, nil
 	}
 
 	files := make([]*File, 0)
-	outdated := &File{
-		name:  reference.name,
-		hash:  reference.hash,
-		files: files,
-	}
+	outdated := NewDir(reference.Name, reference.Hash, files)
 
-	for _, ref := range reference.files {
-		subj := subject.get(ref.name)
+	for _, ref := range reference.Files {
+		subj := subject.get(ref.Name)
 
 		if subj == nil {
 			files = append(files, ref)
 			continue
 		}
 
-		if subj.hash == ref.hash {
+		if subj.Hash == ref.Hash {
+			continue
+		}
+
+		if !subj.IsDir() {
+			files = append(files, ref)
 			continue
 		}
 
@@ -72,8 +85,7 @@ func ShowOutdated(reference *File, subject *File) (*File, error) {
 		files = append(files, o)
 	}
 
-	fmt.Println("files:", files)
-	outdated.files = files
+	outdated.Files = files
 	return outdated, nil
 }
 
@@ -83,11 +95,7 @@ func GenerateStructure(rootDir string) (*File, error) {
 	if e != nil {
 		return nil, e
 	}
-	return &File{
-		name:  ".",
-		hash:  "",
-		files: f,
-	}, nil
+	return NewDir(".", hashOfDir(f), f), nil
 }
 
 func scan(rootDir string) ([]*File, error) {
@@ -111,9 +119,9 @@ func scan(rootDir string) ([]*File, error) {
 			}
 
 			results = append(results, &File{
-				name:     info.Name(),
-				hash:     hashOfDir(dirFiles),
-				files:    dirFiles,
+				Name:     info.Name(),
+				Hash:     hashOfDir(dirFiles),
+				Files:    dirFiles,
 				filesMap: nil,
 			})
 		} else {
@@ -124,9 +132,9 @@ func scan(rootDir string) ([]*File, error) {
 			}
 
 			results = append(results, &File{
-				name:     info.Name(),
-				hash:     hashSum,
-				files:    nil,
+				Name:     info.Name(),
+				Hash:     hashSum,
+				Files:    nil,
 				filesMap: nil,
 			})
 		}
@@ -138,14 +146,14 @@ func scan(rootDir string) ([]*File, error) {
 func hashOfDir(dirFiles []*File) string {
 	hashes := make([]string, 0)
 	for _, f := range dirFiles {
-		hashes = append(hashes, f.hash)
+		hashes = append(hashes, f.Hash)
 	}
 	sort.Strings(hashes)
 
 	h := sha1.New()
 	h.Write([]byte(strings.Join(hashes, "")))
 
-	return string(h.Sum(nil))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func hashOfFile(filePath string) (string, error) {
@@ -157,7 +165,9 @@ func hashOfFile(filePath string) (string, error) {
 
 	h := sha1.New()
 	h.Write(s)
-	return string(h.Sum(nil)), nil
+
+	sha1 := hex.EncodeToString(h.Sum(nil))
+	return sha1, nil
 }
 
 type DiffProvider struct {
@@ -166,11 +176,7 @@ type DiffProvider struct {
 }
 
 func (p *DiffProvider) ShowOutdated(files []*File) ([]*File, error) {
-	subject := &File{
-		name:  ".",
-		hash:  "",
-		files: files,
-	}
+	subject := NewDir(".", "", files)
 
 	//TODO: do not update each time
 	reference, err := GenerateStructure(p.repoDir)
@@ -181,5 +187,13 @@ func (p *DiffProvider) ShowOutdated(files []*File) ([]*File, error) {
 
 	p.reference = reference
 	result, e := ShowOutdated(p.reference, subject)
-	return result.files, e
+
+	if e != nil {
+		return nil, e
+	}
+
+	if result == nil {
+		return nil, nil
+	}
+	return result.Files, nil
 }

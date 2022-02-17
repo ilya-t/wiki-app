@@ -14,13 +14,40 @@ class AcceptanceTests(unittest.TestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.api_user = api.RestApi(HOST)
+        self.api_user = api.RestApi(endpoint=HOST, artifacts_prefix=self.id())
         self.repo_user = api.GitApi(origin=BARE_REPO_PATH, dir="/tmp/repo_user")
         backend.wait_boot()
 
     def test_latest_revision_zip_content_not_contains_git(self):
         _, files = self.api_user.latest_revision()
         self.assertFalse('.git' in files, msg=json.dumps(files, indent=4))
+
+    def test_sync_skips_up_to_date_files(self):
+        _, files = self.api_user.sync(local_state = [
+            {
+                'name': 'file_with_fixed_sha1',
+                'hash': '0758fe8844f102aaa616c30c94ea4f8eb9326b06'
+            }
+        ])
+        self.assertFalse('file_with_fixed_sha1' in files, msg=json.dumps(files, indent=4))
+
+    def test_sync_adds_unspecified_files(self):
+        _, files = self.api_user.sync(local_state = [
+            {
+                'name': 'file_with_fixed_sha1',
+                'hash': '0758fe8844f102aaa616c30c94ea4f8eb9326b06'
+            }
+        ])
+        self.assertTrue('README.md' in files, msg=json.dumps(files, indent=4))
+
+    def test_sync_adds_outdated_files(self):
+        _, files = self.api_user.sync(local_state = [
+            {
+                'name': 'file_with_fixed_sha1',
+                'hash': '___'
+            }
+        ])
+        self.assertTrue('file_with_fixed_sha1' in files, msg=json.dumps(files, indent=4))
 
     def test_latest_revision_zip_content_contains_root_content(self):
         _, files = self.api_user.latest_revision()

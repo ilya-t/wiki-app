@@ -40,9 +40,9 @@ func getLastRevision(w http.ResponseWriter, req *http.Request) {
 	}
 
 	revision_zip := "/tmp/" + revision + ".zip"
-	zipErr := zipper.ZipRepo(revision_zip, nil)
+	zipErr := zipper.ZipRepo(revision_zip)
 	if zipErr != nil {
-		writeError(w, "zipping failed", e)
+		writeError(w, "zipping failed", zipErr)
 		return
 	}
 
@@ -83,10 +83,11 @@ func getOutdatedAtLastRevision(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	revision_zip := "/tmp/" + revision + ".zip"
-	zipErr := zipper.ZipRepo(revision_zip, outdated)
+	seed := RandStringRunes(10)
+	revision_zip := "/tmp/partial_" + seed + "_of_" + revision + ".zip"
+	zipErr := zipper.ZipSelective(revision_zip, outdated)
 	if zipErr != nil {
-		writeError(w, "zipping failed", e)
+		writeError(w, "zipping failed", zipErr)
 		return
 	}
 

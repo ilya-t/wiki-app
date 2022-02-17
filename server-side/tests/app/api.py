@@ -40,12 +40,14 @@ def scan_dir(directory: str) -> {}:
 
 class RestApi:
 
-    def __init__(self, endpoint: str) -> None:
+    def __init__(self, endpoint: str, artifacts_prefix: str) -> None:
         super().__init__()
         self._endpoint: str = endpoint
+        self._artifacts_prefix: str = artifacts_prefix
         self._stage_api: str = self._endpoint + '/api/1/stage'
         self._commit_api: str = self._endpoint + '/api/1/commit'
         self._latest_api: str = self._endpoint + '/api/1/revision/latest'
+        self._sync_api: str = self._endpoint + '/api/1/revision/sync'
 
     def stage(self, file: str, content: str) -> requests.Response:
         return requests.post(self._stage_api, json={
@@ -61,10 +63,32 @@ class RestApi:
         return requests.post(self._commit_api, json={'message': message})
 
     def latest_revision(self) -> (str, {}):
-        tmp_dir = '/tmp/' + str(random.getrandbits(128))
+        tmp_dir = '/tmp/' + self._artifacts_prefix + '_latest_' + str(random.getrandbits(128))
         os.makedirs(tmp_dir)
 
         response = requests.get(self._latest_api)
+        if response.headers["Content-Type"] != "application/zip":
+            raise Exception('Wrong content received: ' + response.text)
+
+        content_disposition = response.headers["Content-Disposition"]
+        file_name = content_disposition[content_disposition.index("=") + 1:]
+        output_file = tmp_dir + '/' + file_name
+
+        with open(output_file, "wb") as file:
+            file.write(response.content)
+
+        output_dir = tmp_dir + '/extracted'
+        os.system("rm -rf " + output_dir)
+        with zipfile.ZipFile(output_file, 'r') as zip_ref:
+            zip_ref.extractall(output_dir)
+        repo_dir = output_dir + '/repo'
+        return file_name, scan_dir_relative(repo_dir)
+
+    def sync(self, local_state: [dict]) -> (str, {}):
+        tmp_dir = '/tmp/' + self._artifacts_prefix + '_sync_' + str(random.getrandbits(128))
+        os.makedirs(tmp_dir)
+
+        response = requests.post(self._sync_api, json=local_state)
         if response.headers["Content-Type"] != "application/zip":
             raise Exception('Wrong content received: ' + response.text)
 
