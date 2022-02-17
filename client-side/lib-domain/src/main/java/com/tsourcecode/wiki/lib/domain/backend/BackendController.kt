@@ -3,6 +3,8 @@ package com.tsourcecode.wiki.lib.domain.backend
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
+import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
+import com.tsourcecode.wiki.lib.domain.hashing.Hashable
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -44,30 +46,23 @@ class BackendController(
     }
 
     fun sync() {
-        if (needFullSync()) {
-            fullSync()
-        } else {
-            selectiveSync()
-        }
-    }
-
-    private fun selectiveSync() {
-        TODO("Not yet implemented")
+        doSync(needFullSync())
     }
 
     private fun needFullSync(): Boolean {
         if (!project.repo.exists()) {
             return true
         }
-        return true//elementHashProvider.
+        return true //TODO("not ready yet")
     }
 
-    private fun fullSync() {
+    private fun doSync(fullSync: Boolean) {
         scope.launch {
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
                 quickStatusController.udpate(QuickStatus.SYNC)
-                requestLastRevisionSnapshot()?.let {
+                val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
+                requestLastRevisionSnapshot(files)?.let {
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
                     Decompressor.decompress(it, project.dir.absolutePath)
 
@@ -94,11 +89,15 @@ class BackendController(
     /**
      * Heavy way of sync useful as "first-time-sync".
      */
-    private fun requestLastRevisionSnapshot(): String? {
+    private fun requestLastRevisionSnapshot(files: List<Hashable>): String? {
         val file = platformDeps.filesDir.absolutePath + "/revision.zip" //TODO: remove hardcode
         try {
+            val response = if (files.isEmpty()) {
+                backendApi.latestRevision().execute()
+            } else {
+                backendApi.sync(files).execute()
+            }
             //Log.that("1. Requesting")
-            val response = backendApi.latestRevision().execute()
 
             if (!response.isSuccessful) {
                 quickStatusController.error(

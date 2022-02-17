@@ -10,6 +10,7 @@ ext {
 
     androidxVersion = '1.0.2'
     markwonVersion = '4.6.2'
+    kotlinx_version = '1.6.0'
 }
 
 buildscript {

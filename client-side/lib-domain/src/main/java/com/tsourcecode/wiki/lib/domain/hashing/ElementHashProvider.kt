@@ -1,32 +1,70 @@
-package com.tsourcecode.wiki.lib.domain.backend
+package com.tsourcecode.wiki.lib.domain.hashing
 
+import com.tsourcecode.wiki.lib.domain.hashing.HashUtils.getCheckSumFromFile
+import com.tsourcecode.wiki.lib.domain.hashing.HashUtils.getCheckSumFromString
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
 import java.security.MessageDigest
 
 class ElementHashProvider(
-        private val p: Project,
+        private val project: Project,
         private val workerScope: CoroutineScope,
-
 ) {
+    private var validCache: List<Hashable> = emptyList()
+
     fun notifyProjectFullySynced() {
         workerScope.launch {
-            invalidateHashes()
+            validCache = calculateHashes(createDigest())
         }
     }
 
-    private fun invalidateHashes() {
-//        TODO("Not yet implemented")
+    private fun createDigest(): MessageDigest = MessageDigest.getInstance("SHA-1")
+
+    suspend fun getHashes(): List<Hashable> {
+        return withContext(workerScope.coroutineContext) {
+            val result = validCache
+
+            if (result.isNotEmpty()) {
+                return@withContext result
+            }
+            val hashes = calculateHashes(createDigest())
+            validCache = hashes
+            hashes
+        }
     }
 
-    private val digest = MessageDigest.getInstance("SHA-1")
+    /**
+     * Note! Not sharing single digest per instance to survive multithreaded environments.
+     */
+    private fun calculateHashes(digest: MessageDigest): List<Hashable> {
+        val filesList = project.repo.listFiles()?.toList() ?: emptyList()
+        return filesList.map {
+            it.extractHashes(digest)
+        }
+    }
 
-    private fun File.hash(): String {
-        return HashUtils.getCheckSumFromFile(digest, this)
+    private fun File.extractHashes(digest: MessageDigest): Hashable {
+        return if (this.isDirectory) {
+            val filesList = this.listFiles()?.toList() ?: emptyList()
+            val fileHashes = filesList.map {
+                it.extractHashes(digest)
+            }
+
+            val compositeHash = fileHashes
+                    .asSequence()
+                    .map { it.hash }
+                    .sorted()
+                    .reduce { acc, s -> acc + s }
+
+            DirHash(this.name, getCheckSumFromString(digest, compositeHash), fileHashes)
+        } else {
+            FileHash(this.name, getCheckSumFromFile(digest, this))
+        }
     }
 }
 
@@ -36,12 +74,16 @@ class ElementHashProvider(
 private object HashUtils {
     const val STREAM_BUFFER_LENGTH = 1024
 
-    fun getCheckSumFromFile(digest: MessageDigest, filePath: String): String {
-        val file = File(filePath)
-        return getCheckSumFromFile(digest, file)
+    fun getCheckSumFromString(digest: MessageDigest, s: String): String {
+        digest.reset()
+        digest.update(s.toByteArray())
+        val byteArray = digest.digest()
+        val hexCode = StringUtils.encodeHex(byteArray, true)
+        return String(hexCode)
     }
 
     fun getCheckSumFromFile(digest: MessageDigest, file: File): String {
+        digest.reset()
         val fis = FileInputStream(file)
         val byteArray = updateDigest(digest, fis).digest()
         fis.close()

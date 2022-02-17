@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.backend
 
+import com.tsourcecode.wiki.lib.domain.hashing.Hashable
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.http.Body
@@ -11,6 +12,9 @@ interface WikiBackendAPIs {
     @Streaming
     @GET("/api/1/revision/latest")
     fun latestRevision(): Call<ResponseBody>
+    @Streaming
+    @POST("/api/1/revision/sync")
+    fun sync(@Body hashes: List<Hashable>): Call<ResponseBody>
     @POST("/api/1/stage")
     fun stage(@Body staging: Staging): Call<ResponseBody>
     @POST("/api/1/commit")
