@@ -4,6 +4,7 @@ import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
+import com.tsourcecode.wiki.lib.domain.hashing.FileHashSerializable
 import com.tsourcecode.wiki.lib.domain.hashing.Hashable
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +12,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import okhttp3.MediaType
+import okhttp3.RequestBody
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
@@ -53,7 +56,7 @@ class BackendController(
         if (!project.repo.exists()) {
             return true
         }
-        return true //TODO("not ready yet")
+        return false
     }
 
     private fun doSync(fullSync: Boolean) {
@@ -95,7 +98,9 @@ class BackendController(
             val response = if (files.isEmpty()) {
                 backendApi.latestRevision().execute()
             } else {
-                backendApi.sync(files).execute()
+                val hashes = FileHashSerializable.serializeList(files)
+                val body = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), hashes)
+                backendApi.sync(body).execute()
             }
             //Log.that("1. Requesting")
 
