@@ -6,5 +6,5 @@ cd -
 
 docker run \
     --volume $(pwd)/build_artifacts:/tmp/build_artifacts \
-    client_side_env:latest
-    /app/run.sh
+    client_side_env:latest \
+    /bin/bash -c "./gradlew lint test"
