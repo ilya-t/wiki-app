@@ -12,6 +12,10 @@ import (
 const (
 	DEBUG_MESSAGES = true
 	REPO_LINK_VAR  = "APP_REPO_LINK"
+
+	StatusNew       = "new"
+	StatusModified  = "modified"
+	StatusUntracked = "untracked"
 )
 
 type Staging struct {
@@ -59,20 +63,22 @@ func (g *Git) LastRevision() (string, error) {
 	return strings.Replace(result, "\n", "", -1), nil
 }
 
-func (g *Git) Stage(f *FileContent) {
+func (g *Git) Stage(f *FileContent) error {
 	decoded, _ := base64.StdEncoding.DecodeString(f.Content)
 	filePath := g.repoDir + "/" + f.Path
 	e := ioutil.WriteFile(filePath, []byte(decoded), os.ModePerm)
 
 	if e != nil {
-		panic(e)
+		return e
 	}
 
 	_, err := g.shell.Execute("git add " + filePath)
 
 	if err != nil {
-		panic(e)
+		return err
 	}
+
+	return nil
 }
 
 func (g *Git) Commit(commitment *Commitment) error {
@@ -192,4 +198,70 @@ func (g *Git) TryClone() {
 	}
 
 	g.shell.StrictExecute("git clone " + repoLink + " " + g.repoDir)
+}
+
+func (g *Git) Status() (*Status, error) {
+	output, e := g.shell.Execute("git status --short")
+	if e != nil {
+		return nil, e
+	}
+
+	files := make([]*FileStatus, 0)
+	for _, line := range strings.Split(output, "\n") {
+		trimmed := strings.Trim(line, " ")
+		if len(trimmed) == 0 {
+			continue
+		}
+
+		statusAndFileName := strings.Split(trimmed, " ")
+		status, e := toStatus(statusAndFileName[0])
+
+		if e != nil {
+			return nil, e
+		}
+
+		fileName := statusAndFileName[len(statusAndFileName)-1]
+		diff := ""
+		if status == StatusModified {
+			d, e := g.shell.Execute("git diff --staged " + fileName)
+
+			if e != nil {
+				return nil, e
+			}
+
+			diff = d
+		}
+
+		files = append(files, &FileStatus{
+			Path:   fileName,
+			Status: status,
+			Diff:   diff,
+		})
+
+	}
+	return &Status{
+		Files: files,
+	}, nil
+}
+
+func toStatus(statusRune string) (string, error) {
+	switch statusRune {
+	case "A":
+		return StatusNew, nil
+	case "M":
+		return StatusModified, nil
+	case "??":
+		return StatusUntracked, nil
+	default:
+		return statusRune, errors.New("Unknown git file status '" + statusRune + "'")
+	}
+}
+
+type FileStatus struct {
+	Path   string `json:"path"`
+	Status string `json:"status"`
+	Diff   string `json:"diff"`
+}
+type Status struct {
+	Files []*FileStatus `json:"files"`
 }

@@ -46,6 +46,7 @@ class RestApi:
         self._artifacts_prefix: str = artifacts_prefix
         self._stage_api: str = self._endpoint + '/api/1/stage'
         self._commit_api: str = self._endpoint + '/api/1/commit'
+        self._status_api: str = self._endpoint + '/api/1/status'
         self._latest_api: str = self._endpoint + '/api/1/revision/latest'
         self._sync_api: str = self._endpoint + '/api/1/revision/sync'
 
@@ -106,6 +107,10 @@ class RestApi:
         repo_dir = output_dir + '/repo'
         return file_name, scan_dir_relative(repo_dir)
 
+    def status(self) -> dict:
+        response = requests.post(self._status_api)
+        return response.json()
+
 
 class GitApi:
     def __init__(self, origin: str, dir: str) -> None:
@@ -128,6 +133,7 @@ class GitApi:
 
     def _make_commit(self, file: str, content: str):
         commit_file = self._repo_dir + '/' + file
+        self._run_cmd("mkdir -p " + os.path.dirname(commit_file))
         self._run_cmd('echo -n "'+content+'" > ' + commit_file)
         self._run_cmd('cat '+commit_file)
         self._run_cmd('git add ' + file)

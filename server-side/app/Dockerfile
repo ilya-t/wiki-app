@@ -6,6 +6,8 @@ RUN apk add --no-cache zip
 RUN apk add --no-cache openssh
 RUN apk add --no-cache alpine-sdk
 
+RUN go get github.com/stretchr/testify/assert
+
 RUN mkdir /app
 
 RUN mkdir -p /app/repo-store/repo

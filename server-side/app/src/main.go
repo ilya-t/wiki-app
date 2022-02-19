@@ -73,6 +73,7 @@ func getOutdatedAtLastRevision(w http.ResponseWriter, req *http.Request) {
 	var files []*File
 	if err := json.Unmarshal(bodyBytes, &files); err != nil {
 		writeError(w, "Unexpected body: ", err)
+		fmt.Println("Unexpected body at selective sync call error: ", err, " raw body: '", string(bodyBytes), "'")
 		return
 	}
 
@@ -113,6 +114,23 @@ func writeFile(filename string, file string, w http.ResponseWriter, req *http.Re
 	}
 }
 
+func writeJsonStruct(jsonStruct interface{}, w http.ResponseWriter, req *http.Request) {
+	jsonBytes, err := json.Marshal(jsonStruct)
+
+	if err != nil {
+		writeError(w, "Json marshalling failed", err)
+		return
+	}
+
+	b := bytes.NewBuffer(jsonBytes)
+
+	w.Header().Set("Content-type", "application/json")
+
+	if _, err := b.WriteTo(w); err != nil {
+		fmt.Fprintf(w, "%s", err)
+	}
+}
+
 func writeError(w http.ResponseWriter, stage string, err error) {
 	e := fmt.Sprintf("{\"error\": \"\nStage: %s\n%v\" }", stage, err)
 	http.Error(w, e, 500)
@@ -124,6 +142,17 @@ func getHealth(w http.ResponseWriter, req *http.Request) {
 
 func join(e error, extra string) error {
 	return errors.New(e.Error() + "\nExtra: " + extra)
+}
+
+func getStatus(w http.ResponseWriter, req *http.Request) {
+	status, e := git.Status()
+
+	if e != nil {
+		writeError(w, "Status check", e)
+		return
+	}
+
+	writeJsonStruct(status, w, req)
 }
 
 func postCommit(w http.ResponseWriter, req *http.Request) {
@@ -173,11 +202,17 @@ func stageFiles(w http.ResponseWriter, req *http.Request) {
 	err := json.Unmarshal(r, &staging)
 
 	if err != nil {
-		panic(err)
+		writeError(w, "Parsing", err)
+		return
 	}
 
 	for _, f := range staging.Files {
-		git.Stage(f)
+		e := git.Stage(f)
+		if e != nil {
+			writeError(w, "Staging "+f.Path, e)
+			return
+		}
+
 	}
 }
 
@@ -199,6 +234,7 @@ func main() {
 
 	http.HandleFunc("/api/1/revision/latest", getLastRevision)
 	http.HandleFunc("/api/1/revision/sync", getOutdatedAtLastRevision)
+	http.HandleFunc("/api/1/status", getStatus)
 	http.HandleFunc("/api/1/commit", postCommit)
 	http.HandleFunc("/api/1/stage", stageFiles)
 	http.HandleFunc("/api/health", getHealth)

@@ -105,6 +105,41 @@ class AcceptanceTests(unittest.TestCase):
         self.assertTrue('api_file.md' in files, msg=json.dumps(files, indent=4))
         self.assertEqual('# content by api', files['api_file.md'])
 
+    def test_status_new_file(self):
+        file_path = 'status/new_file.md'
+        self.api_user.stage(file=file_path, content='# diff by status test')
+        status = self.api_user.status()
+
+        files: [dict] = status['files']
+        file = find(file_path, files)
+        self.assertEqual(file_path, file['path'], msg='raw json: ' + json.dumps(status, indent=4))
+        self.assertEqual('new', file['status'], msg='raw json: ' + json.dumps(status, indent=4))
+        expected = ''
+        self.assertTrue(expected in file['diff'], msg='Expecting "'+expected+'" in diff, got: ' + file['diff'])
+
+    def test_status_modified_file(self):
+        file_path = 'status/modified_file.md'
+        self.api_user.stage(file=file_path, content='# initial text')
+        self.api_user.commit('add modified_file')
+        self.api_user.stage(file=file_path, content='# modified text')
+        status = self.api_user.status()
+
+        files: [dict] = status['files']
+        file = find(file_path, files)
+        self.assertEqual(file_path, file['path'], msg='raw json: ' + json.dumps(status, indent=4))
+        self.assertEqual('modified', file['status'], msg='raw json: ' + json.dumps(status, indent=4))
+        expected = 'modified text'
+        self.assertTrue(expected in file['diff'], msg='Expecting "'+expected+'" in diff, got: ' + file['diff'])
+
+
+def find(path: str, files: [dict]) -> dict:
+    for f in files:
+        if f['path'] == path:
+            return f
+    raise Exception('File "'+path+'" not found in ' + str(files))
+
+
+
 
 
 if __name__ == '__main__':
