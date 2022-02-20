@@ -116,6 +116,8 @@ func (g *Git) Rebase() error {
 	}
 
 	if hadChanges {
+		// save against untracked and not staged files
+		g.shell.StrictExecute("git add *")
 		if err := g.Commit(&Commitment{Message: "temporary commit for rebasement"}); err != nil {
 			return err
 		}
