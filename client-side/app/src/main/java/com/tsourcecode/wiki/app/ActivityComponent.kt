@@ -2,6 +2,7 @@ package com.tsourcecode.wiki.app
 
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import com.tsourcecode.wiki.app.commitment.CommitScreenView
 import com.tsourcecode.wiki.app.config.ConfigScreenController
 import com.tsourcecode.wiki.app.documents.FileManagerScreenController
 import com.tsourcecode.wiki.app.editor.EditorScreenController
@@ -34,7 +35,7 @@ class ActivityComponent(
 
     private val editStateController = EditStateController(
             activity,
-            appComponent.backendController,
+            navigator,
     )
 
     private val documentsController = DocumentsController(
@@ -43,7 +44,11 @@ class ActivityComponent(
             appComponent.changedFilesController,
     )
 
-
+    private val commitScreenView = CommitScreenView(
+            activity,
+            navigator,
+            appComponent.statusModel,
+    )
     private val editorScreenController = EditorScreenController(
             navigator,
             appComponent.docContentProvider,

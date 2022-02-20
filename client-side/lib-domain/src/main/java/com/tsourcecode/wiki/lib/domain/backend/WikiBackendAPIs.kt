@@ -17,6 +17,8 @@ interface WikiBackendAPIs {
     fun sync(@Body body: RequestBody): Call<ResponseBody>
     @POST("/api/1/stage")
     fun stage(@Body staging: Staging): Call<ResponseBody>
+    @POST("/api/1/status")
+    fun status(): Call<ResponseBody>
     @POST("/api/1/commit")
     fun commit(@Body c: Commitment): Call<ResponseBody>
 

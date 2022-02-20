@@ -11,4 +11,6 @@ enum class QuickStatus {
     COMMIT,
     COMMITED,
 
+    STATUS_UPDATE,
+    STATUS_UPDATED,
 }

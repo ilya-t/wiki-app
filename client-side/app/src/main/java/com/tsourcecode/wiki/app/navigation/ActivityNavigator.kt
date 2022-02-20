@@ -42,6 +42,7 @@ class ActivityNavigator(private val activity: AppCompatActivity) {
             Screen.CONFIG -> R.layout.config
             Screen.FILE_MANAGER -> R.layout.file_manager
             Screen.DOCUMENT -> R.layout.document_editor
+            Screen.COMMIT -> R.layout.commit
         }
 
         return LayoutInflater.from(activity).inflate(id, contentContainer)

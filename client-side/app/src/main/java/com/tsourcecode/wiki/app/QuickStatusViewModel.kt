@@ -58,6 +58,8 @@ class QuickStatusViewModel(
             QuickStatus.STAGED -> R.color.status_ok
             QuickStatus.COMMIT -> R.color.status_progress
             QuickStatus.COMMITED -> R.color.status_ok
+            QuickStatus.STATUS_UPDATE -> R.color.status_progress
+            QuickStatus.STATUS_UPDATED -> R.color.status_ok
         }
     }
 }

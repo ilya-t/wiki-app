@@ -5,21 +5,21 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.recyclerview.widget.RecyclerView
+import com.tsourcecode.wiki.app.EditStateController
 import com.tsourcecode.wiki.app.R
-import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.documents.Element
 import com.tsourcecode.wiki.app.documents.Folder
-import kotlinx.coroutines.*
-import java.io.File
-import java.lang.RuntimeException
-import kotlin.Comparator
-
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import com.tsourcecode.wiki.app.EditStateController
+import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 
 class DocumentsController(
@@ -96,10 +96,6 @@ class DocumentsController(
 
             if (backendController.stage(d.relativePath, b64)) {
                 changedFilesController.markStaged(d)
-            }
-
-            withContext(Dispatchers.Main) {
-                editStateController.enableCommit()
             }
         }
     }

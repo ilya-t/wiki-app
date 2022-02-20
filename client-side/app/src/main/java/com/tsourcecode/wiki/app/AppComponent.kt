@@ -2,7 +2,6 @@ package com.tsourcecode.wiki.app
 
 import android.content.Context
 import com.tsourcecode.wiki.lib.domain.DomainComponent
-import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 
 class AppComponent(private val appContext: Context) {
     private val domain = DomainComponent(AndroidPlatformDeps(appContext))
@@ -10,6 +9,7 @@ class AppComponent(private val appContext: Context) {
     val backendController = domain.backendController
     val quickStatusController = domain.quickStatusController
     val docContentProvider = domain.docContentProvider
+    val statusModel = domain.statusModel
 
     companion object {
         private var appContext: Context? = null

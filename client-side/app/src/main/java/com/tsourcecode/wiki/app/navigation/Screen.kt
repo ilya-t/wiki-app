@@ -4,4 +4,5 @@ enum class Screen {
     CONFIG,
     FILE_MANAGER,
     DOCUMENT,
+    COMMIT,
 }

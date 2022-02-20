@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.lib.domain.backend
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
+import com.tsourcecode.wiki.lib.domain.commitment.StatusResponse
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.hashing.FileHashSerializable
 import com.tsourcecode.wiki.lib.domain.hashing.Hashable
@@ -12,6 +13,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import okhttp3.MediaType
 import okhttp3.RequestBody
 import retrofit2.Retrofit
@@ -170,5 +172,22 @@ class BackendController(
             quickStatusController.udpate(QuickStatus.COMMITED)
         }
 
+    }
+
+    fun status(): StatusResponse {
+        quickStatusController.udpate(QuickStatus.STATUS_UPDATE)
+        val response = backendApi.status().execute()
+        if (response.code() != 200) {
+            quickStatusController.error(
+                    QuickStatus.STATUS_UPDATE,
+                    RuntimeException("Status failed with ${response.errorBody()?.string()}")
+            )
+            return StatusResponse(emptyList())
+        }
+
+        val body = response.body()?.string() ?: throw IllegalStateException("Empty body received!")
+        val result = Json.decodeFromString(StatusResponse.serializer(), body)
+        quickStatusController.udpate(QuickStatus.STATUS_UPDATED)
+        return result
     }
 }
