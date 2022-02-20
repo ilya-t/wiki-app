@@ -57,7 +57,7 @@ func (g *Git) LastRevision() (string, error) {
 		g.shell.PrintOutput("pwd")
 		g.shell.PrintOutput("ls -l")
 		g.shell.PrintOutput("git log -1")
-		return "", err
+		return "", errors.New(err.Error() + "\nstderr: " + result)
 	}
 
 	return strings.Replace(result, "\n", "", -1), nil
@@ -72,7 +72,7 @@ func (g *Git) Stage(f *FileContent) error {
 		return e
 	}
 
-	_, err := g.shell.Execute("git add " + filePath)
+	_, err := g.execute("git add " + filePath)
 
 	if err != nil {
 		return err
@@ -86,8 +86,8 @@ func (g *Git) Commit(commitment *Commitment) error {
 		return errors.New("No commit message specified")
 	}
 
-	if _, commitErr := g.execute("git commit --message=\"" + commitment.Message + "\""); commitErr != nil {
-		return g.maybeIncludeDebugInfo(commitErr)
+	if output, commitErr := g.execute("git commit --message=\"" + commitment.Message + "\""); commitErr != nil {
+		return g.maybeIncludeDebugInfo(errors.New(commitErr.Error() + "\nstderr: " + output))
 	}
 
 	return nil
@@ -203,9 +203,9 @@ func (g *Git) TryClone() {
 }
 
 func (g *Git) Status() (*Status, error) {
-	output, e := g.shell.Execute("git status --short")
+	output, e := g.execute("git status --short")
 	if e != nil {
-		return nil, errors.New(e.Error() + "\nstderr:" + output)
+		return nil, e
 	}
 
 	files := make([]*FileStatus, 0)
@@ -225,10 +225,10 @@ func (g *Git) Status() (*Status, error) {
 		fileName := statusAndFileName[len(statusAndFileName)-1]
 		diff := ""
 		if status == StatusModified {
-			d, e := g.shell.Execute("git diff --staged " + fileName)
+			d, e := g.execute("git diff --staged " + fileName)
 
 			if e != nil {
-				return nil, errors.New(e.Error() + "\nstderr:" + d)
+				return nil, e
 			}
 
 			diff = d
