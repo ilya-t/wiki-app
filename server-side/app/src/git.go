@@ -205,7 +205,7 @@ func (g *Git) TryClone() {
 func (g *Git) Status() (*Status, error) {
 	output, e := g.shell.Execute("git status --short")
 	if e != nil {
-		return nil, e
+		return nil, errors.New(e.Error() + "\nstderr:" + output)
 	}
 
 	files := make([]*FileStatus, 0)
@@ -228,7 +228,7 @@ func (g *Git) Status() (*Status, error) {
 			d, e := g.shell.Execute("git diff --staged " + fileName)
 
 			if e != nil {
-				return nil, e
+				return nil, errors.New(e.Error() + "\nstderr:" + d)
 			}
 
 			diff = d
