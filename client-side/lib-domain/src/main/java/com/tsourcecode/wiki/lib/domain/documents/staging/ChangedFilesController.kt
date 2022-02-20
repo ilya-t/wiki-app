@@ -23,6 +23,10 @@ class ChangedFilesController(
 
     fun markChanged(d: Document, modifiedContent: String) {
         val changedFile = d.toChangedFile()
+        changedFile.parentFile.mkdirs()
+        if (!changedFile.parentFile.exists()) {
+            throw RuntimeException("Unable to generate file directories structure: ${changedFile.parentFile}")
+        }
         changedFiles[d.relativePath] = changedFile.absolutePath
         changedStorage.store(changedFiles)
 
