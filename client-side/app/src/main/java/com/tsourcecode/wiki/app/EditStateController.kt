@@ -17,7 +17,7 @@ class EditStateController(
             if (navigator.currentScreen != Screen.COMMIT) {
                 navigator.open(Screen.COMMIT)
             } else {
-                Snackbar.make(activity.findViewById(R.id.content_container), "Commit changes and push?", 4000).apply {
+                Snackbar.make(activity.findViewById(R.id.content_container), "Ready to commit changes and push?", 4000).apply {
                     setAction("YES!") {
                             statusModel.commit()
                     }
