@@ -5,13 +5,7 @@
     android:layout_marginBottom="@dimen/control_bar_height">
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/commit_container"
+        android:layout_marginTop="16dp"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/commit_recycler"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        />
-
 </FrameLayout>

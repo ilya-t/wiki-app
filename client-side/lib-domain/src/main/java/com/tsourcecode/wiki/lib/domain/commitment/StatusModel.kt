@@ -15,9 +15,9 @@ class StatusModel(
 
     fun updateCommitText(text: String) {
         lastSeenCommitText = text
-//        worker.launch {
-//            rebuildData()
-//        }
+        worker.launch {
+            rebuildData()
+        }
     }
 
     private fun rebuildData() {
@@ -31,9 +31,10 @@ class StatusModel(
         )
     }
 
-    fun commit(text: String) {
-        lastSeenCommitText = text
-        backendController.commit(text)
+    fun commit() {
+        if (lastSeenCommitText.isNotEmpty()) {
+            backendController.commit(lastSeenCommitText)
+        }
     }
 
     fun updateStatus() {

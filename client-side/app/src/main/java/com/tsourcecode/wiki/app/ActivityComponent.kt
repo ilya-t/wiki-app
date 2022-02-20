@@ -36,6 +36,7 @@ class ActivityComponent(
     private val editStateController = EditStateController(
             activity,
             navigator,
+            appComponent.statusModel,
     )
 
     private val documentsController = DocumentsController(

@@ -1,17 +1,40 @@
 package com.tsourcecode.wiki.app
 
-import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatButton
+import com.google.android.material.snackbar.Snackbar
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
+import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 
 class EditStateController(
-        private val context: AppCompatActivity,
+        private val activity: AppCompatActivity,
         private val navigator: ActivityNavigator,
+        private val statusModel: StatusModel,
 ) {
-    private val btnCommit = context.findViewById<View>(R.id.btn_commit).apply {
+    private val btnCommit = activity.findViewById<AppCompatButton>(R.id.btn_commit).apply {
         setOnClickListener {
-            navigator.open(Screen.COMMIT)
+            if (navigator.currentScreen != Screen.COMMIT) {
+                navigator.open(Screen.COMMIT)
+            } else {
+                Snackbar.make(activity.findViewById(R.id.content_container), "Commit changes and push?", 4000).apply {
+                    setAction("YES!") {
+                            statusModel.commit()
+                    }
+                    show()
+                }
+
+            }
+        }
+    }
+
+    init {
+        navigator.data.observe(activity) {
+            if (it.screen == Screen.COMMIT) {
+                btnCommit.text = "commit"
+            } else {
+                btnCommit.text = "status"
+            }
         }
     }
 }
