@@ -72,7 +72,7 @@ func (g *Git) Stage(f *FileContent) error {
 		return e
 	}
 
-	_, err := g.execute("git add " + filePath)
+	_, err := g.execute("git add \"" + filePath + "\"")
 
 	if err != nil {
 		return err
@@ -199,7 +199,7 @@ func (g *Git) TryClone() {
 		panic("Env.variable not defined: " + REPO_LINK_VAR + ". Pass repo link for cloing")
 	}
 
-	g.shell.StrictExecute("git clone " + repoLink + " " + g.repoDir)
+	g.shell.StrictExecute("git clone " + repoLink + " \"" + g.repoDir + "\"")
 }
 
 func (g *Git) Status() (*Status, error) {
@@ -225,7 +225,7 @@ func (g *Git) Status() (*Status, error) {
 		fileName := statusAndFileName[len(statusAndFileName)-1]
 		diff := ""
 		if status == StatusModified {
-			d, e := g.execute("git diff --staged " + fileName)
+			d, e := g.execute("git diff --staged \"" + fileName + "\"")
 
 			if e != nil {
 				return nil, e
