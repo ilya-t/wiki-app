@@ -72,6 +72,7 @@ func (g *Git) Stage(f *FileContent) error {
 		return e
 	}
 
+	filePath = strings.ReplaceAll(filePath, "\"", "\\\"")
 	_, err := g.execute("git add \"" + filePath + "\"")
 
 	if err != nil {
@@ -215,14 +216,12 @@ func (g *Git) Status() (*Status, error) {
 			continue
 		}
 
-		statusAndFileName := strings.Split(trimmed, " ")
-		status, e := toStatus(statusAndFileName[0])
+		status, fileName, e := toStatusAndFile(trimmed)
 
 		if e != nil {
 			return nil, e
 		}
 
-		fileName := statusAndFileName[len(statusAndFileName)-1]
 		diff := ""
 		if status == StatusModified {
 			d, e := g.execute("git diff --staged \"" + fileName + "\"")
@@ -246,17 +245,28 @@ func (g *Git) Status() (*Status, error) {
 	}, nil
 }
 
-func toStatus(statusRune string) (string, error) {
-	switch statusRune {
-	case "A":
-		return StatusNew, nil
-	case "M":
-		return StatusModified, nil
-	case "??":
-		return StatusUntracked, nil
-	default:
-		return statusRune, errors.New("Unknown git file status '" + statusRune + "'")
+func toStatusAndFile(line string) (string, string, error) {
+	trimFile := func(fileName string) string {
+		fileName = strings.Trim(fileName, " ")
+		if fileName[0] == '"' && fileName[len(fileName)-1] == '"' {
+			fileName = fileName[1 : len(fileName)-1]
+		}
+
+		return fileName
 	}
+	if line[0] == 'A' && line[1] == ' ' {
+		return StatusNew, trimFile(line[2:]), nil
+	}
+
+	if line[0] == 'M' && line[1] == ' ' {
+		return StatusModified, trimFile(line[2:]), nil
+	}
+
+	if line[:2] == "??" && line[2] == ' ' {
+		return StatusUntracked, trimFile(line[3:]), nil
+	}
+
+	return "", "", errors.New("Failed to parse git file status from '" + line + "'")
 }
 
 type FileStatus struct {

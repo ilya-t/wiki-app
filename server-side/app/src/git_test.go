@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -10,36 +11,160 @@ import (
 
 const testRepoDir = "/tmp/test_repo"
 
-func TestGitStatusSmoke(t *testing.T) {
-	err := initRepo()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	g := NewGit(testRepoDir)
-	editFile("README.md", "# sample")
-	s, e := g.Status()
+func TestGitUntrackedFileStatusWithSpaces(t *testing.T) {
+	fileName := "0 - readme (1).md"
+	fileStatus, e := checkStatus(func(_ *Git) error {
+		editFile(fileName, "# sample")
+		return nil
+	})
 
 	if e != nil {
 		t.Error(e)
+		return
+	}
+
+	if fileStatus.Path != fileName {
+		t.Errorf("Expecting '"+fileName+"' file. Got: %+v", fileStatus)
+		return
+	}
+
+	if fileStatus.Status != StatusUntracked {
+		t.Errorf("Expecting untracked file. Got: %+v", fileStatus)
+		return
+	}
+}
+
+func TestGitQuotedFileWithSpacesStatus(t *testing.T) {
+	fileName := "\"quoted file\""
+	fileStatus, e := checkStatus(func(g *Git) error {
+		editFile(fileName, "content")
+		return stageFile(g, fileName, "stage")
+	})
+
+	if e != nil {
+		t.Error(e)
+		return
+	}
+
+	if fileStatus.Path != "\\\"quoted file\\\"" { // not sure if this is correct, but okay for now
+		t.Errorf("Expecting '"+fileName+"' file. Got: '%s' (%+v)", fileStatus.Path, fileStatus)
+		return
+	}
+}
+
+func TestGitNewFileStatusWithSpaces(t *testing.T) {
+	fileName := "0 - readme (1).md"
+	fileStatus, e := checkStatus(func(g *Git) error {
+		stageFile(g, fileName, "init")
+		return nil
+	})
+
+	if e != nil {
+		t.Error(e)
+		return
+	}
+
+	if fileStatus.Path != fileName {
+		t.Errorf("Expecting '"+fileName+"' file. Got: %+v", fileStatus)
+		return
+	}
+
+	if fileStatus.Status != StatusNew {
+		t.Errorf("Expecting new file. Got: %+v", fileStatus)
+		return
+	}
+}
+
+func TestGitModifiedFileStatus(t *testing.T) {
+	fileName := "modify.md"
+	fileStatus, e := checkStatus(func(g *Git) error {
+		if e := stageFile(g, fileName, "# sample"); e != nil {
+			return e
+		}
+		e := g.Commit(&Commitment{
+			Message: "okay",
+		})
+
+		if e != nil {
+			return e
+		}
+
+		editFile(fileName, "modification")
+		return nil
+	})
+
+	if e != nil {
+		t.Error(e)
+		return
+	}
+
+	if fileStatus.Path != fileName {
+		t.Errorf("Expecting '"+fileName+"' file. Got: %+v", fileStatus)
+		return
+	}
+
+	if fileStatus.Status != StatusModified {
+		t.Errorf("Expecting modified file. Got: %+v", fileStatus)
+		return
+	}
+}
+
+func TestGitModifiedFileStatusWhenStaged(t *testing.T) {
+	fileName := "modify.md"
+	fileStatus, e := checkStatus(func(g *Git) error {
+		if e := stageFile(g, fileName, "# sample"); e != nil {
+			return e
+		}
+		e := g.Commit(&Commitment{
+			Message: "okay",
+		})
+
+		if e != nil {
+			return e
+		}
+
+		return stageFile(g, fileName, "staging")
+	})
+
+	if e != nil {
+		t.Error(e)
+		return
+	}
+
+	if fileStatus.Path != fileName {
+		t.Errorf("Expecting '"+fileName+"' file. Got: %+v", fileStatus)
+		return
+	}
+
+	if fileStatus.Status != StatusModified {
+		t.Errorf("Expecting modified file. Got: %+v", fileStatus)
+		return
+	}
+}
+
+func checkStatus(action func(g *Git) error) (*FileStatus, error) {
+	e := initRepo()
+	if e != nil {
+		return nil, e
+	}
+
+	g := NewGit(testRepoDir)
+	e = action(g)
+	if e != nil {
+		return nil, e
+	}
+
+	s, e := g.Status()
+
+	if e != nil {
+		return nil, e
 	}
 
 	if len(s.Files) != 1 {
-		t.Errorf("Expecting only 1 file. Got: %+v", s.Files)
-		return
+		return nil, errors.New(fmt.Sprintf("Expecting only 1 file. Got: %+v", s.Files))
 	}
 
-	file := s.Files[0]
-	if file.Path != "README.md" {
-		t.Errorf("Expecting 'README.md' file. Got: %+v", file)
-		return
-	}
-
-	if file.Status != StatusUntracked {
-		t.Errorf("Expecting untracked file. Got: %+v", file)
-		return
-	}
+	return s.Files[0], nil
 }
 
 func TestGitStatusDiff(t *testing.T) {
@@ -107,10 +232,16 @@ func TestGitStatusDiff(t *testing.T) {
 	}
 }
 
-func editFile(path string, content string) error {
+func editFile(path string, content string) {
 	s := &Shell{testRepoDir}
-	_, e := s.Execute("echo '" + content + "' > " + path)
-	return e
+	s.StrictExecute("echo '" + content + "' > '" + path + "'")
+}
+
+func stageFile(g *Git, path string, content string) error {
+	return g.Stage(&FileContent{
+		Path:    path,
+		Content: base64.StdEncoding.EncodeToString([]byte(content)),
+	})
 }
 
 func initRepo() error {
