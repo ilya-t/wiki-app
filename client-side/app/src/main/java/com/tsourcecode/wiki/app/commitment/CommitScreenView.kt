@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults.textFieldColors
@@ -127,16 +128,19 @@ fun FileDiffItem(item: StatusViewItem.FileViewItem) {
                 text = fileStatus.path,
                 color = fileStatus.status.toColor(),
         )
-        Text(
-                modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.DarkGray),
-                text = colorizeDiff(fileStatus.diff),
-                style = TextStyle(
-                        color = Color.Gray,
-                ),
-                fontFamily = FontFamily.Monospace,
-        )
+        SelectionContainer {
+            Text(
+                    modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.DarkGray),
+                    text = colorizeDiff(fileStatus.diff),
+                    style = TextStyle(
+                            color = Color.Gray,
+                    ),
+
+                    fontFamily = FontFamily.Monospace,
+            )
+        }
     }
 }
 
