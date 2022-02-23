@@ -8,5 +8,4 @@ class Project(
     val url: URL
 ) {
     val repo: File = File(dir.absolutePath + "/repo")
-
 }

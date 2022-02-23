@@ -40,8 +40,8 @@ class ActivityComponent(
     )
 
     private val documentsController = DocumentsController(
+            appComponent.domain.defaultProject,
             appComponent.backendController,
-            editStateController,
             appComponent.changedFilesController,
     )
 
@@ -58,9 +58,8 @@ class ActivityComponent(
 
     private val fileManagerScreenController = FileManagerScreenController(
             navigator,
-            documentsController,
+            appComponent.domain.fileManagerModel,
             appComponent.docContentProvider,
-            appComponent.backendController,
             editorScreenController,
     )
 

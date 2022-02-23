@@ -1,36 +1,27 @@
 package com.tsourcecode.wiki.app.documents
 
-import android.app.AlertDialog
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tsourcecode.wiki.app.R
-import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
-import com.tsourcecode.wiki.lib.domain.documents.DocumentsAdapter
-import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.Closeable
-import java.util.*
 
 class FileManagerRecyclerController(
         container: ViewGroup,
-        private val data: LiveData<Folder>,
+        private val data: Flow<Folder>,
         openDelegate: (Element) -> Unit,
         docContentProvider: DocumentContentProvider,
 ) : Closeable {
-    private val dataObserver = Observer<Folder> {
-        progressBar.visibility = View.GONE
-        docAdapter.update(it.elements)
-    }
+    private val scope = CoroutineScope(Dispatchers.Main)
     private val context = container.context
     private val progressBar = container.findViewById<View>(R.id.files_trobber)
 
@@ -49,10 +40,15 @@ class FileManagerRecyclerController(
 
     init {
         container.addView(rv)
-        data.observeForever(dataObserver)
+        scope.launch {
+            data.collect {
+                progressBar.visibility = View.GONE
+                docAdapter.update(it.elements)
+            }
+        }
     }
 
     override fun close() {
-        data.removeObserver(dataObserver)
+        scope.cancel()
     }
 }

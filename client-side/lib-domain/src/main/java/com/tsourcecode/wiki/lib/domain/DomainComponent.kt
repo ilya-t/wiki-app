@@ -3,6 +3,8 @@ package com.tsourcecode.wiki.lib.domain
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
+import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
+import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.project.Project
@@ -16,7 +18,7 @@ class DomainComponent(
         private val platformDeps: PlatformDeps,
 ) {
     private val workerScope = GlobalScope
-    private val defaultProject = Project(
+    val defaultProject = Project(
             dir = File(platformDeps.filesDir.absolutePath + "/default_project"),
             url = URL("http://duke-nucem:8181/"),
     )
@@ -42,4 +44,16 @@ class DomainComponent(
     )
 
     val statusModel = StatusModel(backendController, workerScope)
+
+    private val documentsController = DocumentsController(
+            defaultProject,
+            backendController,
+            changedFilesController,
+    )
+
+    val fileManagerModel = FileManagerModel(
+            defaultProject,
+            documentsController,
+            workerScope,
+    )
 }

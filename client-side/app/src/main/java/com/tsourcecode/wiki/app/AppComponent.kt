@@ -2,14 +2,21 @@ package com.tsourcecode.wiki.app
 
 import android.content.Context
 import com.tsourcecode.wiki.lib.domain.DomainComponent
+import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 
 class AppComponent(private val appContext: Context) {
-    private val domain = DomainComponent(AndroidPlatformDeps(appContext))
+    internal val domain = DomainComponent(AndroidPlatformDeps(appContext))
     val changedFilesController = domain.changedFilesController
     val backendController = domain.backendController
     val quickStatusController = domain.quickStatusController
     val docContentProvider = domain.docContentProvider
     val statusModel = domain.statusModel
+
+    init {
+        if (BuildConfig.DEBUG) {
+            DebugLogger.impl = { android.util.Log.d("_debug_", it) }
+        }
+    }
 
     companion object {
         private var appContext: Context? = null
