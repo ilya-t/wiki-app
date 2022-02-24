@@ -4,14 +4,25 @@ import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class StatusModel(
         private val backendController: BackendController,
+        private val fileStatus: FileStatusProvider,
         private val worker: CoroutineScope,
 ) {
     private var lastSeenCommitText = ""
     private var lastSeenStatus: StatusResponse? = null
+
+    init {
+        worker.launch {
+            fileStatus.statusFlow.collect {
+                lastSeenStatus = it
+                rebuildData()
+            }
+        }
+    }
 
     fun updateCommitText(text: String) {
         lastSeenCommitText = text
@@ -37,11 +48,8 @@ class StatusModel(
         }
     }
 
-    fun updateStatus() {
-        worker.launch {
-            lastSeenStatus = backendController.status()
-            rebuildData()
-        }
+    fun notifyCommitScreenOpened() {
+        fileStatus.update()
     }
 
     private val _statusFlow = MutableStateFlow(StatusViewModel())

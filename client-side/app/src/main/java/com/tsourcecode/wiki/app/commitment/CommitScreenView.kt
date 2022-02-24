@@ -47,7 +47,7 @@ class CommitScreenView(
     init {
         navigator.data.observe(lifecycle) {
             if (it.screen == Screen.COMMIT) {
-                statusModel.updateStatus()
+                statusModel.notifyCommitScreenOpened()
                 setupScreen(it.layout)
             }
         }
