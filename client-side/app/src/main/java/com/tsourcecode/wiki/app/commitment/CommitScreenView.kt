@@ -3,6 +3,8 @@ package com.tsourcecode.wiki.app.commitment
 import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -71,7 +73,7 @@ private fun ComposeCommitScreen(viewModel: StatusViewModel, model: StatusModel) 
         items(viewModel.items) { item ->
             when (item) {
                 is StatusViewItem.CommitViewItem -> CommitItem(item, model)
-                is StatusViewItem.FileViewItem -> FileDiffItem(item)
+                is StatusViewItem.FileViewItem -> FileDiffItem(item, model)
             }
         }
     }
@@ -110,7 +112,7 @@ fun CommitItem(item: StatusViewItem.CommitViewItem, model: StatusModel) {
 }
 
 @Composable
-fun FileDiffItem(item: StatusViewItem.FileViewItem) {
+fun FileDiffItem(item: StatusViewItem.FileViewItem, model: StatusModel) {
     val fileStatus = item.fileStatus
     Column(
             modifier = Modifier
@@ -122,12 +124,18 @@ fun FileDiffItem(item: StatusViewItem.FileViewItem) {
                             shape = RoundedCornerShape(CornerSize(Dp(4f))),
                     ),
     ) {
-        Text(
+        Box(
                 modifier = Modifier
-                        .padding(Dp(8f)),
-                text = fileStatus.path,
-                color = fileStatus.status.toColor(),
-        )
+                        .fillMaxWidth()
+                        .clickable { model.notifyItemClicked(item) }
+        ) {
+            Text(
+                    modifier = Modifier
+                            .padding(Dp(8f)),
+                    text = fileStatus.path,
+                    color = fileStatus.status.toColor(),
+            )
+        }
         SelectionContainer {
             Text(
                     modifier = Modifier

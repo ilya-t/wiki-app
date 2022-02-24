@@ -9,8 +9,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.View.OnTouchListener
 import android.widget.Scroller
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatEditText
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
@@ -18,6 +19,7 @@ import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
 import com.tsourcecode.wiki.app.navigation.ScreenBootstrapper
+import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
 import io.noties.markwon.Markwon
@@ -25,26 +27,50 @@ import io.noties.markwon.editor.MarkwonEditor
 import io.noties.markwon.editor.MarkwonEditorTextWatcher
 import io.noties.markwon.editor.handler.EmphasisEditHandler
 import io.noties.markwon.editor.handler.StrongEmphasisEditHandler
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 
 class EditorScreenController(
-        navigator: ActivityNavigator,
+        private val appCompatActivity: AppCompatActivity,
+        private val navigator: ActivityNavigator,
         private val docContentProvider: DocumentContentProvider,
         private val documentsController: DocumentsController,
-) {
-    val data = MutableLiveData<Document?>()
+        private val activeDocumentController: ActiveDocumentController,
 
+) {
     init {
+        openDocAutomatically()
+
         ScreenBootstrapper(
                 Screen.DOCUMENT,
                 navigator
         ) {
-            data.value?.let { d ->
+            activeDocumentController.activeDocument.value?.let { d ->
                 configureEditor(d, it)
             }
 
             null
+        }
+
+
+    }
+
+    //TODO: remove this navigation crutch
+    private fun openDocAutomatically() {
+        appCompatActivity.lifecycleScope.launch {
+            activeDocumentController.activeDocument.collect {
+                if (it != null) {
+                    navigator.open(Screen.DOCUMENT)
+                }
+            }
+        }
+
+        navigator.data.observe(appCompatActivity) {
+            if (it.screen != Screen.DOCUMENT) {
+                activeDocumentController.close()
+            }
         }
     }
 

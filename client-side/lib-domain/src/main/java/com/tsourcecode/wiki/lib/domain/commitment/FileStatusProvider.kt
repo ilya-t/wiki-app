@@ -2,8 +2,8 @@ package com.tsourcecode.wiki.lib.domain.commitment
 
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class FileStatusProvider(
@@ -14,7 +14,7 @@ class FileStatusProvider(
             StatusResponse(emptyList())
     )
 
-    val statusFlow: Flow<StatusResponse> = _statusFlow
+    val statusFlow: StateFlow<StatusResponse> = _statusFlow
 
     init {
         workerScope.launch {

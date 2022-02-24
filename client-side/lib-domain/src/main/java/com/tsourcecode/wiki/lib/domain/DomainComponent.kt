@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.lib.domain
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
+import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
@@ -49,10 +50,14 @@ class DomainComponent(
             workerScope,
     )
 
+    val activeDocumentController = ActiveDocumentController()
+
     val statusModel = StatusModel(
+            defaultProject,
             backendController,
             fileStatusProvider,
             workerScope,
+            activeDocumentController,
     )
 
     private val documentsController = DocumentsController(

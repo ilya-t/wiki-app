@@ -51,16 +51,18 @@ class ActivityComponent(
             appComponent.statusModel,
     )
     private val editorScreenController = EditorScreenController(
+            activity,
             navigator,
             appComponent.docContentProvider,
             documentsController,
+            appComponent.domain.activeDocumentController,
     )
 
     private val fileManagerScreenController = FileManagerScreenController(
             navigator,
             appComponent.domain.fileManagerModel,
             appComponent.docContentProvider,
-            editorScreenController,
+            appComponent.domain.activeDocumentController,
     )
 
     private val configScreenController = ConfigScreenController(
