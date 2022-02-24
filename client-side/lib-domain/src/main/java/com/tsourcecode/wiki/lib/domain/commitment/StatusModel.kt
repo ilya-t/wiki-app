@@ -5,8 +5,8 @@ import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.io.File
@@ -71,5 +71,5 @@ class StatusModel(
     }
 
     private val _statusFlow = MutableStateFlow(StatusViewModel())
-    val statusFlow: Flow<StatusViewModel> = _statusFlow
+    val statusFlow: StateFlow<StatusViewModel> = _statusFlow
 }

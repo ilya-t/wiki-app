@@ -6,6 +6,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
+import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 
 class EditStateController(
         private val activity: AppCompatActivity,
@@ -33,7 +34,14 @@ class EditStateController(
             if (it.screen == Screen.COMMIT) {
                 btnCommit.text = "commit"
             } else {
-                btnCommit.text = "status"
+                val diffCount = statusModel.statusFlow.value
+                        .items.filterIsInstance<StatusViewItem.FileViewItem>()
+                        .size
+                if (diffCount > 0) {
+                    btnCommit.text = "changes ($diffCount)"
+                } else {
+                    btnCommit.text = "changes"
+                }
             }
         }
     }

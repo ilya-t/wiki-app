@@ -59,6 +59,8 @@ class ActivityComponent(
     )
 
     private val fileManagerScreenController = FileManagerScreenController(
+            appComponent.domain.defaultProject,
+            activity,
             navigator,
             appComponent.domain.fileManagerModel,
             appComponent.docContentProvider,

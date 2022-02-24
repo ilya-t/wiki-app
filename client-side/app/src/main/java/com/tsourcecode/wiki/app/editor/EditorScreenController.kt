@@ -38,7 +38,6 @@ class EditorScreenController(
         private val docContentProvider: DocumentContentProvider,
         private val documentsController: DocumentsController,
         private val activeDocumentController: ActiveDocumentController,
-
 ) {
     init {
         openDocAutomatically()
@@ -49,6 +48,7 @@ class EditorScreenController(
         ) {
             activeDocumentController.activeDocument.value?.let { d ->
                 configureEditor(d, it)
+                appCompatActivity.title = d.relativePath
             }
 
             null

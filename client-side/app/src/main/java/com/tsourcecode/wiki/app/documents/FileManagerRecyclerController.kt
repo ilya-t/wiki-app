@@ -2,11 +2,13 @@ package com.tsourcecode.wiki.app.documents
 
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
+import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -16,6 +18,8 @@ import kotlinx.coroutines.launch
 import java.io.Closeable
 
 class FileManagerRecyclerController(
+        private val project: Project,
+        private val activity: AppCompatActivity,
         container: ViewGroup,
         private val data: Flow<Folder>,
         openDelegate: (Element) -> Unit,
@@ -44,6 +48,7 @@ class FileManagerRecyclerController(
             data.collect {
                 progressBar.visibility = View.GONE
                 docAdapter.update(it.elements)
+                activity.title = it.file.path.removePrefix(project.repo.absolutePath)
             }
         }
     }

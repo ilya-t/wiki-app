@@ -1,14 +1,18 @@
 package com.tsourcecode.wiki.app.documents
 
 import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatActivity
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
 import com.tsourcecode.wiki.app.navigation.ScreenBootstrapper
 import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
+import com.tsourcecode.wiki.lib.domain.project.Project
 
 class FileManagerScreenController(
+        project: Project,
+        private val activity: AppCompatActivity,
         private val navigator: ActivityNavigator,
         private val model: FileManagerModel,
         docContentProvider: DocumentContentProvider,
@@ -20,6 +24,8 @@ class FileManagerScreenController(
                 navigator,
                 bootPoint = {
                     FileManagerRecyclerController(
+                            project,
+                            activity = activity,
                             container = it as ViewGroup,
                             model.dataFlow,
                             openDelegate = this::openElement,
