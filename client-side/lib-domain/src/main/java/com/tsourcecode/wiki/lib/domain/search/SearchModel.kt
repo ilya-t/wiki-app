@@ -4,29 +4,23 @@ import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.documents.Folder
 import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
-import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import java.io.File
 
 class SearchModel(
-        project: Project,
         private val documentsController: DocumentsController,
         private val searchScope: CoroutineScope,
         private val activeDocumentController: ActiveDocumentController,
 ) {
-    private val _data = MutableStateFlow(SearchViewModel(results = listOf(
-            DocumentSearchResult(Document(project.repo, f = File("/tmp/some/file.md"))),
-            DocumentSearchResult(Document(project.repo, f = File("/tmp/some/file2.md"))),
-            )
-    ))
+    private val _data = MutableStateFlow(SearchViewModel())
 
     val data: Flow<SearchViewModel> = _data
 
     fun search(request: String) {
-        _data.value = _data.value.copy(searchRequest = request)
+        val processed = request.trim().replace("\n", "")
+        _data.value = _data.value.copy(searchRequest = processed)
         searchScope.launch {
             _data.value = _data.value.copy(results = searchDocuments(request))
         }

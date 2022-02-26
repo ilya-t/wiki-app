@@ -75,7 +75,6 @@ class DomainComponent(
     )
 
     val searchModel = SearchModel(
-            defaultProject,
             documentsController,
             workerScope,
             activeDocumentController,
