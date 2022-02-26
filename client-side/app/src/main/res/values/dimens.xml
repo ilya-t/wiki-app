@@ -4,4 +4,5 @@
     <dimen name="activity_vertical_margin">16dp</dimen>
     <dimen name="status_height">16dp</dimen>
     <dimen name="control_bar_height">48dp</dimen>
+    <dimen name="toolbar_default_height">48dp</dimen>
 </resources>

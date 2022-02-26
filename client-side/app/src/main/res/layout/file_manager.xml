@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/files_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -10,5 +12,22 @@
         android:layout_width="64dp"
         android:layout_height="64dp"
         android:layout_gravity="center" />
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/files_title"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/toolbar_default_height"
+        android:gravity="center_vertical"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:background="@color/toolbar_background"
+        tools:text="dir/path"
+        />
+    <FrameLayout
+        android:id="@+id/files_list_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingTop="@dimen/toolbar_default_height"/>
 
 </FrameLayout>

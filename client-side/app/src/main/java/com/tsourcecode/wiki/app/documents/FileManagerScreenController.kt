@@ -26,7 +26,7 @@ class FileManagerScreenController(
                     FileManagerRecyclerController(
                             project,
                             activity = activity,
-                            container = it as ViewGroup,
+                            root = it as ViewGroup,
                             model.dataFlow,
                             openDelegate = this::openElement,
                             docContentProvider,

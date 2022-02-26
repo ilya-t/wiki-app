@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.app.documents
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatTextView
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -20,14 +21,16 @@ import java.io.Closeable
 class FileManagerRecyclerController(
         private val project: Project,
         private val activity: AppCompatActivity,
-        container: ViewGroup,
+        root: ViewGroup,
         private val data: Flow<Folder>,
         openDelegate: (Element) -> Unit,
         docContentProvider: DocumentContentProvider,
 ) : Closeable {
     private val scope = CoroutineScope(Dispatchers.Main)
+    private val container = root.findViewById<ViewGroup>(R.id.files_list_container)
+    private val title = root.findViewById<AppCompatTextView>(R.id.files_title)
     private val context = container.context
-    private val progressBar = container.findViewById<View>(R.id.files_trobber)
+    private val progressBar = root.findViewById<View>(R.id.files_trobber)
 
     private val docAdapter = DocumentsAdapter(docContentProvider).also { adapter ->
         adapter.openDelegate = {
@@ -48,7 +51,12 @@ class FileManagerRecyclerController(
             data.collect {
                 progressBar.visibility = View.GONE
                 docAdapter.update(it.elements)
-                activity.title = it.file.path.removePrefix(project.repo.absolutePath)
+                val relativePath = it.file.path.removePrefix(project.repo.absolutePath)
+                if (relativePath.isNotEmpty()) {
+                    title.text = relativePath
+                } else {
+                    title.text = "<root dir>"
+                }
             }
         }
     }
