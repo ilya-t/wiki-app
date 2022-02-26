@@ -43,6 +43,7 @@ class ActivityNavigator(private val activity: AppCompatActivity) {
             Screen.FILE_MANAGER -> R.layout.file_manager
             Screen.DOCUMENT -> R.layout.document_editor
             Screen.COMMIT -> R.layout.commit
+            Screen.SEARCH -> R.layout.search
         }
 
         return LayoutInflater.from(activity).inflate(id, contentContainer)

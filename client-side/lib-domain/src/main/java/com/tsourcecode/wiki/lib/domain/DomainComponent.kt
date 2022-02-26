@@ -10,6 +10,7 @@ import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.project.Project
+import com.tsourcecode.wiki.lib.domain.search.SearchModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -71,5 +72,12 @@ class DomainComponent(
             documentsController,
             workerScope,
             fileStatusProvider,
+    )
+
+    val searchModel = SearchModel(
+            defaultProject,
+            documentsController,
+            workerScope,
+            activeDocumentController,
     )
 }

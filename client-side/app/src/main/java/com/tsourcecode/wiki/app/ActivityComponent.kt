@@ -8,6 +8,7 @@ import com.tsourcecode.wiki.app.documents.FileManagerScreenController
 import com.tsourcecode.wiki.app.editor.EditorScreenController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
+import com.tsourcecode.wiki.app.search.SearchScreenController
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
 
 class ActivityComponent(
@@ -37,6 +38,12 @@ class ActivityComponent(
             activity,
             navigator,
             appComponent.statusModel,
+    )
+
+    private val searchScreenController = SearchScreenController(
+            navigator,
+            activity,
+            appComponent.domain.searchModel,
     )
 
     private val documentsController = DocumentsController(

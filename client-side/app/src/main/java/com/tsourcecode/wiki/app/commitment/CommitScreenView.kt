@@ -74,7 +74,7 @@ private fun ComposeCommitScreen(viewModel: StatusViewModel, model: StatusModel) 
             when (item) {
                 is StatusViewItem.CommitViewItem -> CommitItem(item, model)
                 is StatusViewItem.FileViewItem -> FileDiffItem(item, model)
-            }
+            }.apply { /*exhaustive*/ }
         }
     }
 }

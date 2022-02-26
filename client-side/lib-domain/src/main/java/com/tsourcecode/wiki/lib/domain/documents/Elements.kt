@@ -13,7 +13,15 @@ data class Document(
         private val projectDir: File,
         private val f: File,
 ) : Element(f) {
-    val relativePath: String = f.absolutePath.substring(projectDir.absolutePath.length + 1)
+    val relativePath: String = run {
+        val start = projectDir.absolutePath.length + 1
+
+        if (start < f.absolutePath.length) {
+            f.absolutePath.substring(start)
+        } else {
+            f.absolutePath
+        }
+    }
 }
 
 data class Folder(

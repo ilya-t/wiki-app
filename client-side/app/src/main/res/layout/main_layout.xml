@@ -26,23 +26,26 @@
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_files"
-            android:layout_width="100dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="files" />
+            android:text="files"
+            android:layout_weight="1"/>
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_commit"
-            android:layout_width="120dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="commit"
+            android:layout_weight="1"
             />
 
         <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btn_config"
-            android:layout_width="100dp"
+            android:id="@+id/btn_search"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="config"
-            tools:visibility="visible" />
+            android:text="search"
+            tools:visibility="visible"
+            android:layout_weight="1"/>
     </LinearLayout>
 
 

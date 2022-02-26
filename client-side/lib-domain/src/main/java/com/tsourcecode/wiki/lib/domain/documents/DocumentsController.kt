@@ -8,8 +8,8 @@ import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -20,7 +20,7 @@ class DocumentsController(
         private val changedFilesController: ChangedFilesController,
 ) {
     private val _data = MutableStateFlow(Folder(project.repo, emptyList()))
-    val data: Flow<Folder> = _data
+    val data: StateFlow<Folder> = _data
 
     init {
         backendController.observeProjectUpdates { notifyProjectUpdated(it) }

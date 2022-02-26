@@ -5,4 +5,5 @@ enum class Screen {
     FILE_MANAGER,
     DOCUMENT,
     COMMIT,
+    SEARCH,
 }
