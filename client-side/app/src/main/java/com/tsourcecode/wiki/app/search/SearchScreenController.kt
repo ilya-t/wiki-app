@@ -130,11 +130,7 @@ class SearchScreenController(
                     ),
                     keyboardActions = KeyboardActions(
                             onSearch = {
-                                viewModel.results.firstOrNull()?.let { firstResult ->
-                                    if (firstResult is DocumentSearchResult) {
-                                        searchModel.notifyItemClicked(firstResult)
-                                    }
-                                }
+                                searchModel.notifySearchKeyTriggered(viewModel)
                             }
                     ),
                     onValueChange = { searchModel.search(it) },
@@ -154,7 +150,9 @@ class SearchScreenController(
         }
 
         LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
+            if (viewModel.requestFocusAtLaunch) {
+                focusRequester.requestFocus()
+            }
         }
     }
 

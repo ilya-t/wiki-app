@@ -20,9 +20,13 @@ class SearchModel(
 
     fun search(request: String) {
         val processed = request.trim().replace("\n", "")
+
+        if (processed == _data.value.searchRequest) {
+            return
+        }
         _data.value = _data.value.copy(searchRequest = processed)
         searchScope.launch {
-            _data.value = _data.value.copy(results = searchDocuments(request))
+            _data.value = _data.value.copy(results = searchDocuments(processed))
         }
 
     }
@@ -58,5 +62,13 @@ class SearchModel(
 
     fun notifyItemClicked(item: DocumentSearchResult) {
         activeDocumentController.switch(item.document)
+    }
+
+    fun notifySearchKeyTriggered(viewModel: SearchViewModel) {
+        viewModel.results.firstOrNull()?.let { firstResult ->
+            if (firstResult is DocumentSearchResult) {
+                activeDocumentController.switch(firstResult.document)
+            }
+        }
     }
 }
