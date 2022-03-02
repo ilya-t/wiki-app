@@ -10,9 +10,7 @@ import (
 )
 
 const (
-	DEBUG_MESSAGES = true
-	REPO_LINK_VAR  = "APP_REPO_LINK"
-
+	DEBUG_MESSAGES  = true
 	StatusNew       = "new"
 	StatusModified  = "modified"
 	StatusUntracked = "untracked"
@@ -194,6 +192,10 @@ func (g *Git) TryClone() {
 	if _, err := os.Stat(g.repoDir + "/.git"); err == nil {
 		fmt.Println("Repo already cloned: '" + g.repoDir + "'")
 		return
+	}
+
+	if e := os.MkdirAll(g.repoDir, 0755); e != nil {
+		panic(e)
 	}
 
 	g.shell.StrictExecute("git clone " + g.repoUrl + " \"" + g.repoDir + "\"")

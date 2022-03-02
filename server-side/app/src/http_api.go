@@ -14,39 +14,53 @@ const (
 )
 
 type ProjectHttpApi struct {
+	config       *Configuration
 	git          *Git
 	shell        *Shell
 	zipper       *Zipper
 	diffProvider *DiffProvider
 }
 
-func NewHttpProject(repoDir string, repoUrl string) *ProjectHttpApi {
+type Configuration struct {
+	id      string
+	repoDir string
+	repoUrl string
+}
+
+func NewHttpProject(config *Configuration) *ProjectHttpApi {
 	shell := &Shell{
-		Cwd: repoDir}
+		Cwd: config.repoDir}
 	result := &ProjectHttpApi{
-		git:   NewGit(repoDir, repoUrl),
-		shell: shell,
+		config: config,
+		git:    NewGit(config.repoDir, config.repoUrl),
+		shell:  shell,
 		zipper: &Zipper{
 			shell: shell,
-			cwd:   repoDir},
+			cwd:   config.repoDir},
 		diffProvider: &DiffProvider{
-			repoDir: repoDir},
+			repoDir: config.repoDir},
 	}
 	return result
 }
 
 func (p *ProjectHttpApi) Start() {
+	fmt.Printf("Staring configuration: %+v!\n", p.config)
+
 	p.git.TryClone()
-	fmt.Println("Preparing repo!")
 	p.shell.StrictExecute("git config --local user.email \"wiki-app@tsourcecode.com\"")
 	p.shell.StrictExecute("git config --local user.name \"Wiki Committer\"")
 	p.shell.StrictExecute("git checkout " + BRANCH)
 
-	http.HandleFunc("/api/1/revision/latest", p.getLastRevision)
-	http.HandleFunc("/api/1/revision/sync", p.getOutdatedAtLastRevision)
-	http.HandleFunc("/api/1/status", p.getStatus)
-	http.HandleFunc("/api/1/commit", p.postCommit)
-	http.HandleFunc("/api/1/stage", p.stageFiles)
+	prefix := "/" + p.config.id
+	if p.config.id == "" {
+		prefix = ""
+	}
+
+	http.HandleFunc(prefix+"/api/1/revision/latest", p.getLastRevision)
+	http.HandleFunc(prefix+"/api/1/revision/sync", p.getOutdatedAtLastRevision)
+	http.HandleFunc(prefix+"/api/1/status", p.getStatus)
+	http.HandleFunc(prefix+"/api/1/commit", p.postCommit)
+	http.HandleFunc(prefix+"/api/1/stage", p.stageFiles)
 
 }
 

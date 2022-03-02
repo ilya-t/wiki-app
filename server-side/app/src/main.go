@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
 )
 
 const (
@@ -15,15 +14,17 @@ func getHealth(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	repoLink := os.Getenv(REPO_LINK_VAR)
+	http.HandleFunc("/api/health", getHealth)
 
-	if repoLink == "" {
-		panic("Env.variable not defined: " + REPO_LINK_VAR + ". Pass repo link for cloing")
+	configs, e := loadConfigurations()
+	if e != nil {
+		panic(e)
 	}
 
-	p := NewHttpProject(CWD, repoLink)
-	p.Start()
-	http.HandleFunc("/api/health", getHealth)
+	for _, c := range configs {
+		p := NewHttpProject(c)
+		p.Start()
+	}
 
 	fmt.Println("Starting server...")
 	http.ListenAndServe(":80", nil)
