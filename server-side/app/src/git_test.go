@@ -148,7 +148,7 @@ func checkStatus(action func(g *Git) error) (*FileStatus, error) {
 		return nil, e
 	}
 
-	g := NewGit(testRepoDir)
+	g := NewGit(testRepoDir, "")
 	e = action(g)
 	if e != nil {
 		return nil, e
@@ -174,7 +174,7 @@ func TestGitStatusDiff(t *testing.T) {
 		return
 	}
 
-	g := NewGit(testRepoDir)
+	g := NewGit(testRepoDir, "")
 	editFile("README.md", "")
 	e := g.Stage(&FileContent{
 		Path:    "README.md",

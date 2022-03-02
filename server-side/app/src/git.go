@@ -35,14 +35,16 @@ type Git struct {
 	branch  string
 	remote  string
 	repoDir string
+	repoUrl string
 	shell   *Shell
 }
 
-func NewGit(dir string) *Git {
+func NewGit(dir string, url string) *Git {
 	return &Git{
 		branch:  "master",
 		remote:  "origin",
 		repoDir: dir,
+		repoUrl: url,
 		shell:   &Shell{dir}}
 }
 
@@ -194,13 +196,7 @@ func (g *Git) TryClone() {
 		return
 	}
 
-	repoLink := os.Getenv(REPO_LINK_VAR)
-
-	if repoLink == "" {
-		panic("Env.variable not defined: " + REPO_LINK_VAR + ". Pass repo link for cloing")
-	}
-
-	g.shell.StrictExecute("git clone " + repoLink + " \"" + g.repoDir + "\"")
+	g.shell.StrictExecute("git clone " + g.repoUrl + " \"" + g.repoDir + "\"")
 }
 
 func (g *Git) Status() (*Status, error) {
