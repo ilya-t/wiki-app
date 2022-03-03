@@ -6,8 +6,9 @@ import api
 import backend
 
 HOST = 'http://test-backend'
-REPO_DIR = "/app/repo-store-volume/test_repo"
-BARE_REPO_PATH = "/tmp/test_repo.git"
+REPO_NAME = 'test_repo'
+REPO_DIR = '/app/repo-store-volume/'+REPO_NAME
+BARE_REPO_PATH = '/tmp/'+REPO_NAME+'.git'
 
 
 class AcceptanceTests(unittest.TestCase):
@@ -17,6 +18,15 @@ class AcceptanceTests(unittest.TestCase):
         self.api_user = api.RestApi(endpoint=HOST, project='test_repo', artifacts_prefix=self.id())
         self.repo_user = api.GitApi(origin=BARE_REPO_PATH, dir="/tmp/repo_user")
         backend.wait_boot()
+
+    def test_project_config(self):
+        projects = self.api_user.get_projects()
+        for p in projects:
+            if p['name'] == REPO_NAME:
+                self.assertEqual(BARE_REPO_PATH, p['repo_url'])
+                return
+            
+        self.fail(msg='Could not find '+REPO_NAME+'at: \n'+json.dumps(projects, indent=4))
 
     def test_latest_revision_zip_content_not_contains_git(self):
         _, files = self.api_user.latest_revision()

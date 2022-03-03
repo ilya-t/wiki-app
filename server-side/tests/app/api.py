@@ -53,6 +53,7 @@ class RestApi:
         self._status_api: str = project_endpoint + '/api/1/status'
         self._latest_api: str = project_endpoint + '/api/1/revision/latest'
         self._sync_api: str = project_endpoint + '/api/1/revision/sync'
+        self._projects_api: str = endpoint + '/api/1/projects'
 
     def stage(self, file: str, content: str) -> requests.Response:
         return requests.post(self._stage_api, json={
@@ -114,6 +115,10 @@ class RestApi:
     def status(self) -> dict:
         response = requests.post(self._status_api)
         return response.json()
+
+    def get_projects(self) -> [dict]:
+        response = requests.get(self._projects_api)
+        return response.json()['configs']
 
 
 class GitApi:
