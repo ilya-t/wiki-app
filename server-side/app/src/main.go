@@ -21,10 +21,25 @@ func main() {
 		panic(e)
 	}
 
-	for _, c := range configs {
+	configurations := toConfigurations(configs)
+
+	if len(configurations) == 0 {
+		defaultConfig, e := loadDefaultConfiguration()
+		if e != nil {
+			panic(e)
+		}
+		configurations = append(configurations, defaultConfig)
+	}
+
+	for _, c := range configurations {
 		p := NewHttpProject(c)
 		p.Start()
 	}
+
+	projectApi := &ProjectApi{
+		Configs: configs,
+	}
+	projectApi.Start()
 
 	fmt.Println("Starting server...")
 	http.ListenAndServe(":80", nil)

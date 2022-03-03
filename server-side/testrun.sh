@@ -48,3 +48,5 @@ fi
 if [ $RESULT_UNIT != "0" ] ; then
     exit 1
 fi
+
+echo "  All tests passed!"

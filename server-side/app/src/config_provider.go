@@ -14,14 +14,14 @@ const (
 )
 
 type ProjectConfig struct {
-	Url string `json:"repo_url"`
+	Name string `json:"name"`
+	Url  string `json:"repo_url"`
 }
 
-func loadConfigurations() ([]*Configuration, error) {
+func loadConfigurations() ([]*ProjectConfig, error) {
 	if _, e := os.Stat(CONFIG_FILE); os.IsNotExist(e) {
-		return loadDefaultConfiguration()
+		return make([]*ProjectConfig, 0), nil
 	}
-
 	jBytes, e := os.ReadFile(CONFIG_FILE)
 
 	if e != nil {
@@ -33,9 +33,13 @@ func loadConfigurations() ([]*Configuration, error) {
 		return nil, e
 	}
 
+	return configs, nil
+}
+
+func toConfigurations(userConfigs []*ProjectConfig) []*Configuration {
 	results := make([]*Configuration, 0)
 
-	for _, config := range configs {
+	for _, config := range userConfigs {
 		pathParts := strings.Split(config.Url, "/")
 		repoName := pathParts[len(pathParts)-1]
 
@@ -46,21 +50,18 @@ func loadConfigurations() ([]*Configuration, error) {
 		})
 	}
 
-	return results, nil
+	return results
 }
 
-func loadDefaultConfiguration() ([]*Configuration, error) {
+func loadDefaultConfiguration() (*Configuration, error) {
 	repoLink := os.Getenv(REPO_LINK_VAR)
 
 	if repoLink == "" {
 		return nil, errors.New("env.variable not defined: " + REPO_LINK_VAR + ". Pass repo link for cloning")
 	}
 
-	result := &Configuration{
+	return &Configuration{
 		repoDir: CWD,
 		repoUrl: repoLink,
-	}
-
-	results := make([]*Configuration, 0)
-	return append(results, result), nil
+	}, nil
 }

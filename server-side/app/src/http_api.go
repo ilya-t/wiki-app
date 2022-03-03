@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -256,5 +257,66 @@ func writeJsonStruct(jsonStruct interface{}, w http.ResponseWriter, req *http.Re
 
 	if _, err := b.WriteTo(w); err != nil {
 		fmt.Fprintf(w, "%s", err)
+	}
+}
+
+type ProjectApi struct {
+	Configs []*ProjectConfig `json:"configs"`
+}
+
+func (c ProjectApi) changeProject(w http.ResponseWriter, req *http.Request) {
+	r, e := ioutil.ReadAll(req.Body)
+
+	if e != nil {
+		writeError(w, "unexpected request body", join(e, string(r)))
+		return
+	}
+
+	var updatedConfig *ProjectConfig
+	e = json.Unmarshal(r, &updatedConfig)
+
+	if e != nil {
+		writeError(w, "request body parsing", join(e, string(r)))
+		return
+	}
+
+	for i, config := range c.Configs {
+		if config.Name == updatedConfig.Name {
+			c.Configs[i] = updatedConfig
+			jBytes, e := json.Marshal(c.Configs)
+
+			if e != nil {
+				writeError(w, "serializing config failed", join(e, string(r)))
+				return
+			}
+			e = ioutil.WriteFile(CONFIG_FILE, jBytes, 0755)
+
+			if e != nil {
+				writeError(w, "saving config failed", join(e, string(r)))
+				return
+			}
+
+			break
+		}
+	}
+
+	writeJsonStruct(c, w, req)
+}
+
+func (c ProjectApi) getProjects(w http.ResponseWriter, req *http.Request) {
+	writeJsonStruct(c, w, req)
+}
+
+func (c ProjectApi) Start() {
+	for _, config := range c.Configs {
+		if config.Name == "" {
+			pathParts := strings.Split(config.Url, "/")
+			repoName := pathParts[len(pathParts)-1]
+			config.Name = strings.TrimRight(repoName, ".git")
+		}
+	}
+	http.HandleFunc("/api/1/projects", c.getProjects)
+	for _, config := range c.Configs {
+		http.HandleFunc("/api/1/project/"+config.Name, c.changeProject)
 	}
 }
