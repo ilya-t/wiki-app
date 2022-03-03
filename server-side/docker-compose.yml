@@ -10,9 +10,9 @@ services:
           - "test-backend"
     environment:
       - ASSERTS=true
-      - APP_REPO_LINK=/tmp/test_repo.git
     volumes:
-      - $target_repo:/app/repo-store/repo
+      - $repo_store_dir:/app/repo-store
+      - $config_dir:/app/config
       - $target_ssh_keys:/root/.ssh
       - /tmp/test_repo.git:/tmp/test_repo.git
       # - /tmp/server_side_tmp:/tmp # contains archives of revisions
@@ -20,7 +20,7 @@ services:
     build: tests
     volumes:
       - ./build_artifacts:/app/reports
-      - $target_repo:/app/repo
+      - $repo_store_dir:/app/repo-store-volume
       - /tmp/test_repo.git:/tmp/test_repo.git
       # - /tmp/tests_tmp:/tmp # contains archives of reveived revisions
     networks:

@@ -2,11 +2,12 @@ package main
 
 import (
 	"archive/zip"
-	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
-	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 type Zipper struct {
@@ -15,19 +16,32 @@ type Zipper struct {
 }
 
 func (z *Zipper) ZipRepo(dst string) error {
-	z.shell.Execute("rm " + dst)
+	files := make([]*File, 0)
+	walker := func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 
-	command := "zip -r " + dst + " repo --exclude \"repo/.git/*\""
-	// executing "zip" through  "/bin/sh -c" cause somehow same "zip" command
-	// cannot match excluded files correctly (command.Dir = CWD break everything)
-	r, e := exec.Command("/bin/sh", "-c", "cd "+z.cwd+"/.. && "+command).Output()
-	fmt.Println("cmd out: ", command, string(r))
+		if info.IsDir() {
+			return nil
+		}
 
-	if e != nil {
-		extra := "\nzip command: " + command + "\ncommand output: " + string(r)
-		return errors.New(e.Error() + "\nExtra: " + extra)
+		if strings.Index(path, z.cwd+"/.git") == 0 {
+			return nil
+		}
+
+		fileName := path[len(z.cwd)+1:]
+		f := NewFile(fileName, fileName)
+		fmt.Printf("%s -> %+v", fileName, f)
+		files = append(files, f)
+		return nil
 	}
-	return nil
+
+	if e := filepath.Walk(z.cwd, walker); e != nil {
+		return e
+	}
+
+	return z.ZipSelective(dst, files)
 }
 
 func (z *Zipper) ZipSelective(dst string, files []*File) error {

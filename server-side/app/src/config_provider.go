@@ -2,15 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"strings"
 )
 
 const (
-	CONFIG_FILE   = "/app/config/config.json"
-	REPO_LINK_VAR = "APP_REPO_LINK"
-	REPOS_DIR     = "/app/repo-store"
+	CONFIG_FILE = "/app/config/config.json"
+	REPOS_DIR   = "/app/repo-store"
 )
 
 type ProjectConfig struct {
@@ -36,32 +34,13 @@ func loadConfigurations() ([]*ProjectConfig, error) {
 	return configs, nil
 }
 
-func toConfigurations(userConfigs []*ProjectConfig) []*Configuration {
-	results := make([]*Configuration, 0)
-
-	for _, config := range userConfigs {
-		pathParts := strings.Split(config.Url, "/")
-		repoName := pathParts[len(pathParts)-1]
-
-		results = append(results, &Configuration{
-			id:      strings.TrimRight(repoName, ".git"),
-			repoDir: REPOS_DIR + "/" + repoName,
-			repoUrl: config.Url,
-		})
-	}
-
-	return results
-}
-
-func loadDefaultConfiguration() (*Configuration, error) {
-	repoLink := os.Getenv(REPO_LINK_VAR)
-
-	if repoLink == "" {
-		return nil, errors.New("env.variable not defined: " + REPO_LINK_VAR + ". Pass repo link for cloning")
-	}
+func toConfiguration(p *ProjectConfig) *Configuration {
+	pathParts := strings.Split(p.Url, "/")
+	repoName := strings.TrimRight(pathParts[len(pathParts)-1], ".git")
 
 	return &Configuration{
-		repoDir: CWD,
-		repoUrl: repoLink,
-	}, nil
+		id:      repoName,
+		repoDir: REPOS_DIR + "/" + repoName,
+		repoUrl: p.Url,
+	}
 }

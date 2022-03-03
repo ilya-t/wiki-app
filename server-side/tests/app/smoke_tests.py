@@ -6,7 +6,7 @@ import api
 import backend
 
 HOST = 'http://test-backend'
-REPO_DIR = "/app/repo"
+REPO_DIR = "/app/repo-store-volume/test_repo"
 BARE_REPO_PATH = "/tmp/test_repo.git"
 
 
@@ -14,7 +14,7 @@ class AcceptanceTests(unittest.TestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.api_user = api.RestApi(endpoint=HOST, artifacts_prefix=self.id())
+        self.api_user = api.RestApi(endpoint=HOST, project='test_repo', artifacts_prefix=self.id())
         self.repo_user = api.GitApi(origin=BARE_REPO_PATH, dir="/tmp/repo_user")
         backend.wait_boot()
 

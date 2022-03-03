@@ -1,17 +1,25 @@
 set -e
-repo_on_app=/tmp/test_repo_folder
+repo_on_app=/tmp/server_side_test_volumes/repo-store
+config_dir=/tmp/server_side_test_volumes/config
 rm -rf $repo_on_app
 mkdir -p $repo_on_app
+
+rm -rf $config_dir
+mkdir -p $config_dir
+
 rm -rf ./build_artifacts
 mkdir ./build_artifacts
 
 cd tests
 ./init_repo.sh
+cp ./test_config.json $config_dir/config.json
 cd ..
+
 set +e
 rm .env
 echo "host_port=80" >> .env
-echo "target_repo=$repo_on_app" >> .env
+echo "repo_store_dir=$repo_on_app" >> .env
+echo "config_dir=$config_dir" >> .env
 echo "target_ssh_keys=~/.ssh" >> .env
 docker-compose up --build --abort-on-container-exit
 RESULT_INTGR=$?

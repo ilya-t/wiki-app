@@ -3,8 +3,8 @@ PORT=8181
 host_volumes=$1
 
 if [ "$host_volumes" == "" ]; then
-    REPO="./tests/test_repo"
-    echo "Specify path to volumes. Expecting stucture:"
+    echo "Specify path to volumes as first arg: ./localrun.sh /some/path "
+    echo "Expecting stucture at /some/path:"
     echo "  /some/path/config/config.json"
     echo "  /some/path/repo-store"
     exit 1

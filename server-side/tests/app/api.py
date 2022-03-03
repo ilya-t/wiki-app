@@ -40,15 +40,19 @@ def scan_dir(directory: str) -> {}:
 
 class RestApi:
 
-    def __init__(self, endpoint: str, artifacts_prefix: str) -> None:
+    def __init__(self, 
+            endpoint: str, 
+            project: str,
+            artifacts_prefix: str) -> None:
         super().__init__()
         self._endpoint: str = endpoint
+        project_endpoint = endpoint + '/' + project
         self._artifacts_prefix: str = artifacts_prefix
-        self._stage_api: str = self._endpoint + '/api/1/stage'
-        self._commit_api: str = self._endpoint + '/api/1/commit'
-        self._status_api: str = self._endpoint + '/api/1/status'
-        self._latest_api: str = self._endpoint + '/api/1/revision/latest'
-        self._sync_api: str = self._endpoint + '/api/1/revision/sync'
+        self._stage_api: str = project_endpoint + '/api/1/stage'
+        self._commit_api: str = project_endpoint + '/api/1/commit'
+        self._status_api: str = project_endpoint + '/api/1/status'
+        self._latest_api: str = project_endpoint + '/api/1/revision/latest'
+        self._sync_api: str = project_endpoint + '/api/1/revision/sync'
 
     def stage(self, file: str, content: str) -> requests.Response:
         return requests.post(self._stage_api, json={

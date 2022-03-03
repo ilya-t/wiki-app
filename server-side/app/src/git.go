@@ -198,6 +198,7 @@ func (g *Git) TryClone() {
 		panic(e)
 	}
 
+	fmt.Println("Cloning " + g.repoUrl + " to: " + g.repoDir)
 	g.shell.StrictExecute("git clone " + g.repoUrl + " \"" + g.repoDir + "\"")
 }
 
