@@ -69,7 +69,18 @@ class BackendController(
                 val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
                 requestLastRevisionSnapshot(files)?.let {
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
-                    Decompressor.decompress(it, project.dir.absolutePath)
+                    val syncOutput = File(project.dir.absolutePath + "/sync")
+                    val syncedFiles = if (fullSync) File(syncOutput, "repo") else syncOutput
+                    Decompressor.decompress(it, syncOutput.absolutePath)
+
+                    if (fullSync) {
+                        project.repo.deleteRecursively()
+                        syncedFiles.renameTo(project.repo)
+                    } else {
+                        syncedFiles.copyRecursively(project.repo, overwrite = true)
+                    }
+
+                    syncedFiles.deleteRecursively()
 
                     scope.launch(Dispatchers.Main) {
                         projectObserver?.invoke(project.repo)
@@ -82,7 +93,6 @@ class BackendController(
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                //Log.that("Unhandled exception: ", e)
                 scope.launch(Dispatchers.Main) {
                     quickStatusController.error(QuickStatus.SYNC, e)
                 }
@@ -98,11 +108,11 @@ class BackendController(
         val file = platformDeps.filesDir.absolutePath + "/revision.zip" //TODO: remove hardcode
         try {
             val response = if (files.isEmpty()) {
-                backendApi.latestRevision().execute()
+                backendApi.latestRevision(project.name).execute()
             } else {
                 val hashes = FileHashSerializable.serializeList(files)
                 val body = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), hashes)
-                backendApi.sync(body).execute()
+                backendApi.sync(project.name, body).execute()
             }
             //Log.that("1. Requesting")
 
@@ -137,7 +147,7 @@ class BackendController(
         quickStatusController.udpate(QuickStatus.STAGE)
 
         val response = try {
-            backendApi.stage(WikiBackendAPIs.Staging(
+            backendApi.stage(project.name, WikiBackendAPIs.Staging(
                     listOf(WikiBackendAPIs.FileStaging(relativePath, b64))
             )).execute()
         } catch (e: IOException) {
@@ -159,7 +169,7 @@ class BackendController(
 
     fun commit(message: String) {
         quickStatusController.udpate(QuickStatus.COMMIT)
-        val response = backendApi.commit(
+        val response = backendApi.commit(project.name,
                 WikiBackendAPIs.Commitment(message)
         ).execute()
         if (response.code() != 200) {
@@ -176,7 +186,7 @@ class BackendController(
 
     fun status(): StatusResponse {
         quickStatusController.udpate(QuickStatus.STATUS_UPDATE)
-        val response = backendApi.status().execute()
+        val response = backendApi.status(project.name).execute()
         if (response.code() != 200) {
             quickStatusController.error(
                     QuickStatus.STATUS_UPDATE,

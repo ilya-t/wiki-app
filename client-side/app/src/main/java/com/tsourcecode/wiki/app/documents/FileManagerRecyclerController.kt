@@ -18,17 +18,26 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.io.Closeable
 
+private const val ROOT_DIR_TITLE = "<root dir>"
+
 class FileManagerRecyclerController(
         private val project: Project,
         private val activity: AppCompatActivity,
         root: ViewGroup,
         private val data: Flow<Folder>,
         openDelegate: (Element) -> Unit,
+        rootClickDelegate: () -> Unit,
         docContentProvider: DocumentContentProvider,
 ) : Closeable {
     private val scope = CoroutineScope(Dispatchers.Main)
     private val container = root.findViewById<ViewGroup>(R.id.files_list_container)
-    private val title = root.findViewById<AppCompatTextView>(R.id.files_title)
+    private val title = root.findViewById<AppCompatTextView>(R.id.files_title).apply {
+        setOnClickListener {
+            if (text == ROOT_DIR_TITLE) {
+                rootClickDelegate()
+            }
+        }
+    }
     private val context = container.context
     private val progressBar = root.findViewById<View>(R.id.files_trobber)
 
@@ -55,7 +64,7 @@ class FileManagerRecyclerController(
                 if (relativePath.isNotEmpty()) {
                     title.text = relativePath
                 } else {
-                    title.text = "<root dir>"
+                    title.text = ROOT_DIR_TITLE
                 }
             }
         }

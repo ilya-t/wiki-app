@@ -4,8 +4,10 @@ import java.io.File
 import java.net.URL
 
 class Project(
-    val dir: File,
+    val name: String,
+    filesDir: File,
     val url: URL
 ) {
+    val dir = File(filesDir, name)
     val repo: File = File(dir.absolutePath + "/repo")
 }

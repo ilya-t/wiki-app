@@ -6,21 +6,22 @@ import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Streaming
 
 interface WikiBackendAPIs {
     @Streaming
-    @GET("/api/1/revision/latest")
-    fun latestRevision(): Call<ResponseBody>
+    @GET("/{project}/api/1/revision/latest")
+    fun latestRevision(@Path("project") name: String): Call<ResponseBody>
     @Streaming
-    @POST("/api/1/revision/sync")
-    fun sync(@Body body: RequestBody): Call<ResponseBody>
-    @POST("/api/1/stage")
-    fun stage(@Body staging: Staging): Call<ResponseBody>
-    @POST("/api/1/status")
-    fun status(): Call<ResponseBody>
-    @POST("/api/1/commit")
-    fun commit(@Body c: Commitment): Call<ResponseBody>
+    @POST("/{project}/api/1/revision/sync")
+    fun sync(@Path("project") name: String, @Body body: RequestBody): Call<ResponseBody>
+    @POST("/{project}/api/1/stage")
+    fun stage(@Path("project") name: String, @Body staging: Staging): Call<ResponseBody>
+    @POST("/{project}/api/1/status")
+    fun status(@Path("project") name: String): Call<ResponseBody>
+    @POST("/{project}/api/1/commit")
+    fun commit(@Path("project") name: String, @Body c: Commitment): Call<ResponseBody>
 
     data class Staging(
             val files: List<FileStaging>

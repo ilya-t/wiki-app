@@ -1,6 +1,11 @@
 package com.tsourcecode.wiki.app
 
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.content.Context
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatTextView
 import com.tsourcecode.wiki.lib.domain.QuickStatus
@@ -12,6 +17,7 @@ class QuickStatusViewModel(
         quickStatusController: QuickStatusController,
 ) {
     private val tvStatus = activity.findViewById<AppCompatTextView>(R.id.tv_status)
+    private var lastStatus: StatusInfo? = null
 
     init {
         quickStatusController.listener = { status ->
@@ -31,6 +37,14 @@ class QuickStatusViewModel(
                         FrameLayout.LayoutParams.MATCH_PARENT,
                         FrameLayout.LayoutParams.WRAP_CONTENT,
                 )
+                (activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).apply {
+                    setPrimaryClip(ClipData(
+                            ClipDescription("stack", arrayOf("")),
+                            ClipData.Item(lastStatus?.error?.stackTraceToString())
+                    ))
+
+                    Toast.makeText(activity, "Stack at clipboard!", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -47,6 +61,8 @@ class QuickStatusViewModel(
                     )
             tvStatus.text = status.status.name
         }
+
+        this.lastStatus = status
     }
 
     private fun QuickStatus.color(): Int {

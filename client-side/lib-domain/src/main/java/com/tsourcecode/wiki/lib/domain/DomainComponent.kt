@@ -22,7 +22,8 @@ class DomainComponent(
 ) {
     private val workerScope = GlobalScope
     val defaultProject = Project(
-            dir = File(platformDeps.filesDir.absolutePath + "/default_project"),
+            name = "notes",
+            filesDir = platformDeps.filesDir,
             url = URL("http://duke-nucem:8181/"),
     )
     val quickStatusController = QuickStatusController()

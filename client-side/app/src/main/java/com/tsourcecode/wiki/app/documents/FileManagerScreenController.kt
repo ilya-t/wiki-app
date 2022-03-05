@@ -29,6 +29,7 @@ class FileManagerScreenController(
                             root = it as ViewGroup,
                             model.dataFlow,
                             openDelegate = this::openElement,
+                            rootClickDelegate = this::openProjects,
                             docContentProvider,
                     )
                 }
@@ -43,6 +44,10 @@ class FileManagerScreenController(
             }
             is Folder -> model.navigateTo(e)
         }
+    }
+
+    private fun openProjects() {
+        navigator.open(Screen.CONFIG)
     }
 
     fun navigateBackward() = model.navigateBackward()

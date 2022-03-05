@@ -8,6 +8,11 @@ import java.util.zip.ZipInputStream
 
 object Decompressor {
     fun decompress(zipFile: String, outputDir: String) {
+        with(File(outputDir)) {
+            if (!exists()) {
+                mkdirs()
+            }
+        }
         val fileInputStream = FileInputStream(zipFile)
         val zipInputStream = ZipInputStream(fileInputStream)
         var zipEntry: ZipEntry
@@ -18,7 +23,11 @@ object Decompressor {
             if (zipEntry.isDirectory) {
                 tryCreateDir(outputDir + "/"+ zipEntry.name)
             } else {
-                val outputStream = FileOutputStream(outputDir + "/" + zipEntry.name)
+                val outputFile = File(outputDir + "/" + zipEntry.name)
+                if (!outputFile.parentFile.exists()) {
+                    outputFile.parentFile.mkdirs()
+                }
+                val outputStream = FileOutputStream(outputFile)
                 var data = zipInputStream.read()
                 while (data != -1) {
                     outputStream.write(data)
