@@ -76,7 +76,8 @@ class ActivityComponent(
 
     private val configScreenController = ConfigScreenController(
             activity,
-            navigator
+            navigator,
+            appComponent.domain.configScreenModel,
     )
 
     fun dispatchBackPressed(): Boolean {
