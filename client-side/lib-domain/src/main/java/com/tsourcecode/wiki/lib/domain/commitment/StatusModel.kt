@@ -20,6 +20,8 @@ class StatusModel(
 ) {
     private var lastSeenCommitText = ""
     private var lastSeenStatus: StatusResponse? = null
+    private val _statusFlow = MutableStateFlow(StatusViewModel())
+    val statusFlow: StateFlow<StatusViewModel> = _statusFlow
 
     init {
         worker.launch {
@@ -69,7 +71,4 @@ class StatusModel(
             activeDocumentController.switch(d)
         }
     }
-
-    private val _statusFlow = MutableStateFlow(StatusViewModel())
-    val statusFlow: StateFlow<StatusViewModel> = _statusFlow
 }

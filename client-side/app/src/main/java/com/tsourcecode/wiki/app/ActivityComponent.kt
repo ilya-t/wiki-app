@@ -9,12 +9,13 @@ import com.tsourcecode.wiki.app.editor.EditorScreenController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
 import com.tsourcecode.wiki.app.search.SearchScreenController
-import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
 
 class ActivityComponent(
         private val activity: AppCompatActivity,
         private val appComponent: AppComponent,
 ) {
+    private val defaultProject = appComponent.domain.defaultProjectComponent
+
     private val navigator = ActivityNavigator(activity).apply {
         val btnFiles = activity.findViewById<View>(R.id.btn_files)
         btnFiles.setOnClickListener {
@@ -27,7 +28,7 @@ class ActivityComponent(
 
     private val ptrTrigger = PullToRefreshTrigger(
             activity,
-            appComponent.backendController,
+            defaultProject.backendController,
             navigator,
     )
     private val quickStateController = QuickStatusViewModel(
@@ -37,39 +38,33 @@ class ActivityComponent(
     private val editStateController = EditStateController(
             activity,
             navigator,
-            appComponent.statusModel,
+            defaultProject.statusModel,
     )
 
     private val searchScreenController = SearchScreenController(
             navigator,
             activity,
-            appComponent.domain.searchModel,
-    )
-
-    private val documentsController = DocumentsController(
-            appComponent.domain.defaultProject,
-            appComponent.backendController,
-            appComponent.changedFilesController,
+            defaultProject.searchModel,
     )
 
     private val commitScreenView = CommitScreenView(
             activity,
             navigator,
-            appComponent.statusModel,
+            defaultProject.statusModel,
     )
     private val editorScreenController = EditorScreenController(
             activity,
             navigator,
             appComponent.docContentProvider,
-            documentsController,
+            defaultProject.documentsController,
             appComponent.domain.activeDocumentController,
     )
 
     private val fileManagerScreenController = FileManagerScreenController(
-            appComponent.domain.defaultProject,
+            defaultProject.project,
             activity,
             navigator,
-            appComponent.domain.fileManagerModel,
+            defaultProject.fileManagerModel,
             appComponent.docContentProvider,
             appComponent.domain.activeDocumentController,
     )

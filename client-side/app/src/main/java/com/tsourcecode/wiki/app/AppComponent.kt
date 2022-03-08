@@ -6,11 +6,8 @@ import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 
 class AppComponent(private val appContext: Context) {
     internal val domain = DomainComponent(AndroidPlatformDeps(appContext))
-    val changedFilesController = domain.changedFilesController
-    val backendController = domain.backendController
     val quickStatusController = domain.quickStatusController
     val docContentProvider = domain.docContentProvider
-    val statusModel = domain.statusModel
 
     init {
         if (BuildConfig.DEBUG) {

@@ -83,6 +83,11 @@ private class ConfigScreenView(
                     value = item.projectUrl,
                     onValueChange = { configModel.edit(index, item.copy(projectUrl = it)) },
             )
+            Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { configModel.submitImport(item) }) {
+                Text(text = "import")
+            }
 
         }
     }
@@ -116,7 +121,7 @@ private class ConfigScreenView(
                     enabled = item.submitEnabled,
                     onClick = { configModel.submit(item) }) {
                 Text(
-                        text = item.submitButton.name,
+                        text = item.submitButton.name.lowercase(),
                 )
             }
         }
