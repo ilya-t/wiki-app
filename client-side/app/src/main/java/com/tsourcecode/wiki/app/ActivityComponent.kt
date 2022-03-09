@@ -2,6 +2,7 @@ package com.tsourcecode.wiki.app
 
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.commitment.CommitScreenView
 import com.tsourcecode.wiki.app.config.ConfigScreenController
 import com.tsourcecode.wiki.app.documents.FileManagerScreenController
@@ -9,13 +10,14 @@ import com.tsourcecode.wiki.app.editor.EditorScreenController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
 import com.tsourcecode.wiki.app.search.SearchScreenController
+import com.tsourcecode.wiki.lib.domain.project.Project
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 class ActivityComponent(
         private val activity: AppCompatActivity,
         private val appComponent: AppComponent,
 ) {
-    private val defaultProject = appComponent.domain.defaultProjectComponent
-
     private val navigator = ActivityNavigator(activity).apply {
         val btnFiles = activity.findViewById<View>(R.id.btn_files)
         btnFiles.setOnClickListener {
@@ -26,48 +28,65 @@ class ActivityComponent(
         }
     }
 
-    private val ptrTrigger = PullToRefreshTrigger(
-            activity,
-            defaultProject.backendController,
-            navigator,
-    )
+    init {
+        activity.lifecycleScope.launch {
+            appComponent.domain.projectsRepository.data.collect {
+                it.firstOrNull()?.let { project ->
+                    bootProjectDeps(project)
+                }
+            }
+        }
+
+        navigator.open(Screen.CONFIG)
+    }
+
+    private var fileManagerScreenController: FileManagerScreenController? = null
+
+    private fun bootProjectDeps(p: Project) {
+        val component = appComponent.domain.projectComponents.get(p)
+        val ptrTrigger = PullToRefreshTrigger(
+                activity,
+                component.backendController,
+                navigator,
+        )
+        val editStateController = EditStateController(
+                activity,
+                navigator,
+                component.statusModel,
+        )
+
+        val searchScreenController = SearchScreenController(
+                navigator,
+                activity,
+                component.searchModel,
+        )
+
+        val commitScreenView = CommitScreenView(
+                activity,
+                navigator,
+                component.statusModel,
+        )
+        val editorScreenController = EditorScreenController(
+                activity,
+                navigator,
+                appComponent.docContentProvider,
+                component.documentsController,
+                appComponent.domain.activeDocumentController,
+        )
+
+        fileManagerScreenController = FileManagerScreenController(
+                component.project,
+                activity,
+                navigator,
+                component.fileManagerModel,
+                appComponent.docContentProvider,
+                appComponent.domain.activeDocumentController,
+        )
+    }
+
     private val quickStateController = QuickStatusViewModel(
             activity,
             appComponent.quickStatusController)
-
-    private val editStateController = EditStateController(
-            activity,
-            navigator,
-            defaultProject.statusModel,
-    )
-
-    private val searchScreenController = SearchScreenController(
-            navigator,
-            activity,
-            defaultProject.searchModel,
-    )
-
-    private val commitScreenView = CommitScreenView(
-            activity,
-            navigator,
-            defaultProject.statusModel,
-    )
-    private val editorScreenController = EditorScreenController(
-            activity,
-            navigator,
-            appComponent.docContentProvider,
-            defaultProject.documentsController,
-            appComponent.domain.activeDocumentController,
-    )
-
-    private val fileManagerScreenController = FileManagerScreenController(
-            defaultProject.project,
-            activity,
-            navigator,
-            defaultProject.fileManagerModel,
-            appComponent.docContentProvider,
-            appComponent.domain.activeDocumentController,
-    )
 
     private val configScreenController = ConfigScreenController(
             activity,
@@ -81,7 +100,7 @@ class ActivityComponent(
             return true
         }
 
-        if (fileManagerScreenController.navigateBackward()) {
+        if (fileManagerScreenController?.navigateBackward() == true) {
             return true
         }
 
