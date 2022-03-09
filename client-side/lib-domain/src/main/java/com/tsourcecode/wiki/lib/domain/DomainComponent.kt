@@ -33,6 +33,8 @@ class DomainComponent(
     val configScreenModel = ConfigScreenModel(
             projectsRepository,
             platformDeps,
+            quickStatusController,
+            workerScope,
     )
 
     val defaultProjectComponent = ProjectComponent(

@@ -1,12 +1,14 @@
 package com.tsourcecode.wiki.lib.domain.project
 
 import java.io.File
-import java.net.URL
+import java.net.URI
 
 class Project(
+    val id: String,
     val name: String,
     filesDir: File,
-    val url: URL
+    val serverUri: URI,
+    val repoUri: String
 ) {
     val dir = File(filesDir, name)
     val repo: File = File(dir.absolutePath + "/repo")

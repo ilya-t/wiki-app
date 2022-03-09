@@ -31,7 +31,7 @@ class BackendController(
 ) {
     private var projectObserver: ((File) -> Unit)? = null
     private val retrofit = Retrofit.Builder()
-            .baseUrl(project.url)
+            .baseUrl(project.serverUri.toURL())
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     private val _refreshFlow = MutableStateFlow(false)

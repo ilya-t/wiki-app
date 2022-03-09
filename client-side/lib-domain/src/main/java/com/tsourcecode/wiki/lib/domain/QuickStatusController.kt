@@ -7,6 +7,10 @@ class QuickStatusController {
         listener?.invoke(StatusInfo((status)))
     }
 
+    fun error(e: Exception) {
+        listener?.invoke(StatusInfo(QuickStatus.ERROR, e))
+    }
+
     fun error(status: QuickStatus, e: Exception) {
         listener?.invoke(StatusInfo(status, e))
     }

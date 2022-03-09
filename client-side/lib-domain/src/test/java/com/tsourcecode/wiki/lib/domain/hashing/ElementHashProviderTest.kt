@@ -15,7 +15,7 @@ class ElementHashProviderTest {
 
     private val project = Project(
             dir = File("/tmp/repo/${rule.methodName}"),
-            url = URL("http://url")
+            serverUri = URL("http://url")
     )
     private val fixedSha1File = File(project.repo, "file_with_fixed_sha1")
     private val contentDir = File(project.repo, "content")
