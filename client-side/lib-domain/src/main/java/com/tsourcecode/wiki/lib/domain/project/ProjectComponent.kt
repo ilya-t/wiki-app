@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.project
 
+import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
@@ -7,7 +8,6 @@ import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
-import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.search.SearchModel
@@ -21,6 +21,7 @@ class ProjectComponent(
         private val activeDocumentController: ActiveDocumentController,
         private val workerScope: CoroutineScope,
         private val changedFilesController: ChangedFilesController,
+        private val navigator: AppNavigator,
 ) {
     private val elementHashProvider = ElementHashProvider(
             project,
@@ -60,12 +61,4 @@ class ProjectComponent(
             workerScope,
             activeDocumentController,
     )
-
-    val fileManagerModel = FileManagerModel(
-            project,
-            documentsController,
-            workerScope,
-            fileStatusProvider,
-    )
-
 }

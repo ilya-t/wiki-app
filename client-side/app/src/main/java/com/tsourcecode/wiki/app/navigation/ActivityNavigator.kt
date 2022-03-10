@@ -28,19 +28,26 @@ class ActivityNavigator(
         contentContainer = activity.findViewById(R.id.content_container)
 
         activity.lifecycleScope.launch {
-            appNavigator.data.collect {
+            appNavigator.data.collect { uri ->
+                if (openedScreen?.handle(uri) == true) {
+                    return@collect
+                }
                 openedScreen?.close()
                 contentContainer.removeAllViews()
-                val newScreen = resolveScreen(it)
+                val newScreen = resolveScreen(uri)
                 newScreen?.view?.let { v -> contentContainer.addView(v) }
+                newScreen?.handle(uri)
                 openedScreen = newScreen
             }
         }
     }
 
     private fun resolveScreen(uri: URI): ScreenView? {
-        if (uri.host == AppNavigator.PROJECTS.host) {
+        if (AppNavigator.isConfigUri(uri)) {
             return screenFactory.configScreen()
+        }
+        if (AppNavigator.isProjectElementNavigation(uri)) {
+            return screenFactory.fileManager()
         }
         return null
     }

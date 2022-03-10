@@ -4,7 +4,6 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.commitment.CommitScreenView
-import com.tsourcecode.wiki.app.documents.FileManagerScreenController
 import com.tsourcecode.wiki.app.editor.EditorScreenController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
@@ -48,8 +47,6 @@ class ActivityComponent(
         navigator.open(Screen.CONFIG)
     }
 
-    private var fileManagerScreenController: FileManagerScreenController? = null
-
     private fun bootProjectDeps(p: Project) {
         val component = appComponent.domain.projectComponents.get(p)
         val ptrTrigger = PullToRefreshTrigger(
@@ -81,15 +78,6 @@ class ActivityComponent(
                 component.documentsController,
                 appComponent.domain.activeDocumentController,
         )
-
-        fileManagerScreenController = FileManagerScreenController(
-                component.project,
-                activity,
-                navigator,
-                component.fileManagerModel,
-                appComponent.docContentProvider,
-                appComponent.domain.activeDocumentController,
-        )
     }
 
     private val quickStateController = QuickStatusViewModel(
@@ -97,12 +85,7 @@ class ActivityComponent(
             appComponent.quickStatusController)
 
     fun dispatchBackPressed(): Boolean {
-        if (navigator.currentScreen != Screen.FILE_MANAGER) {
-            navigator.open(Screen.FILE_MANAGER)
-            return true
-        }
-
-        if (fileManagerScreenController?.navigateBackward() == true) {
+        if (appComponent.domain.navigator.goBack()) {
             return true
         }
 

@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.project
 
+import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
@@ -11,7 +12,8 @@ class ProjectComponentProvider(
         private val quickStatusController: QuickStatusController,
         private val activeDocumentController: ActiveDocumentController,
         private val workerScope: CoroutineScope,
-        private val changedFilesController: ChangedFilesController
+        private val changedFilesController: ChangedFilesController,
+        private val navigator: AppNavigator
 ) {
     private val components = mutableMapOf<Project, ProjectComponent>()
     fun get(p: Project): ProjectComponent {
@@ -23,6 +25,7 @@ class ProjectComponentProvider(
                     activeDocumentController,
                     workerScope,
                     changedFilesController,
+                    navigator,
             )
         }
 

@@ -28,6 +28,25 @@ data class Folder(
         private val f: File,
         val elements: List<Element>,
 ) : Element(f) {
+    fun find(filePath: String): Element? {
+        if (filePath.isEmpty()) {
+            return this
+        }
+
+        var result: Element? = this
+
+        filePath.split("/").forEach { part ->
+            val capturedResult = result
+            if (capturedResult is Folder) {
+                result = capturedResult.elements.firstOrNull { it.file.name == part }
+            } else {
+                return null
+            }
+        }
+
+        return result
+    }
+
     val documents: List<Document> = elements
             .filterIsInstance<Document>()
 }

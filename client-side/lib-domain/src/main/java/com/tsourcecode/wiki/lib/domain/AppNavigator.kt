@@ -5,8 +5,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import java.net.URI
 import java.util.*
 
-private const val SCHEME = "open"
-
 class AppNavigator {
     private val _data = MutableStateFlow(PROJECTS)
     val data: Flow<URI> = _data
@@ -23,13 +21,19 @@ class AppNavigator {
         _data.value = uri
     }
 
-    fun goBack() {
+    fun goBack(): Boolean {
         if (stack.isNotEmpty()) {
             _data.value = stack.pop()
+            return true
         }
+
+        return false
     }
 
     companion object {
-        val PROJECTS: URI = URI.create("$SCHEME://projects")
+        val PROJECTS: URI = URI.create("settings://projects")
+
+        fun isConfigUri(uri: URI) = uri.host == PROJECTS.host
+        fun isProjectElementNavigation(uri: URI) = uri.scheme == "open"
     }
 }

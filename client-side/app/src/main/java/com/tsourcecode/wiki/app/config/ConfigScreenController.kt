@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.app.config
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -32,6 +33,7 @@ import com.tsourcecode.wiki.lib.domain.config.SubmitButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.net.URI
 
 class ConfigScreenView(
         activity: AppCompatActivity,
@@ -40,6 +42,7 @@ class ConfigScreenView(
 ) : ScreenView {
     private val composeView = ComposeView(activity)
     override val view: View = composeView
+    override fun handle(uri: URI) = false
 
     private val collector = scope.launch {
         configModel.data.collect {
@@ -97,7 +100,10 @@ class ConfigScreenView(
                     modifier = Modifier
                             .padding(Dp(8f))
                             .fillMaxWidth(.80f)
-                            .align(CenterVertically),
+                            .align(CenterVertically)
+                            .clickable {
+                                configModel.open(item)
+                            },
                     text = item.projectName,
                     color = Color.White,
                     fontFamily = FontFamily.Monospace,

@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.lib.domain
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenModel
 import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
+import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
@@ -37,9 +38,17 @@ class DomainComponent(
             platformDeps,
             quickStatusController,
             workerScope,
+            navigator,
     )
 
     val projectComponents = ProjectComponentProvider(
-            platformDeps, quickStatusController, activeDocumentController, workerScope, changedFilesController
+            platformDeps, quickStatusController, activeDocumentController, workerScope, changedFilesController, navigator,
+    )
+
+    val fileManagerModel = FileManagerModel(
+            workerScope,
+            navigator,
+            projectComponents,
+            quickStatusController,
     )
 }

@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.config
 
+import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.ProjectBackendController
@@ -19,6 +20,7 @@ class ConfigScreenModel(
         private val platformDeps: PlatformDeps,
         private val quickStatusController: QuickStatusController,
         private val workerScope: CoroutineScope,
+        private val navigator: AppNavigator,
 ) {
     private val _data = MutableStateFlow(emptyList<ConfigScreenItem>())
     val data: Flow<List<ConfigScreenItem>> = _data
@@ -130,6 +132,10 @@ class ConfigScreenModel(
             currentList.add(ConfigScreenItem.EditableElement())
         }
         _data.value = currentList
+    }
+
+    fun open(item: ConfigScreenItem.PreviewElement) {
+        navigator.open(URI("open://${item.projectName}/"))
     }
 }
 
