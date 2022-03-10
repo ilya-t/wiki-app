@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.net.URI
 import java.net.URISyntaxException
+import java.util.*
 
 class ConfigScreenModel(
         private val projectsRepository: ProjectsRepository,
@@ -32,7 +33,8 @@ class ConfigScreenModel(
         val currentList = ArrayList(_data.value)
         val importItem = currentList.filterIsInstance<ConfigScreenItem.ImportFrom>().firstOrNull()
                 ?: ConfigScreenItem.ImportFrom()
-        val newItem = ConfigScreenItem.EditableElement()
+        val newItem = currentList.filterIsInstance<ConfigScreenItem.EditableElement>()
+                .firstOrNull { it.origin == null } ?: ConfigScreenItem.PlusElement()
         val newList = mutableListOf<ConfigScreenItem>(importItem)
         newList.addAll(projects.map { ConfigScreenItem.PreviewElement(it) })
         newList.add(newItem)
@@ -85,16 +87,16 @@ class ConfigScreenModel(
     }
 
     private fun ConfigScreenItem.EditableElement.toProject() = Project(
-            id = this.projectId ?: this.projectName,
+            id = this.origin?.id ?: UUID.randomUUID().toString(),
             name = this.projectName,
             filesDir = platformDeps.filesDir,
             serverUri = URI(this.serverAddress),
-            repoUri = this.projectUrl,
+            repoUri = this.repoUrl,
     )
 
     fun submit(item: ConfigScreenItem.EditableElement) {
         if (item.projectName.isEmpty() ||
-                item.projectUrl.isEmpty() ||
+                item.repoUrl.isEmpty() ||
                 item.serverAddress.isEmpty()) {
             return
         }
@@ -119,6 +121,16 @@ class ConfigScreenModel(
         projectsRepository.update(currentList)
 
     }
+
+    fun addNewElement() {
+        val currentList = ArrayList(_data.value)
+        if (currentList[currentList.lastIndex] is ConfigScreenItem.PlusElement) {
+            currentList[currentList.lastIndex] = ConfigScreenItem.EditableElement()
+        } else {
+            currentList.add(ConfigScreenItem.EditableElement())
+        }
+        _data.value = currentList
+    }
 }
 
 sealed interface ConfigScreenItem {
@@ -128,23 +140,25 @@ sealed interface ConfigScreenItem {
         val projectName: String = project.name
 
         fun toEditableElement() = EditableElement(
-                projectId = project.id,
+                origin = project,
                 serverAddress = project.serverUri.toString(),
                 projectName = project.name,
-                projectUrl = project.repoUri.toString(),
+                repoUrl = project.repoUri,
                 submitEnabled = true,
                 submitButton = SubmitButton.APPLY,
         )
     }
 
     data class EditableElement(
-            val projectId: String? = null,
-            val projectUrl: String = "",
+            val origin: Project? = null,
+            val repoUrl: String = "",
             val projectName: String = "",
             val serverAddress: String = "",
             val submitButton: SubmitButton = SubmitButton.ADD,
             val submitEnabled: Boolean = true,
     ) : ConfigScreenItem
+
+    class PlusElement : ConfigScreenItem
 
     data class ImportFrom(
             val projectUrl: String = "",

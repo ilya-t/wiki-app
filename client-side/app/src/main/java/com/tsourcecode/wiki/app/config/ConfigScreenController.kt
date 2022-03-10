@@ -74,7 +74,8 @@ private class ConfigScreenView(
                     is ConfigScreenItem.EditableElement -> EditableElement(i, item)
                     is ConfigScreenItem.ImportFrom -> RenderImport(i, item)
                     is ConfigScreenItem.PreviewElement -> PreviewElement(i, item)
-                }
+                    is ConfigScreenItem.PlusElement -> RenderPlusElement()
+                }.apply { /* exhaustive */ }
 
             }
         }
@@ -151,8 +152,8 @@ private class ConfigScreenView(
 
             InputField(
                     label = "repo url",
-                    value = item.projectUrl,
-                    onValueChange = { configModel.edit(index, item.copy(projectUrl = it)) },
+                    value = item.repoUrl,
+                    onValueChange = { configModel.edit(index, item.copy(repoUrl = it)) },
             )
 
             Button(modifier = Modifier
@@ -161,7 +162,7 @@ private class ConfigScreenView(
                     enabled = item.submitEnabled,
                     onClick = { configModel.submit(item) }) {
                 Text(
-                        text = item.submitButton.name.lowercase(),
+                        text = "apply",
                 )
             }
         }
@@ -192,11 +193,23 @@ private class ConfigScreenView(
         )
     }
 
+    @Composable
+    fun RenderPlusElement() {
+        Button(modifier = Modifier
+                .fillMaxWidth(),
+                colors = SubmitButton.ADD.colors(),
+                onClick = { configModel.addNewElement() }) {
+            Text(
+                    text = "add",
+            )
+        }
+    }
+
     override fun close() {
         collector.cancel()
     }
-
 }
+
 
 @Composable
 private fun SubmitButton.colors(): ButtonColors {
