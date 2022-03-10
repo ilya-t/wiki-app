@@ -8,14 +8,18 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestName
 import java.io.File
+import java.net.URI
 import java.net.URL
 
 class ElementHashProviderTest {
     @get:Rule val rule = TestName()
 
     private val project = Project(
-            dir = File("/tmp/repo/${rule.methodName}"),
-            serverUri = URL("http://url")
+            id = "id",
+            name = "name",
+            filesDir = File("/tmp/repo/${rule.methodName}"),
+            serverUri = URI("http://url"),
+            repoUri = "repo_uri"
     )
     private val fixedSha1File = File(project.repo, "file_with_fixed_sha1")
     private val contentDir = File(project.repo, "content")
