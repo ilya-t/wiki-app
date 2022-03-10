@@ -25,41 +25,22 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.lifecycleScope
-import com.tsourcecode.wiki.app.R
-import com.tsourcecode.wiki.app.navigation.ActivityNavigator
-import com.tsourcecode.wiki.app.navigation.Screen
-import com.tsourcecode.wiki.app.navigation.ScreenBootstrapper
+import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenModel
 import com.tsourcecode.wiki.lib.domain.config.SubmitButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import java.io.Closeable
 
-class ConfigScreenController(
+class ConfigScreenView(
         activity: AppCompatActivity,
-        navigator: ActivityNavigator,
-        configModel: ConfigScreenModel,
-) {
-    init {
-        ScreenBootstrapper(
-                Screen.CONFIG,
-                navigator,
-                bootPoint = {
-                    ConfigScreenView(it, configModel, activity.lifecycleScope)
-                }
-        )
-    }
-}
-
-private class ConfigScreenView(
-        v: View,
         private val configModel: ConfigScreenModel,
         scope: CoroutineScope,
-) : Closeable {
-    private val composeView = v.findViewById<ComposeView>(R.id.config_compose_view)
+) : ScreenView {
+    private val composeView = ComposeView(activity)
+    override val view: View = composeView
+
     private val collector = scope.launch {
         configModel.data.collect {
             composeView.setContent { Compose(it) }

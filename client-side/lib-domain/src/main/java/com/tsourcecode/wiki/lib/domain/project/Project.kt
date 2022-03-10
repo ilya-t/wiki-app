@@ -10,6 +10,6 @@ class Project(
     val serverUri: URI,
     val repoUri: String
 ) {
-    val dir = File(filesDir, name)
-    val repo: File = File(dir.absolutePath + "/repo")
+    val dir = File(filesDir, id)
+    val repo: File = File(dir, "repo")
 }

@@ -13,6 +13,7 @@ class DomainComponent(
         platformDeps: PlatformDeps,
 ) {
     private val workerScope = GlobalScope
+    val navigator = AppNavigator()
     val projectsRepository = ProjectsRepository(
             platformDeps,
             workerScope,

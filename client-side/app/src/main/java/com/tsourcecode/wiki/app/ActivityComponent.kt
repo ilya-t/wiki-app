@@ -4,11 +4,11 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.commitment.CommitScreenView
-import com.tsourcecode.wiki.app.config.ConfigScreenController
 import com.tsourcecode.wiki.app.documents.FileManagerScreenController
 import com.tsourcecode.wiki.app.editor.EditorScreenController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
+import com.tsourcecode.wiki.app.navigation.ScreenFactory
 import com.tsourcecode.wiki.app.search.SearchScreenController
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.flow.collect
@@ -18,7 +18,15 @@ class ActivityComponent(
         private val activity: AppCompatActivity,
         private val appComponent: AppComponent,
 ) {
-    private val navigator = ActivityNavigator(activity).apply {
+    private val screenFactory = ScreenFactory(
+            activity,
+            appComponent.domain,
+    )
+    private val navigator = ActivityNavigator(
+            activity,
+            appComponent.domain.navigator,
+            screenFactory,
+    ).apply {
         val btnFiles = activity.findViewById<View>(R.id.btn_files)
         btnFiles.setOnClickListener {
             open(Screen.FILE_MANAGER)
@@ -87,12 +95,6 @@ class ActivityComponent(
     private val quickStateController = QuickStatusViewModel(
             activity,
             appComponent.quickStatusController)
-
-    private val configScreenController = ConfigScreenController(
-            activity,
-            navigator,
-            appComponent.domain.configScreenModel,
-    )
 
     fun dispatchBackPressed(): Boolean {
         if (navigator.currentScreen != Screen.FILE_MANAGER) {

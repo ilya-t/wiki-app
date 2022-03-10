@@ -1,14 +1,22 @@
 package com.tsourcecode.wiki.app.navigation
 
-import android.view.LayoutInflater
-import android.view.View
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.R
+import com.tsourcecode.wiki.lib.domain.AppNavigator
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import java.net.URI
 
-class ActivityNavigator(private val activity: AppCompatActivity) {
+class ActivityNavigator(
+        private val activity: AppCompatActivity,
+        private val appNavigator: AppNavigator,
+        private val screenFactory: ScreenFactory,
+) {
+    private var openedScreen: ScreenView? = null
     private val contentContainer: FrameLayout
     var currentScreen: Screen = Screen.FILE_MANAGER
         private set
@@ -18,34 +26,33 @@ class ActivityNavigator(private val activity: AppCompatActivity) {
     init {
         activity.setContentView(R.layout.main_layout)
         contentContainer = activity.findViewById(R.id.content_container)
-        openInternal(currentScreen)
-    }
 
-    fun open(screen: Screen) {
-        if (currentScreen == screen) {
-            return
+        activity.lifecycleScope.launch {
+            appNavigator.data.collect {
+                openedScreen?.close()
+                contentContainer.removeAllViews()
+                val newScreen = resolveScreen(it)
+                newScreen?.view?.let { v -> contentContainer.addView(v) }
+                openedScreen = newScreen
+            }
         }
-        currentScreen = screen
-        openInternal(screen)
     }
 
-    private fun openInternal(screen: Screen) {
-        contentContainer.removeAllViews()
-        _data.value = ScreenDetails(
-                screen,
-                screen.inflateLayout(),
-        )
+    private fun resolveScreen(uri: URI): ScreenView? {
+        if (uri.host == AppNavigator.PROJECTS.host) {
+            return screenFactory.configScreen()
+        }
+        return null
     }
 
-    private fun Screen.inflateLayout(): View {
-        val id = when (this) {
-            Screen.CONFIG -> R.layout.config
+    fun open(screen: Screen) = Unit
+
+    private fun Screen.inflateLayout() {
+        when (this) {
             Screen.FILE_MANAGER -> R.layout.file_manager
             Screen.DOCUMENT -> R.layout.document_editor
             Screen.COMMIT -> R.layout.commit
             Screen.SEARCH -> R.layout.search
         }
-
-        return LayoutInflater.from(activity).inflate(id, contentContainer)
     }
 }
