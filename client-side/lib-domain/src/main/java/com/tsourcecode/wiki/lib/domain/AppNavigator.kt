@@ -34,6 +34,7 @@ class AppNavigator {
         val PROJECTS: URI = URI.create("settings://projects")
 
         fun isConfigUri(uri: URI) = uri.host == PROJECTS.host
-        fun isProjectElementNavigation(uri: URI) = uri.scheme == "open"
+        fun isFileManagerNavigation(uri: URI) = uri.scheme == "open"
+        fun isDocumentEdit(uri: URI) = uri.scheme == "edit"
     }
 }

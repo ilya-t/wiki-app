@@ -6,7 +6,6 @@ import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
-import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
@@ -16,12 +15,11 @@ import kotlinx.coroutines.Dispatchers
 
 class ProjectComponent(
         val project: Project,
-        private val platformDeps: PlatformDeps,
-        private val quickStatusController: QuickStatusController,
-        private val activeDocumentController: ActiveDocumentController,
-        private val workerScope: CoroutineScope,
-        private val changedFilesController: ChangedFilesController,
-        private val navigator: AppNavigator,
+        platformDeps: PlatformDeps,
+        quickStatusController: QuickStatusController,
+        workerScope: CoroutineScope,
+        changedFilesController: ChangedFilesController,
+        navigator: AppNavigator,
 ) {
     private val elementHashProvider = ElementHashProvider(
             project,
@@ -47,7 +45,7 @@ class ProjectComponent(
             backendController,
             fileStatusProvider,
             workerScope,
-            activeDocumentController,
+            navigator,
     )
 
     val documentsController = DocumentsController(
@@ -59,6 +57,7 @@ class ProjectComponent(
     val searchModel = SearchModel(
             documentsController,
             workerScope,
-            activeDocumentController,
+            navigator,
+            project,
     )
 }

@@ -1,8 +1,8 @@
 package com.tsourcecode.wiki.lib.domain.commitment
 
 import com.tsourcecode.wiki.app.documents.Document
+import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
-import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,13 +10,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.io.File
+import java.net.URI
 
 class StatusModel(
         private val project: Project,
         private val backendController: BackendController,
         private val fileStatus: FileStatusProvider,
         private val worker: CoroutineScope,
-        private val activeDocumentController: ActiveDocumentController,
+        private val navigator: AppNavigator,
 ) {
     private var lastSeenCommitText = ""
     private var lastSeenStatus: StatusResponse? = null
@@ -68,7 +69,11 @@ class StatusModel(
         )
 
         if (f.exists()) {
-            activeDocumentController.switch(d)
+            navigator.open(d.toNavigationURI(project))
         }
     }
+}
+
+internal fun Document.toNavigationURI(project: Project): URI {
+    return URI("edit://${project.name}/${this.relativePath}")
 }

@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.config.ConfigScreenView
 import com.tsourcecode.wiki.app.documents.FileManagerView
+import com.tsourcecode.wiki.app.editor.EditorScreenView
 import com.tsourcecode.wiki.lib.domain.DomainComponent
 
 class ScreenFactory(
@@ -25,6 +26,15 @@ class ScreenFactory(
                 domainComponent.docContentProvider,
                 domainComponent.projectsRepository,
                 domainComponent.fileManagerModel,
+        )
+    }
+
+    fun documentEditor(): ScreenView {
+        return EditorScreenView(
+                activity,
+                domainComponent.docContentProvider,
+                domainComponent.projectsRepository,
+                domainComponent.projectComponents,
         )
     }
 }

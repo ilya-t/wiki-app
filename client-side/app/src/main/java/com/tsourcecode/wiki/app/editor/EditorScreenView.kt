@@ -4,77 +4,69 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.text.method.ScrollingMovementMethod
 import android.view.GestureDetector
-import android.view.GestureDetector.SimpleOnGestureListener
+import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.view.View.OnTouchListener
 import android.widget.Scroller
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatEditText
-import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
-import com.tsourcecode.wiki.app.navigation.ActivityNavigator
-import com.tsourcecode.wiki.app.navigation.Screen
-import com.tsourcecode.wiki.app.navigation.ScreenBootstrapper
-import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
+import com.tsourcecode.wiki.app.navigation.ScreenView
+import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
-import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
+import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import io.noties.markwon.Markwon
 import io.noties.markwon.editor.MarkwonEditor
 import io.noties.markwon.editor.MarkwonEditorTextWatcher
 import io.noties.markwon.editor.handler.EmphasisEditHandler
 import io.noties.markwon.editor.handler.StrongEmphasisEditHandler
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
+import java.net.URI
 import java.util.concurrent.Executors
 
-
-class EditorScreenController(
+class EditorScreenView(
         private val appCompatActivity: AppCompatActivity,
-        private val navigator: ActivityNavigator,
         private val docContentProvider: DocumentContentProvider,
-        private val documentsController: DocumentsController,
-        private val activeDocumentController: ActiveDocumentController,
-) {
-    init {
-        openDocAutomatically()
+        private val projectsRepository: ProjectsRepository,
+        private val projectComponentProvider: ProjectComponentProvider
+) : ScreenView {
+    private val root = LayoutInflater.from(appCompatActivity).inflate(R.layout.document_editor, null)
+    override val view: View = root
 
-        ScreenBootstrapper(
-                Screen.DOCUMENT,
-                navigator
-        ) {
-            activeDocumentController.activeDocument.value?.let { d ->
-                configureEditor(d, it)
-                appCompatActivity.title = d.relativePath
-            }
+    override fun handle(uri: URI): Boolean {
+        val results = resolveDocument(uri) ?: return false
 
-            null
+        configureEditor(results.document, results.projectComponent, root)
+        return true
+    }
+
+    private fun resolveDocument(uri: URI): ResolveResults? {
+        if (!AppNavigator.isDocumentEdit(uri)) {
+            return null
         }
 
+        val projectName = uri.host
+        val project = projectsRepository.data.value.firstOrNull { it.name == projectName } ?: return null
+
+        val component = projectComponentProvider.get(project)
+        val element = component.documentsController.data.value.find(uri.path.removePrefix("/"))
+        if (element is Document) {
+            return ResolveResults(element, component)
+        }
+
+        return null
+    }
+
+    override fun close() {
 
     }
 
-    //TODO: remove this navigation crutch
-    private fun openDocAutomatically() {
-        appCompatActivity.lifecycleScope.launch {
-            activeDocumentController.activeDocument.collect {
-                if (it != null) {
-                    navigator.open(Screen.DOCUMENT)
-                }
-            }
-        }
 
-        navigator.data.observe(appCompatActivity) {
-            if (it.screen != Screen.DOCUMENT) {
-                activeDocumentController.close()
-            }
-        }
-    }
-
-    private fun configureEditor(d: Document, container: View) {
+    private fun configureEditor(d: Document, component: ProjectComponent, container: View) {
         val textView = container.findViewById<AppCompatEditText>(R.id.tv_markwon)
         textView.configureMarkwon()
         textView.configureScrolling()
@@ -87,7 +79,7 @@ class EditorScreenController(
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
 
             override fun afterTextChanged(s: Editable?) {
-                documentsController.save(d, textView.text.toString())
+                component.documentsController.save(d, textView.text.toString())
             }
         })
     }
@@ -97,9 +89,9 @@ class EditorScreenController(
         setScroller(scroller)
         isVerticalScrollBarEnabled = true
         movementMethod = ScrollingMovementMethod()
-        setOnTouchListener(object : OnTouchListener {
+        setOnTouchListener(object : View.OnTouchListener {
             // Could make this a field member on your activity
-            var gesture = GestureDetector(context, object : SimpleOnGestureListener() {
+            var gesture = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
                 override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
                     scroller.fling(0, scrollY, 0, (-velocityY).toInt(), 0, 0, 0, lineCount * lineHeight)
                     return super.onFling(e1, e2, velocityX, velocityY)
@@ -134,3 +126,8 @@ class EditorScreenController(
                 editor, Executors.newSingleThreadExecutor(), this));
     }
 }
+
+private class ResolveResults(
+        val document: Document,
+        val projectComponent: ProjectComponent,
+)

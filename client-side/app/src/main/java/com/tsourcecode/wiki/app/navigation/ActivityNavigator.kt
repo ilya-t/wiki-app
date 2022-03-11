@@ -46,8 +46,11 @@ class ActivityNavigator(
         if (AppNavigator.isConfigUri(uri)) {
             return screenFactory.configScreen()
         }
-        if (AppNavigator.isProjectElementNavigation(uri)) {
+        if (AppNavigator.isFileManagerNavigation(uri)) {
             return screenFactory.fileManager()
+        }
+        if (AppNavigator.isDocumentEdit(uri)) {
+            return screenFactory.documentEditor()
         }
         return null
     }

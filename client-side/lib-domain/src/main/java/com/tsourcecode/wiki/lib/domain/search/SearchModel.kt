@@ -2,8 +2,10 @@ package com.tsourcecode.wiki.lib.domain.search
 
 import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.documents.Folder
-import com.tsourcecode.wiki.lib.domain.documents.ActiveDocumentController
+import com.tsourcecode.wiki.lib.domain.AppNavigator
+import com.tsourcecode.wiki.lib.domain.commitment.toNavigationURI
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
+import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,7 +14,8 @@ import kotlinx.coroutines.launch
 class SearchModel(
         private val documentsController: DocumentsController,
         private val searchScope: CoroutineScope,
-        private val activeDocumentController: ActiveDocumentController,
+        private val navigator: AppNavigator,
+        private val project: Project,
 ) {
     private val _data = MutableStateFlow(SearchViewModel())
 
@@ -61,13 +64,13 @@ class SearchModel(
 
 
     fun notifyItemClicked(item: DocumentSearchResult) {
-        activeDocumentController.switch(item.document)
+        navigator.open(item.document.toNavigationURI(project))
     }
 
     fun notifySearchKeyTriggered(viewModel: SearchViewModel) {
         viewModel.results.firstOrNull()?.let { firstResult ->
             if (firstResult is DocumentSearchResult) {
-                activeDocumentController.switch(firstResult.document)
+                navigator.open(firstResult.document.toNavigationURI(project))
             }
         }
     }

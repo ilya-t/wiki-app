@@ -4,7 +4,6 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.commitment.CommitScreenView
-import com.tsourcecode.wiki.app.editor.EditorScreenController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
 import com.tsourcecode.wiki.app.navigation.ScreenFactory
@@ -70,13 +69,6 @@ class ActivityComponent(
                 activity,
                 navigator,
                 component.statusModel,
-        )
-        val editorScreenController = EditorScreenController(
-                activity,
-                navigator,
-                appComponent.docContentProvider,
-                component.documentsController,
-                appComponent.domain.activeDocumentController,
         )
     }
 

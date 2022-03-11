@@ -21,9 +21,13 @@ class FileManagerModel(
 
     fun open(project: Project, element: Element) {
         when (element) {
-            is Document -> TODO()
+            is Document -> openDocument(project, element)
             is Folder -> openFolder(project, element)
         }.also { /*exhaustive*/ }
+    }
+
+    private fun openDocument(p: Project, d: Document) {
+        appNavigator.open(URI("edit://${p.name}/${d.relativePath}"))
     }
 
     private fun openFolder(p: Project, f: Folder) {
