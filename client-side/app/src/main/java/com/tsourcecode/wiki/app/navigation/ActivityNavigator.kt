@@ -18,8 +18,6 @@ class ActivityNavigator(
 ) {
     private var openedScreen: ScreenView? = null
     private val contentContainer: FrameLayout
-    var currentScreen: Screen = Screen.FILE_MANAGER
-        private set
     private val _data = MutableLiveData<ScreenDetails>()
     val data: LiveData<ScreenDetails> = _data
 
@@ -43,7 +41,7 @@ class ActivityNavigator(
     }
 
     private fun resolveScreen(uri: URI): ScreenView? {
-        if (AppNavigator.isConfigUri(uri)) {
+        if (uri == AppNavigator.PROJECTS) {
             return screenFactory.configScreen()
         }
         if (AppNavigator.isFileManagerNavigation(uri)) {
@@ -52,7 +50,11 @@ class ActivityNavigator(
         if (AppNavigator.isDocumentEdit(uri)) {
             return screenFactory.documentEditor()
         }
-        return null
+        if (AppNavigator.isChanges(uri)) {
+            return screenFactory.changes()
+        }
+
+        throw RuntimeException("No-one can handle: $uri")
     }
 
     fun open(screen: Screen) = Unit
@@ -61,7 +63,7 @@ class ActivityNavigator(
         when (this) {
             Screen.FILE_MANAGER -> R.layout.file_manager
             Screen.DOCUMENT -> R.layout.document_editor
-            Screen.COMMIT -> R.layout.commit
+//            Screen.COMMIT -> R.layout.commit
             Screen.SEARCH -> R.layout.search
         }
     }

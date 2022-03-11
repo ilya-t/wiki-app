@@ -1,13 +1,13 @@
 package com.tsourcecode.wiki.lib.domain
 
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.net.URI
 import java.util.*
 
 class AppNavigator {
     private val _data = MutableStateFlow(PROJECTS)
-    val data: Flow<URI> = _data
+    val data: StateFlow<URI> = _data
     private val stack = Stack<URI>()
 
     fun open(uri: URI) {
@@ -33,8 +33,8 @@ class AppNavigator {
     companion object {
         val PROJECTS: URI = URI.create("settings://projects")
 
-        fun isConfigUri(uri: URI) = uri.host == PROJECTS.host
         fun isFileManagerNavigation(uri: URI) = uri.scheme == "open"
         fun isDocumentEdit(uri: URI) = uri.scheme == "edit"
+        fun isChanges(uri: URI) = uri.scheme == "settings" && uri.host == "changes"
     }
 }

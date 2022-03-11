@@ -1,6 +1,7 @@
 package com.tsourcecode.wiki.app.commitment
 
 import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,42 +29,57 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.lifecycleScope
-import com.tsourcecode.wiki.app.R
-import com.tsourcecode.wiki.app.navigation.ActivityNavigator
-import com.tsourcecode.wiki.app.navigation.Screen
+import com.tsourcecode.wiki.app.navigation.ScreenView
+import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatus
 import com.tsourcecode.wiki.lib.domain.commitment.Status
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewModel
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
+import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.net.URI
 
 class CommitScreenView(
-        private val lifecycle: LifecycleOwner,
-        private val navigator: ActivityNavigator,
-        private val statusModel: StatusModel,
-) {
+        private val activity: AppCompatActivity,
+        private val scope: CoroutineScope,
+        private val projectsRepository: ProjectsRepository,
+        private val projectComponents: ProjectComponentProvider,
+) : ScreenView {
+    private val composeView = ComposeView(activity)
+    private var scopeJob: Job? = null
+    override val view: View = composeView
+
     init {
-        navigator.data.observe(lifecycle) {
-            if (it.screen == Screen.COMMIT) {
-                statusModel.notifyCommitScreenOpened()
-                setupScreen(it.layout)
-            }
-        }
+
     }
 
-    private fun setupScreen(root: View) {
-        val composeView = root.findViewById<ComposeView>(R.id.commit_container)
-        lifecycle.lifecycleScope.launch {
+    override fun handle(uri: URI): Boolean {
+        if (!AppNavigator.isChanges(uri)) {
+            return false
+        }
+
+        val projectName = uri.path.split("/")[1]
+        val project = projectsRepository.data.value.firstOrNull { it.name == projectName } ?: return false
+        val statusModel = projectComponents.get(project).statusModel
+        scopeJob?.cancel()
+        scopeJob = scope.launch {
             statusModel.statusFlow.collect { viewModel ->
                 composeView.setContent {
                     ComposeCommitScreen(viewModel, statusModel)
                 }
             }
         }
+        statusModel.notifyCommitScreenOpened()
+        return true
+    }
+
+    override fun close() {
+        scopeJob?.cancel()
     }
 }
 

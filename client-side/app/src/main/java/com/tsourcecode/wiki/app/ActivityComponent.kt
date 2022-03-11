@@ -3,7 +3,6 @@ package com.tsourcecode.wiki.app
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.tsourcecode.wiki.app.commitment.CommitScreenView
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.Screen
 import com.tsourcecode.wiki.app.navigation.ScreenFactory
@@ -55,20 +54,15 @@ class ActivityComponent(
         )
         val editStateController = EditStateController(
                 activity,
-                navigator,
+                appComponent.domain.navigator,
                 component.statusModel,
+                p,
         )
 
         val searchScreenController = SearchScreenController(
                 navigator,
                 activity,
                 component.searchModel,
-        )
-
-        val commitScreenView = CommitScreenView(
-                activity,
-                navigator,
-                component.statusModel,
         )
     }
 
