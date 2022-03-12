@@ -34,7 +34,9 @@ class ActivityNavigator(
                 contentContainer.removeAllViews()
                 val newScreen = resolveScreen(uri)
                 newScreen?.view?.let { v -> contentContainer.addView(v) }
-                newScreen?.handle(uri)
+                if (newScreen?.handle(uri) == false) {
+                    throw RuntimeException("Screen '$newScreen' failed handling of: '$uri'")
+                }
                 openedScreen = newScreen
             }
         }
@@ -54,6 +56,10 @@ class ActivityNavigator(
             return screenFactory.changes()
         }
 
+        if (AppNavigator.isSearch(uri)) {
+            return screenFactory.search()
+        }
+
         throw RuntimeException("No-one can handle: $uri")
     }
 
@@ -62,9 +68,6 @@ class ActivityNavigator(
     private fun Screen.inflateLayout() {
         when (this) {
             Screen.FILE_MANAGER -> R.layout.file_manager
-            Screen.DOCUMENT -> R.layout.document_editor
-//            Screen.COMMIT -> R.layout.commit
-            Screen.SEARCH -> R.layout.search
         }
     }
 }

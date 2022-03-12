@@ -14,8 +14,10 @@ class ProjectComponentProvider(
         private val navigator: AppNavigator
 ) {
     private val components = mutableMapOf<Project, ProjectComponent>()
+    private val requestedProjects = mutableMapOf<String, Project>()
+
     fun get(p: Project): ProjectComponent {
-        return components.getOrPut(p) {
+        val component = components.getOrPut(p) {
             ProjectComponent(
                     p,
                     platformDeps,
@@ -26,5 +28,15 @@ class ProjectComponentProvider(
             )
         }
 
+        requestedProjects[p.name] = p
+        return component
+    }
+
+    fun get(projectName: String): ProjectComponent? {
+        requestedProjects[projectName]?.let {
+            return get(it)
+        }
+
+        return null
     }
 }

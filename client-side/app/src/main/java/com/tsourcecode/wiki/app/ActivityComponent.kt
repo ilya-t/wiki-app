@@ -41,8 +41,6 @@ class ActivityComponent(
                 }
             }
         }
-
-        navigator.open(Screen.CONFIG)
     }
 
     private fun bootProjectDeps(p: Project) {
@@ -58,13 +56,12 @@ class ActivityComponent(
                 component.statusModel,
                 p,
         )
-
-        val searchScreenController = SearchScreenController(
-                navigator,
-                activity,
-                component.searchModel,
-        )
     }
+    private val searchScreenController = SearchScreenController(
+            appComponent.domain.navigator,
+            activity,
+            appComponent.domain.projectsRepository,
+    )
 
     private val quickStateController = QuickStatusViewModel(
             activity,

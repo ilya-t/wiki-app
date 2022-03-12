@@ -36,5 +36,6 @@ class AppNavigator {
         fun isFileManagerNavigation(uri: URI) = uri.scheme == "open"
         fun isDocumentEdit(uri: URI) = uri.scheme == "edit"
         fun isChanges(uri: URI) = uri.scheme == "settings" && uri.host == "changes"
+        fun isSearch(uri: URI) = uri.scheme == "settings" && uri.host == "search"
     }
 }
