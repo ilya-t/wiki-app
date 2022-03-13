@@ -6,7 +6,7 @@ import java.net.URI
 import java.util.*
 
 class AppNavigator {
-    private val _data = MutableStateFlow(PROJECTS)
+    private val _data = MutableStateFlow(PROJECTS_URI)
     val data: StateFlow<URI> = _data
     private val stack = Stack<URI>()
 
@@ -31,7 +31,7 @@ class AppNavigator {
     }
 
     companion object {
-        val PROJECTS: URI = URI.create("settings://projects")
+        val PROJECTS_URI: URI = URI.create("settings://projects")
 
         fun isFileManagerNavigation(uri: URI) = uri.scheme == "open"
         fun isDocumentEdit(uri: URI) = uri.scheme == "edit"

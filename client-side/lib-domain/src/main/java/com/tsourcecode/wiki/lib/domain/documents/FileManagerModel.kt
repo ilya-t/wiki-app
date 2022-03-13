@@ -35,7 +35,7 @@ class FileManagerModel(
     }
 
     fun notifyRootClicked() {
-        appNavigator.open(AppNavigator.PROJECTS)
+        appNavigator.open(AppNavigator.PROJECTS_URI)
     }
 
     fun show(component: ProjectComponent, filePath: String) {

@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.tsourcecode.wiki.app.navigation.ScreenView
-import com.tsourcecode.wiki.lib.domain.AppNavigator.Companion.PROJECTS
+import com.tsourcecode.wiki.lib.domain.AppNavigator.Companion.PROJECTS_URI
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenModel
 import com.tsourcecode.wiki.lib.domain.config.SubmitButton
@@ -43,7 +43,7 @@ class ConfigScreenView(
 ) : ScreenView {
     private val composeView = ComposeView(activity)
     override val view: View = composeView
-    override fun handle(uri: URI) = uri == PROJECTS
+    override fun handle(uri: URI) = uri == PROJECTS_URI
 
     private val collector = scope.launch {
         configModel.data.collect {

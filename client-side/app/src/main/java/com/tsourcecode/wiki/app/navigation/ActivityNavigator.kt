@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.lib.domain.AppNavigator
+import com.tsourcecode.wiki.lib.domain.navigation.NavigationScreen
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.net.URI
@@ -14,7 +15,7 @@ class ActivityNavigator(
         private val appNavigator: AppNavigator,
         private val screenFactory: ScreenFactory,
 ) {
-    private var openedScreen: ScreenView? = null
+    private var openedScreen: ScreenDetails? = null
     private val contentContainer: FrameLayout
 
     init {
@@ -23,14 +24,20 @@ class ActivityNavigator(
 
         activity.lifecycleScope.launch {
             appNavigator.data.collect { uri ->
-                if (openedScreen?.handle(uri) == true) {
+                val navigationScreen = resolveScreen(uri)
+                if (openedScreen?.screen == navigationScreen &&
+                        openedScreen?.screenView?.handle(uri) == true) {
                     return@collect
                 }
-                openedScreen?.close()
+                openedScreen?.screenView?.close()
                 contentContainer.removeAllViews()
-                val newScreen = resolveScreen(uri)
-                newScreen?.view?.let { v -> contentContainer.addView(v) }
-                if (newScreen?.handle(uri) == false) {
+                val newScreen = ScreenDetails(
+                        navigationScreen,
+                        screenFactory.create(navigationScreen)
+                )
+
+                contentContainer.addView(newScreen.screenView.view)
+                if (!newScreen.screenView.handle(uri)) {
                     throw RuntimeException("Screen '$newScreen' failed handling of: '$uri'")
                 }
                 openedScreen = newScreen
@@ -38,24 +45,12 @@ class ActivityNavigator(
         }
     }
 
-    private fun resolveScreen(uri: URI): ScreenView? {
-        if (uri == AppNavigator.PROJECTS) {
-            return screenFactory.configScreen()
-        }
-        if (AppNavigator.isFileManagerNavigation(uri)) {
-            return screenFactory.fileManager()
-        }
-        if (AppNavigator.isDocumentEdit(uri)) {
-            return screenFactory.documentEditor()
-        }
-        if (AppNavigator.isChanges(uri)) {
-            return screenFactory.changes()
-        }
-
-        if (AppNavigator.isSearch(uri)) {
-            return screenFactory.search()
-        }
-
-        throw RuntimeException("No-one can handle: $uri")
+    private fun resolveScreen(uri: URI): NavigationScreen {
+        return NavigationScreen.resolveScreen(uri) ?: throw RuntimeException("No-one can handle: $uri")
     }
 }
+
+private class ScreenDetails(
+        val screen: NavigationScreen,
+        val screenView: ScreenView,
+)
