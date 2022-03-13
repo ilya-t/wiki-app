@@ -24,10 +24,17 @@
         android:background="@color/toolbar_background"
         tools:text="dir/path"
         />
-    <FrameLayout
-        android:id="@+id/files_list_container"
+
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/pull_to_refresh_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:paddingTop="@dimen/toolbar_default_height"/>
+        >
+        <FrameLayout
+            android:id="@+id/files_list_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingTop="@dimen/toolbar_default_height"/>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </FrameLayout>

@@ -2,8 +2,6 @@ package com.tsourcecode.wiki.app.navigation
 
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.lib.domain.AppNavigator
@@ -18,8 +16,6 @@ class ActivityNavigator(
 ) {
     private var openedScreen: ScreenView? = null
     private val contentContainer: FrameLayout
-    private val _data = MutableLiveData<ScreenDetails>()
-    val data: LiveData<ScreenDetails> = _data
 
     init {
         activity.setContentView(R.layout.main_layout)
@@ -61,13 +57,5 @@ class ActivityNavigator(
         }
 
         throw RuntimeException("No-one can handle: $uri")
-    }
-
-    fun open(screen: Screen) = Unit
-
-    private fun Screen.inflateLayout() {
-        when (this) {
-            Screen.FILE_MANAGER -> R.layout.file_manager
-        }
     }
 }

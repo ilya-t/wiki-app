@@ -3,19 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/pull_to_refresh_container"
+    <FrameLayout
+        android:id="@+id/content_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginTop="16dp"
         android:paddingBottom="48dp"
-        >
-        <FrameLayout
-            android:id="@+id/content_container"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            />
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+        />
 
     <LinearLayout
         android:id="@+id/control_bar"
@@ -28,7 +22,7 @@
             android:id="@+id/btn_files"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="files"
+            android:text="home"
             android:layout_weight="1"/>
 
         <androidx.appcompat.widget.AppCompatButton

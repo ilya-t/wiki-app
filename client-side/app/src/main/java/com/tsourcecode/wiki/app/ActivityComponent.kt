@@ -4,12 +4,12 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
-import com.tsourcecode.wiki.app.navigation.Screen
 import com.tsourcecode.wiki.app.navigation.ScreenFactory
 import com.tsourcecode.wiki.app.search.SearchScreenController
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.net.URI
 
 class ActivityComponent(
         private val activity: AppCompatActivity,
@@ -26,10 +26,8 @@ class ActivityComponent(
     ).apply {
         val btnFiles = activity.findViewById<View>(R.id.btn_files)
         btnFiles.setOnClickListener {
-            open(Screen.FILE_MANAGER)
-        }
-        data.observeForever {
-            btnFiles.isEnabled = it.screen != Screen.FILE_MANAGER
+            val name = appComponent.domain.projectsRepository.data.value.first().name
+            appComponent.domain.navigator.open(URI("open://$name/"))
         }
     }
 
@@ -45,11 +43,6 @@ class ActivityComponent(
 
     private fun bootProjectDeps(p: Project) {
         val component = appComponent.domain.projectComponents.get(p)
-        val ptrTrigger = PullToRefreshTrigger(
-                activity,
-                component.backendController,
-                navigator,
-        )
         val editStateController = EditStateController(
                 activity,
                 appComponent.domain.navigator,
