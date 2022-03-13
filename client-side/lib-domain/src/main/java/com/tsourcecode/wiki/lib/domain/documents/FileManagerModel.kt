@@ -10,6 +10,7 @@ import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.net.URI
+import java.net.URLEncoder
 
 class FileManagerModel(
         private val appNavigator: AppNavigator,
@@ -26,7 +27,9 @@ class FileManagerModel(
     }
 
     private fun openDocument(p: Project, d: Document) {
-        appNavigator.open(URI("edit://${p.name}/${d.relativePath}"))
+        val encodedName = URLEncoder.encode(p.name, "UTF-8")
+        val encodedPath = d.relativePath.split("/").map { URLEncoder.encode(it, "UTF-8") }.joinToString("/")
+        appNavigator.open(URI("edit://${encodedName}/${encodedPath}"))
     }
 
     private fun openFolder(p: Project, f: Folder) {

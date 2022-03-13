@@ -1,5 +1,8 @@
 package com.tsourcecode.wiki.lib.domain
 
+import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
+
+@OpenInTest
 class QuickStatusController {
     var listener: ((StatusInfo) -> Unit)? = null
 

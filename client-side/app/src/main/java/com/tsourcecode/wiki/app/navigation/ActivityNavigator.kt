@@ -50,7 +50,7 @@ class ActivityNavigator(
     }
 }
 
-private class ScreenDetails(
+private data class ScreenDetails(
         val screen: NavigationScreen,
         val screenView: ScreenView,
 )

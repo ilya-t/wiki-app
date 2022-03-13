@@ -1,10 +1,12 @@
 package com.tsourcecode.wiki.lib.domain
 
+import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.net.URI
 import java.util.*
 
+@OpenInTest
 class AppNavigator {
     private val _data = MutableStateFlow(PROJECTS_URI)
     val data: StateFlow<URI> = _data

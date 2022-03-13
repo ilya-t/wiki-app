@@ -18,15 +18,14 @@ import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
-import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
-import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import io.noties.markwon.Markwon
 import io.noties.markwon.editor.MarkwonEditor
 import io.noties.markwon.editor.MarkwonEditorTextWatcher
 import io.noties.markwon.editor.handler.EmphasisEditHandler
 import io.noties.markwon.editor.handler.StrongEmphasisEditHandler
 import java.net.URI
+import java.net.URLDecoder
 import java.util.concurrent.Executors
 
 class EditorScreenView(
@@ -50,7 +49,8 @@ class EditorScreenView(
         }
 
         val component = projectComponentResolver.tryResolve(uri) ?: return null
-        val element = component.documentsController.data.value.find(uri.path.removePrefix("/"))
+        val decodedPath = uri.path.removePrefix("/").split("/").joinToString("/") { URLDecoder.decode(it, "UTF-8") }
+        val element = component.documentsController.data.value.find(decodedPath)
         if (element is Document) {
             return ResolveResults(element, component)
         }
