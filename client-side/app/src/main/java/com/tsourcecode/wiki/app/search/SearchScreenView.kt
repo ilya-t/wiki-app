@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import com.tsourcecode.wiki.lib.domain.search.DocumentSearchResult
 import com.tsourcecode.wiki.lib.domain.search.SearchModel
@@ -47,8 +48,8 @@ import java.net.URI
 
 class SearchScreenView(activity: AppCompatActivity,
                        private val scope: CoroutineScope,
-                       projectsRepository: ProjectsRepository,
-                       private val projectComponents: ProjectComponentProvider) : ScreenView {
+                       private val projectComponentResolver: ProjectComponentResolver,
+) : ScreenView {
     private val searchHeight = Dp(48f)
     private val composeView = ComposeView(activity)
     private var searchJob: Job? = null
@@ -60,8 +61,7 @@ class SearchScreenView(activity: AppCompatActivity,
             return false
         }
 
-        val projectName = uri.path.split("/")[1]
-        val component = projectComponents.get(projectName) ?: return false
+        val component = projectComponentResolver.tryResolve(uri) ?: return false
         searchJob?.cancel()
         searchJob = scope.launch {
             component.searchModel.data.collect {

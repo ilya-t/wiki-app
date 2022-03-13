@@ -19,6 +19,7 @@ import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import io.noties.markwon.Markwon
 import io.noties.markwon.editor.MarkwonEditor
@@ -30,9 +31,8 @@ import java.util.concurrent.Executors
 
 class EditorScreenView(
         private val appCompatActivity: AppCompatActivity,
+        private val projectComponentResolver: ProjectComponentResolver,
         private val docContentProvider: DocumentContentProvider,
-        private val projectsRepository: ProjectsRepository,
-        private val projectComponentProvider: ProjectComponentProvider
 ) : ScreenView {
     private val root = LayoutInflater.from(appCompatActivity).inflate(R.layout.document_editor, null)
     override val view: View = root
@@ -49,10 +49,7 @@ class EditorScreenView(
             return null
         }
 
-        val projectName = uri.host
-        val project = projectsRepository.data.value.firstOrNull { it.name == projectName } ?: return null
-
-        val component = projectComponentProvider.get(project)
+        val component = projectComponentResolver.tryResolve(uri) ?: return null
         val element = component.documentsController.data.value.find(uri.path.removePrefix("/"))
         if (element is Document) {
             return ResolveResults(element, component)

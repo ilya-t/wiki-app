@@ -36,8 +36,7 @@ import com.tsourcecode.wiki.lib.domain.commitment.Status
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewModel
-import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
-import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
@@ -47,8 +46,7 @@ import java.net.URI
 class CommitScreenView(
         private val activity: AppCompatActivity,
         private val scope: CoroutineScope,
-        private val projectsRepository: ProjectsRepository,
-        private val projectComponents: ProjectComponentProvider,
+        private val projectComponentResolver: ProjectComponentResolver,
 ) : ScreenView {
     private val composeView = ComposeView(activity)
     private var scopeJob: Job? = null
@@ -63,9 +61,8 @@ class CommitScreenView(
             return false
         }
 
-        val projectName = uri.path.split("/")[1]
-        val project = projectsRepository.data.value.firstOrNull { it.name == projectName } ?: return false
-        val statusModel = projectComponents.get(project).statusModel
+        val component = projectComponentResolver.tryResolve(uri) ?: return false
+        val statusModel = component.statusModel
         scopeJob?.cancel()
         scopeJob = scope.launch {
             statusModel.statusFlow.collect { viewModel ->

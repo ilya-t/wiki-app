@@ -6,14 +6,13 @@ import com.tsourcecode.wiki.app.documents.Folder
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.project.Project
-import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.net.URI
 
 class FileManagerModel(
         private val appNavigator: AppNavigator,
-        private val projectComponentProvider: ProjectComponentProvider,
         private val quickStatusController: QuickStatusController,
 ) {
     private val _dataFlow = MutableStateFlow<ProjectFolder?>(null)
@@ -39,8 +38,7 @@ class FileManagerModel(
         appNavigator.open(AppNavigator.PROJECTS)
     }
 
-    fun show(p: Project, filePath: String) {
-        val component = projectComponentProvider.get(p)
+    fun show(component: ProjectComponent, filePath: String) {
         //TODO: observe data appearance!
         val root: Folder = component.documentsController.data.value
         val target: Element? = root.find(filePath)
@@ -50,7 +48,7 @@ class FileManagerModel(
             return
         }
 
-        _dataFlow.value = ProjectFolder(p, target)
+        _dataFlow.value = ProjectFolder(component.project, target)
 
     }
 }

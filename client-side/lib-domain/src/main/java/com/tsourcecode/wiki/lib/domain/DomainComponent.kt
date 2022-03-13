@@ -6,6 +6,7 @@ import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.GlobalScope
 import java.io.File
 
@@ -48,7 +49,11 @@ class DomainComponent(
 
     val fileManagerModel = FileManagerModel(
             navigator,
-            projectComponents,
             quickStatusController,
+    )
+
+    val projectComponentResolver = ProjectComponentResolver(
+            projectsRepository,
+            projectComponents,
     )
 }

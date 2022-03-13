@@ -11,11 +11,11 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.app.navigation.ScreenView
+import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
-import com.tsourcecode.wiki.lib.domain.project.Project
-import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
-import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
+import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -26,14 +26,11 @@ import kotlinx.coroutines.withContext
 import java.net.URI
 
 private const val ROOT_DIR_TITLE = "<root dir>"
-private const val SCHEME = "open"
-
 
 class FileManagerView(
-        private val projectComponentProvider: ProjectComponentProvider,
-        private val activity: AppCompatActivity,
+        activity: AppCompatActivity,
         docContentProvider: DocumentContentProvider,
-        private val projectsRepository: ProjectsRepository,
+        private val componentResolver: ProjectComponentResolver,
         private var fileManagerModel: FileManagerModel,
 ) : ScreenView {
     private val root: View = LayoutInflater.from(activity).inflate(R.layout.file_manager, null)
@@ -81,25 +78,23 @@ class FileManagerView(
     }
 
     private fun parseNavigation(uri: URI): Boolean {
-        if (uri.scheme != SCHEME) {
+        if (!AppNavigator.isFileManagerNavigation(uri)) {
             return false
         }
-        val projectName = uri.host
         val filePath = uri.path.removePrefix("/")
 
-        val p = projectsRepository.data.value.firstOrNull { it.name == projectName } ?: return false
+        val component = componentResolver.tryResolve(uri) ?: return false
 
         docAdapter.openDelegate = {
-            fileManagerModel.open(p, it)
+            fileManagerModel.open(component.project, it)
         }
 
-        fileManagerModel.show(p, filePath)
-        setupPullToRefresh(p)
+        fileManagerModel.show(component, filePath)
+        setupPullToRefresh(component)
         return true
     }
 
-    private fun setupPullToRefresh(p: Project) {
-        val component = projectComponentProvider.get(p)
+    private fun setupPullToRefresh(component: ProjectComponent) {
         swipeRefreshLayout.setOnRefreshListener {
             component.backendController.sync()
         }

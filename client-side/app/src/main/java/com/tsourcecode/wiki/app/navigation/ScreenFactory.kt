@@ -23,10 +23,9 @@ class ScreenFactory(
 
     fun fileManager(): ScreenView {
         return FileManagerView(
-                domainComponent.projectComponents,
                 activity,
                 domainComponent.docContentProvider,
-                domainComponent.projectsRepository,
+                domainComponent.projectComponentResolver,
                 domainComponent.fileManagerModel,
         )
     }
@@ -34,9 +33,8 @@ class ScreenFactory(
     fun documentEditor(): ScreenView {
         return EditorScreenView(
                 activity,
+                domainComponent.projectComponentResolver,
                 domainComponent.docContentProvider,
-                domainComponent.projectsRepository,
-                domainComponent.projectComponents,
         )
     }
 
@@ -44,8 +42,7 @@ class ScreenFactory(
         return CommitScreenView(
                 activity,
                 activity.lifecycleScope,
-                domainComponent.projectsRepository,
-                domainComponent.projectComponents,
+                domainComponent.projectComponentResolver,
         )
     }
 
@@ -53,8 +50,7 @@ class ScreenFactory(
         return SearchScreenView(
                 activity,
                 activity.lifecycleScope,
-                domainComponent.projectsRepository,
-                domainComponent.projectComponents,
+                domainComponent.projectComponentResolver,
         )
     }
 }
