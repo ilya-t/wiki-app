@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/files_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:layout_marginBottom="@dimen/control_bar_height">
 
     <ProgressBar
@@ -12,6 +13,7 @@
         android:layout_width="64dp"
         android:layout_height="64dp"
         android:layout_gravity="center" />
+
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/files_title"
         android:layout_width="match_parent"
@@ -34,7 +36,7 @@
             android:id="@+id/files_list_container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:paddingTop="@dimen/toolbar_default_height"/>
+            />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-</FrameLayout>
+</LinearLayout>
