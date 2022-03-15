@@ -14,13 +14,13 @@ import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
+import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URI
@@ -40,9 +40,7 @@ class FileManagerView(
     private val container = root.findViewById<ViewGroup>(R.id.files_list_container)
     private val title = root.findViewById<AppCompatTextView>(R.id.files_title).apply {
         setOnClickListener {
-            if (text == ROOT_DIR_TITLE) {
-                fileManagerModel.notifyRootClicked()
-            }
+            fileManagerModel.notifyRootClicked()
         }
     }
     private val context = container.context
@@ -56,21 +54,6 @@ class FileManagerView(
         addItemDecoration(DividerItemDecoration(context, DividerItemDecoration.VERTICAL))
     }.also {
         container.addView(it)
-    }
-
-    init {
-        scope.launch {
-            fileManagerModel.dataFlow.filterNotNull().collect {
-                progressBar.visibility = View.GONE
-                docAdapter.update(it.folder.elements)
-                val relativePath = it.folder.file.path.removePrefix(it.project.repo.absolutePath)
-                if (relativePath.isNotEmpty()) {
-                    title.text = relativePath
-                } else {
-                    title.text = ROOT_DIR_TITLE
-                }
-            }
-        }
     }
 
     override fun handle(uri: URI): Boolean {
@@ -89,9 +72,24 @@ class FileManagerView(
             fileManagerModel.open(component.project, it)
         }
 
-        fileManagerModel.show(component, filePath)
+        scope.launch {
+            fileManagerModel.show(component, filePath) {
+                renderFolder(component.project, it)
+            }
+        }
         setupPullToRefresh(component)
         return true
+    }
+
+    private fun renderFolder(project: Project, folder: Folder) {
+        progressBar.visibility = View.GONE
+        docAdapter.update(folder.elements)
+        val relativePath = folder.file.path.removePrefix(project.repo.absolutePath)
+        if (relativePath.isNotEmpty()) {
+            title.text = relativePath
+        } else {
+            title.text = ROOT_DIR_TITLE
+        }
     }
 
     private fun setupPullToRefresh(component: ProjectComponent) {

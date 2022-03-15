@@ -167,7 +167,7 @@ sealed interface ConfigScreenItem {
     class PlusElement : ConfigScreenItem
 
     data class ImportFrom(
-            val projectUrl: String = "",
+            val projectUrl: String = "http://duke-nucem:8181",
     ) : ConfigScreenItem
 }
 

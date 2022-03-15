@@ -7,8 +7,7 @@ import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import java.net.URI
 import java.net.URLEncoder
 
@@ -16,9 +15,6 @@ class FileManagerModel(
         private val appNavigator: AppNavigator,
         private val quickStatusController: QuickStatusController,
 ) {
-    private val _dataFlow = MutableStateFlow<ProjectFolder?>(null)
-    val dataFlow: Flow<ProjectFolder?> = _dataFlow
-
     fun open(project: Project, element: Element) {
         when (element) {
             is Document -> openDocument(project, element)
@@ -41,22 +37,17 @@ class FileManagerModel(
         appNavigator.open(AppNavigator.PROJECTS_URI)
     }
 
-    fun show(component: ProjectComponent, filePath: String) {
+    suspend fun show(component: ProjectComponent, filePath: String, folderObserver: (Folder) -> Unit) {
         //TODO: observe data appearance!
-        val root: Folder = component.documentsController.data.value
-        val target: Element? = root.find(filePath)
+        component.documentsController.data.collect {
+            val target = it.find(filePath)
 
-        if (target == null || target !is Folder) {
-            quickStatusController.error(RuntimeException("File not found: $filePath"))
-            return
+            if (target == null || target !is Folder) {
+                quickStatusController.error(RuntimeException("File not found: $filePath"))
+                return@collect
+            }
+
+            folderObserver.invoke(target)
         }
-
-        _dataFlow.value = ProjectFolder(component.project, target)
-
     }
 }
-
-class ProjectFolder(
-        val project: Project,
-        val folder: Folder,
-)
