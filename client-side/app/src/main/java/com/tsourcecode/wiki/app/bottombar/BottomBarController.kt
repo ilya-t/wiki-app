@@ -19,12 +19,13 @@ class BottomBarController(
         private val activity: AppCompatActivity,
         private val navigator: AppNavigator,
         private val projectComponentResolver: ProjectComponentResolver,
+        private val rootView: View,
 ) {
     private val scope: CoroutineScope = activity.lifecycleScope
-    private val btnFiles = activity.findViewById<View>(R.id.btn_files)
-    private val btnSearch = activity.findViewById<View>(R.id.btn_search)
+    private val btnFiles = rootView.findViewById<View>(R.id.btn_files)
+    private val btnSearch = rootView.findViewById<View>(R.id.btn_search)
 
-    private val btnCommit = activity.findViewById<AppCompatButton>(R.id.btn_commit)
+    private val btnCommit = rootView.findViewById<AppCompatButton>(R.id.btn_commit)
 
     init {
         scope.launch {
@@ -33,6 +34,7 @@ class BottomBarController(
                 bindCommitButton(projectComponent)
                 bindFilesButton(projectComponent)
                 bindSearchButton(projectComponent)
+                rootView.visibility = if (projectComponent == null) View.GONE else View.VISIBLE
             }
         }
     }
@@ -41,6 +43,7 @@ class BottomBarController(
         btnFiles.setOnClickListener {
             val name = projectComponent?.project?.name ?: return@setOnClickListener
             navigator.open(URI("open://$name/"))
+            navigator.clearBackstack()
         }
     }
 

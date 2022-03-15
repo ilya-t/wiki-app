@@ -32,6 +32,10 @@ class AppNavigator {
         return false
     }
 
+    fun clearBackstack() {
+        stack.clear()
+    }
+
     companion object {
         val PROJECTS_URI: URI = URI.create("settings://projects")
 

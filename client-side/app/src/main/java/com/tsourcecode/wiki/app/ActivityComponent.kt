@@ -24,6 +24,7 @@ class ActivityComponent(
             activity,
             domain.navigator,
             domain.projectComponentResolver,
+            rootView = activity.findViewById(R.id.control_bar),
     )
 
     private val quickStateController = QuickStatusViewModel(
