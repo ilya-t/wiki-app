@@ -11,11 +11,11 @@ class FileStatusProvider(
         private val backendController: BackendController,
         private val workerScope: CoroutineScope,
 ) {
-    private val _statusFlow = MutableStateFlow(
-            StatusResponse(emptyList())
+    private val _statusFlow = MutableStateFlow<StatusResponse?>(
+            null
     )
 
-    val statusFlow: StateFlow<StatusResponse> = _statusFlow
+    val statusFlow: StateFlow<StatusResponse?> = _statusFlow
 
     init {
         workerScope.launch {

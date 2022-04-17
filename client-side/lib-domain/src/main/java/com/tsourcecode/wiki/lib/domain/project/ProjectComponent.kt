@@ -10,6 +10,8 @@ import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.search.SearchModel
+import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
+import com.tsourcecode.wiki.lib.domain.storage.PersistentStorageProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
@@ -20,6 +22,7 @@ class ProjectComponent(
         workerScope: CoroutineScope,
         changedFilesController: ChangedFilesController,
         navigator: AppNavigator,
+        storageProvider: PersistentStorageProvider,
 ) {
     private val elementHashProvider = ElementHashProvider(
             project,
@@ -40,12 +43,17 @@ class ProjectComponent(
             backendController,
             workerScope,
     )
+
+    private val projectStorage: KeyValueStorage =
+        storageProvider.getKeyValueStorage("${project.id}_prefs")
+
     val statusModel = StatusModel(
             project,
             backendController,
             fileStatusProvider,
             workerScope,
             navigator,
+            projectStorage,
     )
 
     val documentsController = DocumentsController(

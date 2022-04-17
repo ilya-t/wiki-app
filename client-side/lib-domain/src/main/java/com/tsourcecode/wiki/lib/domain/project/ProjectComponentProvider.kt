@@ -25,6 +25,7 @@ class ProjectComponentProvider(
                     workerScope,
                     changedFilesController,
                     navigator,
+                    platformDeps.persistentStorageProvider,
             )
         }
 
