@@ -184,6 +184,7 @@ class BackendController(
 
     }
 
+    @Throws(IOException::class)
     fun status(): StatusResponse {
         quickStatusController.udpate(QuickStatus.STATUS_UPDATE)
         val response = backendApi.status(project.name).execute()

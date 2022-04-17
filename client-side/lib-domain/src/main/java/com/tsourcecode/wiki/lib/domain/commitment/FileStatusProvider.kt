@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 class FileStatusProvider(
         private val backendController: BackendController,
@@ -18,14 +19,24 @@ class FileStatusProvider(
 
     init {
         workerScope.launch {
-            _statusFlow.value = backendController.status()
+            tryUpdateStatus()
         }
     }
 
     fun update() {
         workerScope.launch {
-            _statusFlow.value = backendController.status()
+            tryUpdateStatus()
         }
+    }
+
+    private fun tryUpdateStatus() {
+        val status = try {
+            backendController.status()
+        } catch (e: IOException) {
+            e.printStackTrace()
+            return
+        }
+        _statusFlow.value = status
     }
 
 }
