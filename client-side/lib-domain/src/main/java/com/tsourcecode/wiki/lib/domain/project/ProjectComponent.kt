@@ -39,13 +39,14 @@ class ProjectComponent(
     )
 
 
+    private val projectStorage: KeyValueStorage =
+        storageProvider.getKeyValueStorage("${project.id}_prefs")
+
     private val fileStatusProvider = FileStatusProvider(
             backendController,
             workerScope,
+            projectStorage,
     )
-
-    private val projectStorage: KeyValueStorage =
-        storageProvider.getKeyValueStorage("${project.id}_prefs")
 
     val statusModel = StatusModel(
             project,

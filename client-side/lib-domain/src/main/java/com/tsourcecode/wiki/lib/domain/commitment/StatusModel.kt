@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import java.io.File
 import java.net.URI
 
@@ -24,7 +23,6 @@ class StatusModel(
     private val navigator: AppNavigator,
     private val projectStorage: KeyValueStorage,
 ) {
-    private val changesStorage = StoredPrimitive.string("changed_files", projectStorage)
     private val messageStorage = StoredPrimitive.string("commit_message", projectStorage)
     private var lastSeenCommitText = ""
     private var lastSeenStatus: StatusResponse? = null
@@ -38,7 +36,7 @@ class StatusModel(
             fileStatus.statusFlow.filterNotNull().collect {
                 lastSeenStatus = it
                 rebuildData()
-                store(lastSeenCommitText, lastSeenStatus)
+                store(lastSeenCommitText)
             }
         }
     }
@@ -47,7 +45,7 @@ class StatusModel(
         lastSeenCommitText = text
         worker.launch {
             rebuildData()
-            store(lastSeenCommitText, lastSeenStatus)
+            store(lastSeenCommitText)
         }
     }
 
@@ -63,19 +61,12 @@ class StatusModel(
         _statusFlow.value = statusViewModel
     }
 
-    private fun store(commitText: String, changes: StatusResponse?) {
+    private fun store(commitText: String) {
         messageStorage.value = commitText
-        changesStorage.value = if (changes != null) {
-            Json.encodeToString(StatusResponse.serializer(), changes)
-        } else {
-            null
-        }
     }
 
     private fun restore() {
         lastSeenCommitText = messageStorage.value ?: ""
-        val changesJson = changesStorage.value ?: return
-        lastSeenStatus = Json.decodeFromString(StatusResponse.serializer(), changesJson)
     }
 
     fun commit() {
