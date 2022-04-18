@@ -1,7 +1,7 @@
 # FROM arm64v8/golang:1.14.1-buster
 FROM golang:1.17.7-alpine3.15
 EXPOSE 80
-RUN apk add --no-cache git=2.34.1-r0
+RUN apk add --no-cache git=2.34.2-r0
 RUN apk add --no-cache zip
 RUN apk add --no-cache openssh
 RUN apk add --no-cache alpine-sdk
