@@ -83,7 +83,7 @@ class StatusModel(
         val f = File(project.repo, item.fileStatus.path)
         val d = Document(
                 projectDir = project.repo,
-                f = f,
+                origin = f,
         )
 
         if (f.exists()) {

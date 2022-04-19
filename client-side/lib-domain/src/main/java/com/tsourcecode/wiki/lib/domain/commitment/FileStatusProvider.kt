@@ -1,21 +1,19 @@
 package com.tsourcecode.wiki.lib.domain.commitment
 
-import com.tsourcecode.wiki.lib.domain.backend.BackendController
-import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
-import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
+import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesProvider
+import com.tsourcecode.wiki.lib.domain.documents.staging.StagedFilesController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
-import java.io.IOException
 
 class FileStatusProvider(
-        private val backendController: BackendController,
-        private val workerScope: CoroutineScope,
-        private val projectStorage: KeyValueStorage,
+    private val workerScope: CoroutineScope,
+    private val changedFiles: ChangedFilesProvider,
+    private val stagedFiles: StagedFilesController,
 ) {
-    private val changesStorage = StoredPrimitive.string("changed_files", projectStorage)
 
     private val _statusFlow = MutableStateFlow<StatusResponse?>(
             null
@@ -25,34 +23,24 @@ class FileStatusProvider(
 
     init {
         workerScope.launch {
-            restore()
-            tryUpdateStatus()
+            stagedFiles.update()
+            stagedFiles.data.combine(changedFiles.data) { staged, changed ->
+                staged.extendWith(changed)
+            }.collect {
+                _statusFlow.value = it
+            }
         }
-    }
-
-    private fun restore() {
-        val changesJson = changesStorage.value ?: return
-        _statusFlow.value = Json.decodeFromString(StatusResponse.serializer(), changesJson)
     }
 
     fun update() {
-        workerScope.launch {
-            tryUpdateStatus()
-        }
+        stagedFiles.update()
     }
+}
 
-    private fun tryUpdateStatus() {
-        val status = try {
-            backendController.status()
-        } catch (e: IOException) {
-            e.printStackTrace()
-            return
-        }
-        _statusFlow.value = status
-        store(status)
-    }
-
-    private fun store(changes: StatusResponse) {
-        changesStorage.value = Json.encodeToString(StatusResponse.serializer(), changes)
-    }
+private fun StatusResponse.extendWith(extra: StatusResponse): StatusResponse {
+    val combination = linkedMapOf<String, FileStatus>()
+    this.files.associateByTo(combination) { it.path }
+    val extrasMap = extra.files.associateBy { it.path }
+    combination.putAll(extrasMap)
+    return StatusResponse(combination.values.toList())
 }

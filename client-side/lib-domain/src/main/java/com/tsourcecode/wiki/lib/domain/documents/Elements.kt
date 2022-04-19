@@ -10,16 +10,20 @@ sealed class Element(
 
 @OpenInTest
 data class Document(
-        private val projectDir: File,
-        private val f: File,
-) : Element(f) {
+    private val projectDir: File,
+    /**
+     * Original unchanged and synced locally file.
+     * Do not open access to absolute path!
+     */
+    private val origin: File,
+) : Element(origin) {
     val relativePath: String = run {
         val start = projectDir.absolutePath.length + 1
 
-        if (start < f.absolutePath.length) {
-            f.absolutePath.substring(start)
+        if (start < origin.absolutePath.length) {
+            origin.absolutePath.substring(start)
         } else {
-            f.absolutePath
+            origin.absolutePath
         }
     }
 }

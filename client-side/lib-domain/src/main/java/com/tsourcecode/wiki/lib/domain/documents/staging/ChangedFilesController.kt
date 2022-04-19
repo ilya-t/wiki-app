@@ -4,16 +4,20 @@ import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.lib.domain.storage.PersistentStorageProvider
 import java.io.File
 
+internal typealias RelativePath = String
+internal typealias AbsolutePath = String
+
+//TODO(i-ts): let this thing live in project scope
 class ChangedFilesController(
         private val changedFilesDir: File,
         private val persistentStorageProvider: PersistentStorageProvider,
 ) {
     private val changedStorage = persistentStorageProvider.get("changed")
-    private val changedFiles = mutableMapOf<String, String>().apply {
+    private val changedFiles = mutableMapOf<RelativePath, AbsolutePath>().apply {
         putAll(changedStorage.all)
     }
     private val stagedStorage = persistentStorageProvider.get("staged")
-    private val stagedFiles = mutableMapOf<String, String>().apply {
+    private val stagedFiles = mutableMapOf<RelativePath, AbsolutePath>().apply {
         putAll(stagedStorage.all)
     }
 

@@ -8,6 +8,8 @@ import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
+import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesProvider
+import com.tsourcecode.wiki.lib.domain.documents.staging.StagedFilesController
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.search.SearchModel
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
@@ -42,10 +44,17 @@ class ProjectComponent(
     private val projectStorage: KeyValueStorage =
         storageProvider.getKeyValueStorage("${project.id}_prefs")
 
+    private val changedFiles = ChangedFilesProvider()
+    private val stagedFiles = StagedFilesController(
+        backendController,
+        workerScope,
+        projectStorage,
+    )
+
     private val fileStatusProvider = FileStatusProvider(
-            backendController,
             workerScope,
-            projectStorage,
+            changedFiles,
+            stagedFiles,
     )
 
     val statusModel = StatusModel(
