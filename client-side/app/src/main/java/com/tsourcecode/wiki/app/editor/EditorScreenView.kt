@@ -16,7 +16,6 @@ import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
 import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.AppNavigator
-import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import io.noties.markwon.Markwon
@@ -31,7 +30,6 @@ import java.util.concurrent.Executors
 class EditorScreenView(
         private val appCompatActivity: AppCompatActivity,
         private val projectComponentResolver: ProjectComponentResolver,
-        private val docContentProvider: DocumentContentProvider,
 ) : ScreenView {
     private val root = LayoutInflater.from(appCompatActivity).inflate(R.layout.document_editor, null)
     override val view: View = root
@@ -68,7 +66,7 @@ class EditorScreenView(
         textView.configureMarkwon()
         textView.configureScrolling()
 
-        val md = docContentProvider.getContent(d)
+        val md = component.docContentProvider.getContent(d)
         textView.setText(md.subSequence(0, md.length - 1))
         textView.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit

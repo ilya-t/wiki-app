@@ -15,9 +15,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class DocumentsController(
-        private val project: Project,
-        private val backendController: BackendController,
-        private val changedFilesController: ChangedFilesController,
+    private val project: Project,
+    private val backendController: BackendController,
+    private val changedFilesController: ChangedFilesController,
 ) {
     private val _data = MutableStateFlow(Folder(project.repo, emptyList()))
     val data: StateFlow<Folder> = _data
@@ -32,9 +32,6 @@ class DocumentsController(
                 throw RuntimeException("Project dir($dir) is file!")
             }
             val folder = parseFolder(dir, dir)
-            folder.onEachDocument {
-                changedFilesController.notifyFileSynced(it)
-            }
 
             withContext(Dispatchers.Main) {
                 _data.value = folder
@@ -89,7 +86,7 @@ class DocumentsController(
             val b64 = com.tsourcecode.wiki.lib.domain.util.Base64.getEncoder().encodeToString(content.toByteArray())
 
             if (backendController.stage(d.relativePath, b64)) {
-                changedFilesController.markStaged(d)
+                changedFilesController.notifyFileSynced(d)
             }
         }
     }

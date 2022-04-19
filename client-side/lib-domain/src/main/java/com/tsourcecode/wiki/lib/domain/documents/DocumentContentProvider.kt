@@ -2,10 +2,14 @@ package com.tsourcecode.wiki.lib.domain.documents
 
 import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
-import java.io.*
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileInputStream
+import java.io.InputStream
+import java.io.InputStreamReader
 
 class DocumentContentProvider(
-        private val changedFilesController: ChangedFilesController,
+    private val changedFilesController: ChangedFilesController,
 ) {
     private val inMemoryStore = mutableMapOf<Document, String>()
 

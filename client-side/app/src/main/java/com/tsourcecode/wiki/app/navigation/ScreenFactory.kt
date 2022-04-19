@@ -35,7 +35,6 @@ class ScreenFactory(
     private fun fileManager(): ScreenView {
         return FileManagerView(
                 activity,
-                domainComponent.docContentProvider,
                 domainComponent.projectComponentResolver,
                 domainComponent.fileManagerModel,
         )
@@ -45,7 +44,6 @@ class ScreenFactory(
         return EditorScreenView(
                 activity,
                 domainComponent.projectComponentResolver,
-                domainComponent.docContentProvider,
         )
     }
 

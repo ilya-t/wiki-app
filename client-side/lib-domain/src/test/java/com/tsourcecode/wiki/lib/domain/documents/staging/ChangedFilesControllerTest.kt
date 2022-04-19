@@ -1,46 +1,67 @@
 package com.tsourcecode.wiki.lib.domain.documents.staging
 
 import com.tsourcecode.wiki.app.documents.Document
-import com.tsourcecode.wiki.lib.domain.storage.PersistentStorage
-import com.tsourcecode.wiki.lib.domain.storage.PersistentStorageProvider
+import com.tsourcecode.wiki.lib.domain.project.Project
+import kotlinx.coroutines.GlobalScope
 import org.junit.Assert
 import org.junit.Test
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import java.io.File
+import java.net.URI
 
 class ChangedFilesControllerTest {
-    private val changedStorage = mock<PersistentStorage>()
-    private val stagedStorage = mock<PersistentStorage>()
-    private val storageProvider = mock<PersistentStorageProvider> {
-        on { get("changed") } doReturn changedStorage
-        on { get("staged") } doReturn stagedStorage
-    }
-
     private val document = mock<Document> {
-        on { relativePath } doReturn "README.md"
+        on { relativePath } doReturn "docs/README.md"
     }
 
-    private val underTest = ChangedFilesController(
-            changedFilesDir = File("/tmp/${System.currentTimeMillis()}"),
-            persistentStorageProvider = storageProvider
+    private val worker = GlobalScope
+    private val project = Project(
+        id = "test",
+        name = "test_project",
+        filesDir = File("/tmp/${System.currentTimeMillis()}"),
+        serverUri = URI.create(""),
+        repoUri = "",
     )
 
-    @Test
-    fun `staged file is changed`() {
-        underTest.markChanged(document, "content")
-        underTest.markStaged(document)
-        Assert.assertTrue(underTest.isStaged(document))
-        Assert.assertTrue(underTest.isChanged(document))
-    }
+    private val underTest = ChangedFilesController(
+            project,
+            worker,
+    )
 
     @Test
     fun `synced file is not longer changed`() {
         underTest.markChanged(document, "content")
-        underTest.markStaged(document)
         underTest.notifyFileSynced(document)
-        Assert.assertFalse(underTest.isStaged(document))
         Assert.assertFalse(underTest.isChanged(document))
+    }
+
+    @Test
+    fun `changed file marking works`() {
+        underTest.markChanged(document, "content")
+        Assert.assertTrue(underTest.isChanged(document))
+    }
+
+    @Test
+    fun `file content changed`() {
+        underTest.markChanged(document, "updated content")
+        val fileContent = underTest.getChangedFile(document)!!.readText()
+        Assert.assertTrue("Wrong file content: '$fileContent'",
+            fileContent.contains("updated content"))
+    }
+
+    @Test
+    fun `changed files scanned at start`() {
+        underTest.markChanged(document, "updated content")
+
+        val underTest2 = ChangedFilesController(
+            project,
+            worker,
+        )
+
+        val fileContent = underTest2.getChangedFile(document)!!.readText()
+        Assert.assertTrue("Wrong file content: '$fileContent'",
+            fileContent.contains("updated content"))
     }
 
 }

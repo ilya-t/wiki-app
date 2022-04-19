@@ -7,7 +7,6 @@ import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 class AppComponent(private val appContext: Context) {
     internal val domain = DomainComponent(AndroidPlatformDeps(appContext))
     val quickStatusController = domain.quickStatusController
-    val docContentProvider = domain.docContentProvider
 
     init {
         if (BuildConfig.DEBUG) {

@@ -10,7 +10,7 @@ class DocumentTest {
     fun `relative path`() {
         val d = Document(
                 projectDir = File("/tmp/repo/dir"),
-                f = File("/tmp/repo/dir/src/README.md")
+                origin = File("/tmp/repo/dir/src/README.md")
         )
 
         Assert.assertEquals("src/README.md", d.relativePath)
@@ -20,7 +20,7 @@ class DocumentTest {
     fun `relative path (trailing slash)`() {
         val d = Document(
                 projectDir = File("/tmp/repo/dir/"),
-                f = File("/tmp/repo/dir/README.md")
+                origin = File("/tmp/repo/dir/README.md")
         )
 
         Assert.assertEquals("README.md", d.relativePath)

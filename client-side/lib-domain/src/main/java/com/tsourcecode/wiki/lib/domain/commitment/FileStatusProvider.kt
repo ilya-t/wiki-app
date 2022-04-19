@@ -1,6 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.commitment
 
-import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesProvider
+import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.documents.staging.StagedFilesController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 
 class FileStatusProvider(
     private val workerScope: CoroutineScope,
-    private val changedFiles: ChangedFilesProvider,
+    private val changedFiles: ChangedFilesController,
     private val stagedFiles: StagedFilesController,
 ) {
 

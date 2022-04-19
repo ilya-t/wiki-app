@@ -12,9 +12,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class DocumentsAdapter(
-        private val docContentProvider: DocumentContentProvider,
-) : RecyclerView.Adapter<DocumentViewHolder>() {
+class DocumentsAdapter() : RecyclerView.Adapter<DocumentViewHolder>() {
+    var docContentProvider: DocumentContentProvider? = null
     var openDelegate: (Element) -> Unit = {}
     private val items = mutableListOf<Element>()
     fun update(newItems: List<Element>) {
@@ -24,14 +23,14 @@ class DocumentsAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-            DocumentViewHolder(createItemView(parent), openDelegate, docContentProvider)
+            DocumentViewHolder(createItemView(parent), openDelegate)
 
     private fun createItemView(parent: ViewGroup): View {
         return LayoutInflater.from(parent.context).inflate(R.layout.doc_item, parent, false)
     }
 
     override fun onBindViewHolder(holder: DocumentViewHolder, position: Int) {
-        holder.bind(items[position])
+        holder.bind(items[position], docContentProvider!!)
     }
 
     override fun getItemCount() = items.size
@@ -40,12 +39,11 @@ class DocumentsAdapter(
 class DocumentViewHolder(
         itemView: View,
         private val openDelegate: (Element) -> Unit,
-        private val docContentProvider: DocumentContentProvider
 ) : RecyclerView.ViewHolder(itemView) {
     private var boundedElement: Element? = null
     private val tvTitle = itemView.findViewById<AppCompatTextView>(R.id.tv_title)
     private val tvPreview = itemView.findViewById<AppCompatTextView>(R.id.tv_preview)
-    fun bind(element: Element) {
+    fun bind(element: Element, docContentProvider: DocumentContentProvider) {
         boundedElement = element
         tvTitle.text = element.file.name
 
