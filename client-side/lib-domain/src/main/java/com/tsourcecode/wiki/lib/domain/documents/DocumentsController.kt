@@ -76,7 +76,7 @@ class DocumentsController(
             Document(projectDir, f)
         }
     }
-
+    //TODO: save doc not here but also on sync
     fun save(d: Document, content: String) {
         GlobalScope.launch {
             changedFilesController.markChanged(d, content)
