@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
 import java.net.URL
 
 class ProjectBackendController(url: URL) {
@@ -13,10 +14,11 @@ class ProjectBackendController(url: URL) {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
+    @Throws(IOException::class)
     fun getConfigs(): List<ProjectConfig> {
         val api: ProjectBackendAPIs = retrofit.create(ProjectBackendAPIs::class.java)
         val response = api.getProjects().execute()
-        val body = response.body()?.string() ?: throw IllegalStateException("Empty body received!")
+        val body = response.body()?.string() ?: throw IOException("Empty body received!")
         val result = Json.decodeFromString(Configs.serializer(), body)
         return result.configs
     }

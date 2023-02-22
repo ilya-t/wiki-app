@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.*
@@ -66,14 +67,19 @@ class ConfigScreenModel(
         workerScope.launch {
             val url = URI(item.projectUrl)
             val controller = ProjectBackendController(url.toURL())
-            val importedProjects = controller.getConfigs().map {
-                Project(
+            val importedProjects = try {
+                controller.getConfigs().map {
+                    Project(
                         id = it.name,
                         name = it.name,
                         filesDir = platformDeps.filesDir,
                         serverUri = url,
                         repoUri = it.repoUrl,
-                )
+                    )
+                }
+            } catch (e: IOException) {
+                quickStatusController.error(e)
+                return@launch
             }
             val existingProjects = projectsRepository.data.value
             val existingRepos = existingProjects
