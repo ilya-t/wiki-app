@@ -3,6 +3,8 @@ package com.tsourcecode.wiki.lib.domain.commitment
 import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
+import com.tsourcecode.wiki.lib.domain.backend.CurrentRevisionInfoController
+import com.tsourcecode.wiki.lib.domain.backend.RevisionInfo
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
@@ -22,6 +24,7 @@ class StatusModel(
     private val worker: CoroutineScope,
     private val navigator: AppNavigator,
     private val projectStorage: KeyValueStorage,
+    private val currentRevisionInfoController: CurrentRevisionInfoController,
 ) {
     private val messageStorage = StoredPrimitive.string("commit_message", projectStorage)
     private var lastSeenCommitText = ""
@@ -58,6 +61,9 @@ class StatusModel(
         val statusViewModel = StatusViewModel(
             items,
         )
+        currentRevisionInfoController.currentRevision?.toMessage()?.let {
+            items.add(StatusViewItem.RevisionViewItem(it))
+        }
         _statusFlow.value = statusViewModel
     }
 
@@ -90,6 +96,13 @@ class StatusModel(
             navigator.open(d.toNavigationURI(project))
         }
     }
+}
+
+private fun RevisionInfo?.toMessage(): String? {
+    if (this == null) {
+        return null
+    }
+    return "${this.revision} from (${this.date.replace("\n", "")})\n\n${this.message}"
 }
 
 internal fun Document.toNavigationURI(project: Project): URI {

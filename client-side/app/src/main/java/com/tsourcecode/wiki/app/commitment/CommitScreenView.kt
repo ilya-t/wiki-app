@@ -87,6 +87,7 @@ private fun ComposeCommitScreen(viewModel: StatusViewModel, model: StatusModel) 
             when (item) {
                 is StatusViewItem.CommitViewItem -> CommitItem(item, model)
                 is StatusViewItem.FileViewItem -> FileDiffItem(item, model)
+                is StatusViewItem.RevisionViewItem -> RevisionItem(item, model)
             }.apply { /*exhaustive*/ }
         }
     }
@@ -120,6 +121,25 @@ fun CommitItem(item: StatusViewItem.CommitViewItem, model: StatusModel) {
                         cursorColor = Color.White,
                         focusedIndicatorColor = Color.White,
                 ),
+        )
+        Text(
+            text = "Current status",
+            color = Color.White,
+            fontFamily = FontFamily.Monospace,
+        )
+    }
+}
+
+@Composable
+fun RevisionItem(item: StatusViewItem.RevisionViewItem, model: StatusModel) {
+    Column(
+            modifier = Modifier
+                    .padding(Dp(8f))
+    ) {
+        Text(
+            text = "Current revision:\n${item.message}",
+            color = Color.White,
+            fontFamily = FontFamily.Monospace,
         )
     }
 }

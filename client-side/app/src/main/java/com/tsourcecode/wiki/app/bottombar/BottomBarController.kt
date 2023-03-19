@@ -49,7 +49,7 @@ class BottomBarController(
 
     private fun bindCommitButton(projectComponent: ProjectComponent?) {
         if (projectComponent == null) {
-            btnCommit.text = "changes"
+            btnCommit.text = "status"
             btnCommit.setOnClickListener(null)
             return
         }
@@ -58,9 +58,9 @@ class BottomBarController(
                 .items.filterIsInstance<StatusViewItem.FileViewItem>()
                 .size
         if (diffCount > 0) {
-            btnCommit.text = "changes ($diffCount)"
+            btnCommit.text = "status ($diffCount)"
         } else {
-            btnCommit.text = "changes"
+            btnCommit.text = "status"
         }
 
         btnCommit.setOnClickListener {

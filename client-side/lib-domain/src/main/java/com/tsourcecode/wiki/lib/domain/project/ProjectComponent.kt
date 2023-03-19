@@ -48,9 +48,13 @@ class ProjectComponent(
         return retrofit.create(WikiBackendAPIs::class.java)
     }
 
+    private val projectStorage: KeyValueStorage =
+        storageProvider.getKeyValueStorage("${project.id}_prefs")
+
     val currentRevisionInfoController = CurrentRevisionInfoController(
         project,
         wikiBackendAPIs,
+        projectStorage,
     )
 
     val backendController = BackendController(
@@ -62,9 +66,6 @@ class ProjectComponent(
             wikiBackendAPIs,
     )
 
-
-    private val projectStorage: KeyValueStorage =
-        storageProvider.getKeyValueStorage("${project.id}_prefs")
 
     private val changedFiles = ChangedFilesController(
         project,
@@ -90,6 +91,7 @@ class ProjectComponent(
             workerScope,
             navigator,
             projectStorage,
+            currentRevisionInfoController,
     )
 
     val documentsController = DocumentsController(

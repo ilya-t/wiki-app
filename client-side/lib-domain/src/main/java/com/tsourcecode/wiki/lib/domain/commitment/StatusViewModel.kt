@@ -12,4 +12,8 @@ sealed interface StatusViewItem {
     class FileViewItem(
             val fileStatus: FileStatus,
     ) : StatusViewItem
+
+    class RevisionViewItem(
+            val message: String,
+    ) : StatusViewItem
 }
