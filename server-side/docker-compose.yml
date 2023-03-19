@@ -16,6 +16,7 @@ services:
       - $target_ssh_keys:/root/.ssh
       - /tmp/test_repo.git:/tmp/test_repo.git
       # - /tmp/server_side_tmp:/tmp # contains archives of revisions
+    restart: unless-stopped
   tests:
     build: tests
     volumes:
