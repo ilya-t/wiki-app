@@ -105,8 +105,14 @@ func (g *Git) ShowRevision(revision string) (*RevisionInfo, error) {
 		return nil, err
 	}
 
+	raw_revision, err := g.execute("git rev-parse " + revision)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &RevisionInfo{
-		Revision: revision,
+		Revision: raw_revision,
 		Date:     date,
 		Message:  message,
 	}, nil

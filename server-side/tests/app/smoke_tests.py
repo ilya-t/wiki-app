@@ -144,7 +144,7 @@ class AcceptanceTests(unittest.TestCase):
     def test_revision_show_api(self):
         revision = 'HEAD~0'
         response = self.api_user.show(revision)
-        self.assertEquals(revision, response.json()['revision'])
+        self.assertNotEquals(revision, response.json()['revision'])
         self.assertEquals('added test_rebase_after_stage.md\n\n', response.json()['message'])
 
 
