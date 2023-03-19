@@ -1,6 +1,7 @@
 package com.tsourcecode.wiki.app.editor
 
 import android.text.Editable
+import android.text.Spanned
 import android.text.TextWatcher
 import android.text.method.ScrollingMovementMethod
 import android.view.GestureDetector
@@ -8,8 +9,10 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Scroller
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatEditText
+import androidx.appcompat.widget.AppCompatTextView
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
@@ -27,17 +30,24 @@ import java.net.URI
 import java.net.URLDecoder
 import java.util.concurrent.Executors
 
+private const val EDITING_ENABLED = false
+
 class EditorScreenView(
         private val appCompatActivity: AppCompatActivity,
         private val projectComponentResolver: ProjectComponentResolver,
 ) : ScreenView {
-    private val root = LayoutInflater.from(appCompatActivity).inflate(R.layout.document_editor, null)
+    private val root = LayoutInflater.from(appCompatActivity).inflate(
+        if (EDITING_ENABLED) R.layout.document_editor else R.layout.document_viewer, null)
     override val view: View = root
 
     override fun handle(uri: URI): Boolean {
         val results = resolveDocument(uri) ?: return false
 
-        configureEditor(results.document, results.projectComponent, root)
+        if (EDITING_ENABLED) {
+            configureEditor(results.document, results.projectComponent, root)
+        } else {
+            configureViewer(results.document, results.projectComponent, root)
+        }
         return true
     }
 
@@ -60,6 +70,16 @@ class EditorScreenView(
 
     }
 
+    private fun configureViewer(d: Document, component: ProjectComponent, container: View) {
+        val textView = container.findViewById<AppCompatTextView>(R.id.tv_markwon)
+        val md = component.docContentProvider.getContent(d)
+        textView.configureScrolling()
+
+        // parse markdown and create styled text
+        val markwon = Markwon.create(textView.context)
+        val markdown: Spanned = markwon.toMarkdown(md);
+        textView.text = markdown
+    }
 
     private fun configureEditor(d: Document, component: ProjectComponent, container: View) {
         val textView = container.findViewById<AppCompatEditText>(R.id.tv_markwon)
@@ -84,25 +104,15 @@ class EditorScreenView(
         setScroller(scroller)
         isVerticalScrollBarEnabled = true
         movementMethod = ScrollingMovementMethod()
-        setOnTouchListener(object : View.OnTouchListener {
-            // Could make this a field member on your activity
-            var gesture = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-                override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
-                    scroller.fling(0, scrollY, 0, (-velocityY).toInt(), 0, 0, 0, lineCount * lineHeight)
-                    return super.onFling(e1, e2, velocityX, velocityY)
-                }
+        setOnTouchListener(ScrollHandler(scroller, this))
+    }
 
-                override fun onDown(e: MotionEvent?): Boolean {
-                    scroller.abortAnimation()
-                    return false
-                }
-            })
-
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                gesture.onTouchEvent(event)
-                return false
-            }
-        })
+    private fun AppCompatTextView.configureScrolling() {
+        val scroller = Scroller(context)
+        setScroller(scroller)
+        isVerticalScrollBarEnabled = true
+        movementMethod = ScrollingMovementMethod()
+        setOnTouchListener(ScrollHandler(scroller, this))
     }
 
     private fun AppCompatEditText.configureMarkwon() {
@@ -119,6 +129,27 @@ class EditorScreenView(
                 .build()
         addTextChangedListener(MarkwonEditorTextWatcher.withPreRender(
                 editor, Executors.newSingleThreadExecutor(), this));
+    }
+}
+
+class ScrollHandler(scroller: Scroller,
+                    private val view: TextView) : View.OnTouchListener {
+    // Could make this a field member on your activity
+    var gesture = GestureDetector(view.context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+            scroller.fling(0, view.scrollY, 0, (-velocityY).toInt(), 0, 0, 0, view.lineCount * view.lineHeight)
+            return super.onFling(e1, e2, velocityX, velocityY)
+        }
+
+        override fun onDown(e: MotionEvent?): Boolean {
+            scroller.abortAnimation()
+            return false
+        }
+    })
+
+    override fun onTouch(v: View, event: MotionEvent): Boolean {
+        gesture.onTouchEvent(event)
+        return false
     }
 }
 
