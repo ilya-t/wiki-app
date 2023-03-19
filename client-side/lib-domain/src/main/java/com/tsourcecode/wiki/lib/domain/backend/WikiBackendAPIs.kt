@@ -20,6 +20,8 @@ interface WikiBackendAPIs {
     fun stage(@Path("project") name: String, @Body staging: Staging): Call<ResponseBody>
     @POST("/{project}/api/1/status")
     fun status(@Path("project") name: String): Call<ResponseBody>
+    @POST("/{project}/api/1/revision/show")
+    fun showRevision(@Path("project") name: String, @Body spec: RevisionSpec): Call<ResponseBody>
     @POST("/{project}/api/1/commit")
     fun commit(@Path("project") name: String, @Body c: Commitment): Call<ResponseBody>
 

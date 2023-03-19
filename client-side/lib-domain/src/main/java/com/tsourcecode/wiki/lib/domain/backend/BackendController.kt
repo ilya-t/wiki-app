@@ -16,8 +16,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType
 import okhttp3.RequestBody
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -28,15 +26,12 @@ class BackendController(
         private val quickStatusController: QuickStatusController,
         private val elementHashProvider: ElementHashProvider,
         private val project: Project,
+        private val currentRevisionInfoController: CurrentRevisionInfoController,
+        private val backendApi: WikiBackendAPIs,
 ) {
     private var projectObserver: ((File) -> Unit)? = null
-    private val retrofit = Retrofit.Builder()
-            .baseUrl(project.serverUri.toURL())
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
     private val _refreshFlow = MutableStateFlow(false)
     val refreshFlow: StateFlow<Boolean> = _refreshFlow
-    private val backendApi: WikiBackendAPIs = retrofit.create(WikiBackendAPIs::class.java)
     private val scope = GlobalScope
 
     fun observeProjectUpdates(observer: (File) -> Unit) {
@@ -68,6 +63,7 @@ class BackendController(
                 quickStatusController.udpate(QuickStatus.SYNC)
                 val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
                 requestLastRevisionSnapshot(files)?.let {
+                    currentRevisionInfoController.bumpRevisionToLatest()
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
                     val syncOutput = File(project.dir.absolutePath + "/sync")
                     val syncedFiles = if (fullSync) File(syncOutput, "repo") else syncOutput
@@ -82,9 +78,11 @@ class BackendController(
 
                     syncedFiles.deleteRecursively()
 
+
                     scope.launch(Dispatchers.Main) {
                         projectObserver?.invoke(project.repo)
-                        quickStatusController.udpate(QuickStatus.SYNCED)
+
+                        quickStatusController.udpate(QuickStatus.SYNCED, currentRevisionInfoController.currentRevision.toComment())
                     }
 
                     scope.launch {
@@ -201,4 +199,12 @@ class BackendController(
         quickStatusController.udpate(QuickStatus.STATUS_UPDATED)
         return result
     }
+}
+
+private fun RevisionInfo?.toComment(): String {
+    if (this == null) {
+        return ""
+    }
+
+    return " (${this.date.replace("\n", "")})\n${this.revision}\n${this.message.replace("\n","")}"
 }

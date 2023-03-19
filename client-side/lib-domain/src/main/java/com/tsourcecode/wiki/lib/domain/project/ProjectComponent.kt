@@ -4,6 +4,9 @@ import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
+import com.tsourcecode.wiki.lib.domain.backend.CurrentRevisionInfoController
+import com.tsourcecode.wiki.lib.domain.backend.ProjectBackendController
+import com.tsourcecode.wiki.lib.domain.backend.WikiBackendAPIs
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
@@ -16,6 +19,9 @@ import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.PersistentStorageProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.net.URI
 
 class ProjectComponent(
         val project: Project,
@@ -32,11 +38,28 @@ class ProjectComponent(
             },
     )
 
+    private val wikiBackendAPIs = createWikiBackendApi()
+
+    private fun createWikiBackendApi(): WikiBackendAPIs {
+        val retrofit = Retrofit.Builder()
+            .baseUrl(project.serverUri.toURL())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+        return retrofit.create(WikiBackendAPIs::class.java)
+    }
+
+    val currentRevisionInfoController = CurrentRevisionInfoController(
+        project,
+        wikiBackendAPIs,
+    )
+
     val backendController = BackendController(
             platformDeps,
             quickStatusController,
             elementHashProvider,
             project,
+            currentRevisionInfoController,
+            wikiBackendAPIs,
     )
 
 

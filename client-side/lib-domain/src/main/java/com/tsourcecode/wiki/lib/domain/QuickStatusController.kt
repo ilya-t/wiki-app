@@ -6,8 +6,8 @@ import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
 class QuickStatusController {
     var listener: ((StatusInfo) -> Unit)? = null
 
-    fun udpate(status: QuickStatus) {
-        listener?.invoke(StatusInfo((status)))
+    fun udpate(status: QuickStatus, comment: String = "") {
+        listener?.invoke(StatusInfo(status, error = null, comment = comment))
     }
 
     fun error(e: Exception) {
@@ -21,5 +21,6 @@ class QuickStatusController {
 
 data class StatusInfo(
         val status: QuickStatus,
-        val error: java.lang.Exception? = null
+        val error: java.lang.Exception? = null,
+        val comment: String = "",
 )

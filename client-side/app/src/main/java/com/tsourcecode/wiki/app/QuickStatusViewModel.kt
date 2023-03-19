@@ -59,7 +59,7 @@ class QuickStatusViewModel(
             tvStatus.setBackgroundColor(
                     activity.resources.getColor(status.status.color())
                     )
-            tvStatus.text = status.status.name
+            tvStatus.text = status.status.name + status.comment
         }
 
         this.lastStatus = status
