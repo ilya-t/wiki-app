@@ -8,7 +8,7 @@ mkdir $REPO_DIR
 cd $REPO_DIR
 echo "# Sample Repo for Tests" > README.md
 
-git init
+git init --initial-branch=master
 git config --local user.name "tester"
 git config --local user.email "test@mail.com"
 

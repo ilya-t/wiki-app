@@ -50,7 +50,7 @@ func (p *ProjectHttpApi) Start() {
 	p.git.TryClone()
 	p.shell.StrictExecute("git config --local user.email \"wiki-app@tsourcecode.com\"")
 	p.shell.StrictExecute("git config --local user.name \"Wiki Committer\"")
-	p.shell.StrictExecute("git checkout " + BRANCH)
+	p.shell.StrictExecute("git status && git checkout " + BRANCH)
 
 	prefix := "/" + p.config.id
 	if p.config.id == "" {
@@ -59,6 +59,7 @@ func (p *ProjectHttpApi) Start() {
 
 	http.HandleFunc(prefix+"/api/1/revision/latest", p.getLastRevision)
 	http.HandleFunc(prefix+"/api/1/revision/sync", p.getOutdatedAtLastRevision)
+	http.HandleFunc(prefix+"/api/1/revision/show", p.postRevisionShow)
 	http.HandleFunc(prefix+"/api/1/status", p.getStatus)
 	http.HandleFunc(prefix+"/api/1/commit", p.postCommit)
 	http.HandleFunc(prefix+"/api/1/stage", p.stageFiles)
@@ -124,6 +125,31 @@ func (p *ProjectHttpApi) getStatus(w http.ResponseWriter, req *http.Request) {
 	}
 
 	writeJsonStruct(status, w, req)
+}
+
+func (p *ProjectHttpApi) postRevisionShow(w http.ResponseWriter, req *http.Request) {
+	r, e := ioutil.ReadAll(req.Body)
+
+	if e != nil {
+		writeError(w, "unexpected request body", join(e, string(r)))
+		return
+	}
+
+	var revisionSpec *RevisionSpec
+	err := json.Unmarshal(r, &revisionSpec)
+
+	if err != nil {
+		writeError(w, "request body parsing", join(err, string(r)))
+		return
+	}
+
+	revisionInfo, err := p.git.ShowRevision(revisionSpec.Revision)
+	if err != nil {
+		writeError(w, "revision show", join(err, string(r)))
+		return
+	}
+
+	writeJsonStruct(revisionInfo, w, req)
 }
 
 func (p *ProjectHttpApi) postCommit(w http.ResponseWriter, req *http.Request) {

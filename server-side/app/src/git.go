@@ -29,6 +29,16 @@ type Commitment struct {
 	Message string `json:"message"`
 }
 
+type RevisionSpec struct {
+	Revision string `json:"revision"`
+}
+
+type RevisionInfo struct {
+	Revision string `json:"revision"`
+	Date     string `json:"date"`
+	Message  string `json:"message"`
+}
+
 type Git struct {
 	branch  string
 	remote  string
@@ -80,6 +90,26 @@ func (g *Git) Stage(f *FileContent) error {
 	}
 
 	return nil
+}
+
+func (g *Git) ShowRevision(revision string) (*RevisionInfo, error) {
+	date, err := g.execute("git show " + revision + " -s --format=%cd")
+
+	if err != nil {
+		return nil, err
+	}
+
+	message, err := g.execute("git show " + revision + " -s --format=%B")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &RevisionInfo{
+		Revision: revision,
+		Date:     date,
+		Message:  message,
+	}, nil
 }
 
 func (g *Git) Commit(commitment *Commitment) error {

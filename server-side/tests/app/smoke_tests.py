@@ -141,6 +141,12 @@ class AcceptanceTests(unittest.TestCase):
         expected = 'modified text'
         self.assertTrue(expected in file['diff'], msg='Expecting "'+expected+'" in diff, got: ' + file['diff'])
 
+    def test_revision_show_api(self):
+        revision = 'HEAD~0'
+        response = self.api_user.show(revision)
+        self.assertEquals(revision, response.json()['revision'])
+        self.assertEquals('added test_rebase_after_stage.md\n\n', response.json()['message'])
+
 
 def find(path: str, files: [dict]) -> dict:
     for f in files:

@@ -47,6 +47,7 @@ fi
 
 echo "Integration tests: ./build_artifacts/report.html $STATUS_I"
 echo "Unit tests:        ./build_artifacts/unit_test.log $STATUS_U"
+echo "Full Log:          ./build_artifacts/compose.log"
 
 
 if [ $RESULT_INTGR != "0" ] ; then

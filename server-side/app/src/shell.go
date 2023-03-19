@@ -18,7 +18,7 @@ func (s *Shell) Execute(cmd string) (string, error) {
 	out, err := command.Output()
 
 	if err != nil {
-		return stderr.String(), err
+		return string(out) + stderr.String(), err
 	}
 
 	return string(out), err
