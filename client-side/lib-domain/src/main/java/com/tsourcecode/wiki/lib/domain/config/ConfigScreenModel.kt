@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.lib.domain.config
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
+import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
 import com.tsourcecode.wiki.lib.domain.backend.ProjectBackendController
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
@@ -22,6 +23,7 @@ class ConfigScreenModel(
         private val quickStatusController: QuickStatusController,
         private val workerScope: CoroutineScope,
         private val navigator: AppNavigator,
+        private val backendFactory: BackendFactory,
 ) {
     private val _data = MutableStateFlow(emptyList<ConfigScreenItem>())
     val data: Flow<List<ConfigScreenItem>> = _data
@@ -66,7 +68,7 @@ class ConfigScreenModel(
     fun submitImport(item: ConfigScreenItem.ImportFrom) {
         workerScope.launch {
             val url = URI(item.projectUrl)
-            val controller = ProjectBackendController(url.toURL())
+            val controller = ProjectBackendController(backendFactory, url.toURL())
             val importedProjects = try {
                 controller.getConfigs().map {
                     Project(

@@ -1,9 +1,12 @@
 package com.tsourcecode.wiki.lib.domain
 
+import okhttp3.Interceptor
+
 object DomainComponentFactory {
-    fun create(): DomainComponent {
+    fun create(responseInterceptor: Interceptor): DomainComponent {
         return DomainComponent(
-            platformDeps = JdkPlatformDeps()
+            platformDeps = JdkPlatformDeps(),
+            networkConfigurator = { it.addInterceptor(responseInterceptor) },
         )
     }
 }

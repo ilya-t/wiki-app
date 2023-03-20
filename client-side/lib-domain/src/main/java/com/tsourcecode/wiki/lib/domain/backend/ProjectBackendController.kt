@@ -3,20 +3,17 @@ package com.tsourcecode.wiki.lib.domain.backend
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
 import java.net.URL
 
-class ProjectBackendController(url: URL) {
-    private val retrofit = Retrofit.Builder()
-            .baseUrl(url)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+class ProjectBackendController(
+    backedFactory: BackendFactory,
+    url: URL,
+) {
+    private val api = backedFactory.createProjectBackendAPIs(url)
 
     @Throws(IOException::class)
     fun getConfigs(): List<ProjectConfig> {
-        val api: ProjectBackendAPIs = retrofit.create(ProjectBackendAPIs::class.java)
         val response = api.getProjects().execute()
         val body = response.body()?.string() ?: throw IOException("Empty body received!")
         val result = Json.decodeFromString(Configs.serializer(), body)
