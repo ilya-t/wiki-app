@@ -27,7 +27,7 @@ class ScreenFactory(
     private fun configScreen(): ScreenView {
         return ConfigScreenView(
                 activity,
-                domainComponent.configScreenModel,
+                domainComponent.viewModels.configScreenModel,
                 activity.lifecycleScope,
         )
     }

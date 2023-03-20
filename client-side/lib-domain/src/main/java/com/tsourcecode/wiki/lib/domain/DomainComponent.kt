@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.lib.domain
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenModel
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
 import com.tsourcecode.wiki.lib.domain.navigation.InitialNavigationController
+import com.tsourcecode.wiki.lib.domain.presentation.ViewModels
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
@@ -20,13 +21,16 @@ class DomainComponent(
 
     val quickStatusController = QuickStatusController()
 
-    val configScreenModel = ConfigScreenModel(
+    val viewModels: ViewModels = ViewModels(
+        configScreenModel = ConfigScreenModel(
             projectsRepository,
             platformDeps,
             quickStatusController,
             workerScope,
             navigator,
+        )
     )
+
 
     val projectComponents = ProjectComponentProvider(
             platformDeps,
