@@ -2,6 +2,7 @@ package com.tsourcecode.wiki.lib.domain
 
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenModel
+import com.tsourcecode.wiki.lib.domain.documents.DocumentViewModelResolver
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
 import com.tsourcecode.wiki.lib.domain.navigation.InitialNavigationController
 import com.tsourcecode.wiki.lib.domain.presentation.ViewModels
@@ -25,6 +26,19 @@ class DomainComponent(
     val quickStatusController = QuickStatusController()
     private val backendFactory = BackendFactory(networkConfigurator)
 
+    val projectComponents = ProjectComponentProvider(
+        platformDeps,
+        quickStatusController,
+        workerScope,
+        navigator,
+        backendFactory,
+    )
+
+    val projectComponentResolver = ProjectComponentResolver(
+        projectsRepository,
+        projectComponents,
+    )
+
     val viewModels: ViewModels = ViewModels(
         configScreenModel = ConfigScreenModel(
             projectsRepository,
@@ -33,26 +47,15 @@ class DomainComponent(
             workerScope,
             navigator,
             backendFactory,
+        ),
+        documentViewModelResolver = DocumentViewModelResolver(
+            projectComponentResolver,
         )
-    )
-
-
-    val projectComponents = ProjectComponentProvider(
-            platformDeps,
-            quickStatusController,
-            workerScope,
-            navigator,
-            backendFactory,
     )
 
     val fileManagerModel = FileManagerModel(
             navigator,
             quickStatusController,
-    )
-
-    val projectComponentResolver = ProjectComponentResolver(
-            projectsRepository,
-            projectComponents,
     )
 
     private val initialNavigationController = InitialNavigationController(

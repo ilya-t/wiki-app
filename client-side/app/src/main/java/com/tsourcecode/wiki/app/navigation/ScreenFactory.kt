@@ -43,7 +43,7 @@ class ScreenFactory(
     private fun documentEditor(): ScreenView {
         return EditorScreenView(
                 activity,
-                domainComponent.projectComponentResolver,
+                domainComponent.viewModels.documentViewModelResolver,
         )
     }
 

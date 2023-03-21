@@ -14,65 +14,47 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.appcompat.widget.AppCompatTextView
 import com.tsourcecode.wiki.app.R
-import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
 import com.tsourcecode.wiki.app.navigation.ScreenView
-import com.tsourcecode.wiki.lib.domain.AppNavigator
-import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
-import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
+import com.tsourcecode.wiki.lib.domain.documents.DocumentViewModel
+import com.tsourcecode.wiki.lib.domain.documents.DocumentViewModelResolver
 import io.noties.markwon.Markwon
 import io.noties.markwon.editor.MarkwonEditor
 import io.noties.markwon.editor.MarkwonEditorTextWatcher
 import io.noties.markwon.editor.handler.EmphasisEditHandler
 import io.noties.markwon.editor.handler.StrongEmphasisEditHandler
 import java.net.URI
-import java.net.URLDecoder
 import java.util.concurrent.Executors
 
 private const val EDITING_ENABLED = false
 
 class EditorScreenView(
-        private val appCompatActivity: AppCompatActivity,
-        private val projectComponentResolver: ProjectComponentResolver,
+    private val appCompatActivity: AppCompatActivity,
+    private val documentViewModelResolver: DocumentViewModelResolver,
 ) : ScreenView {
     private val root = LayoutInflater.from(appCompatActivity).inflate(
         if (EDITING_ENABLED) R.layout.document_editor else R.layout.document_viewer, null)
     override val view: View = root
 
     override fun handle(uri: URI): Boolean {
-        val results = resolveDocument(uri) ?: return false
+        val viewModel = documentViewModelResolver.resolveDocumentViewModel(uri) ?: return false
 
         if (EDITING_ENABLED) {
-            configureEditor(results.document, results.projectComponent, root)
+            configureEditor(viewModel, root)
         } else {
-            configureViewer(results.document, results.projectComponent, root)
+            configureViewer(viewModel, root)
         }
         return true
-    }
-
-    private fun resolveDocument(uri: URI): ResolveResults? {
-        if (!AppNavigator.isDocumentEdit(uri)) {
-            return null
-        }
-
-        val component = projectComponentResolver.tryResolve(uri) ?: return null
-        val decodedPath = uri.path.removePrefix("/").split("/").joinToString("/") { URLDecoder.decode(it, "UTF-8") }
-        val element = component.documentsController.data.value.find(decodedPath)
-        if (element is Document) {
-            return ResolveResults(element, component)
-        }
-
-        return null
     }
 
     override fun close() {
 
     }
 
-    private fun configureViewer(d: Document, component: ProjectComponent, container: View) {
+    private fun configureViewer(viewModel: DocumentViewModel, container: View) {
         val textView = container.findViewById<AppCompatTextView>(R.id.tv_markwon)
-        val md = component.docContentProvider.getContent(d)
+        val md = viewModel.getContent()
         textView.configureScrolling()
 
         // parse markdown and create styled text
@@ -81,12 +63,13 @@ class EditorScreenView(
         textView.text = markdown
     }
 
-    private fun configureEditor(d: Document, component: ProjectComponent, container: View) {
+    private fun configureEditor(viewModel: DocumentViewModel, container: View) {
         val textView = container.findViewById<AppCompatEditText>(R.id.tv_markwon)
         textView.configureMarkwon()
         textView.configureScrolling()
 
-        val md = component.docContentProvider.getContent(d)
+
+        val md = viewModel.getContent()
         textView.setText(md.subSequence(0, md.length - 1))
         textView.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -94,7 +77,8 @@ class EditorScreenView(
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
 
             override fun afterTextChanged(s: Editable?) {
-                component.documentsController.save(d, textView.text.toString())
+                viewModel.save(textView.text.toString())
+
             }
         })
     }
@@ -152,8 +136,3 @@ class ScrollHandler(scroller: Scroller,
         return false
     }
 }
-
-private class ResolveResults(
-        val document: Document,
-        val projectComponent: ProjectComponent,
-)

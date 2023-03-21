@@ -7,9 +7,9 @@ import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
+import com.tsourcecode.wiki.lib.domain.util.NavigationUtils
 import kotlinx.coroutines.flow.collect
 import java.net.URI
-import java.net.URLEncoder
 
 class FileManagerModel(
         private val appNavigator: AppNavigator,
@@ -17,15 +17,9 @@ class FileManagerModel(
 ) {
     fun open(project: Project, element: Element) {
         when (element) {
-            is Document -> openDocument(project, element)
+            is Document -> appNavigator.open(NavigationUtils.openDocument(project, element))
             is Folder -> openFolder(project, element)
         }.also { /*exhaustive*/ }
-    }
-
-    private fun openDocument(p: Project, d: Document) {
-        val encodedName = URLEncoder.encode(p.name, "UTF-8")
-        val encodedPath = d.relativePath.split("/").map { URLEncoder.encode(it, "UTF-8") }.joinToString("/")
-        appNavigator.open(URI("edit://${encodedName}/${encodedPath}"))
     }
 
     private fun openFolder(p: Project, f: Folder) {
