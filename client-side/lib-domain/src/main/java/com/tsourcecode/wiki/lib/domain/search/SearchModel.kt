@@ -1,10 +1,10 @@
 package com.tsourcecode.wiki.lib.domain.search
 
-import com.tsourcecode.wiki.app.documents.Document
-import com.tsourcecode.wiki.app.documents.Folder
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.commitment.toNavigationURI
+import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
+import com.tsourcecode.wiki.lib.domain.documents.Folder
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow

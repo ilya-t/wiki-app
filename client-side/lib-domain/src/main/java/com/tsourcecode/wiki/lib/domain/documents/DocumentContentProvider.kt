@@ -1,6 +1,5 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
-import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 
 class DocumentContentProvider(

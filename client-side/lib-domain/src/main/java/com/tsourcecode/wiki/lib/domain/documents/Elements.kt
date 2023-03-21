@@ -1,4 +1,4 @@
-package com.tsourcecode.wiki.app.documents
+package com.tsourcecode.wiki.lib.domain.documents
 
 import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
 import java.io.File
@@ -29,8 +29,8 @@ data class Document(
 }
 
 data class Folder(
-        private val f: File,
-        val elements: List<Element>,
+    private val f: File,
+    val elements: List<Element>,
 ) : Element(f) {
     fun find(filePath: String): Element? {
         if (filePath.isEmpty()) {

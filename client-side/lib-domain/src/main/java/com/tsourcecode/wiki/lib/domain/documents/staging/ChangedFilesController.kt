@@ -1,9 +1,9 @@
 package com.tsourcecode.wiki.lib.domain.documents.staging
 
-import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatus
 import com.tsourcecode.wiki.lib.domain.commitment.Status
 import com.tsourcecode.wiki.lib.domain.commitment.StatusResponse
+import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow

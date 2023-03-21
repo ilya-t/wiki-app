@@ -1,8 +1,5 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
-import com.tsourcecode.wiki.app.documents.Document
-import com.tsourcecode.wiki.app.documents.Element
-import com.tsourcecode.wiki.app.documents.Folder
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.project.Project

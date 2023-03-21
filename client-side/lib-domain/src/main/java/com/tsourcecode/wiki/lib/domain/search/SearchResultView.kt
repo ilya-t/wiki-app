@@ -1,9 +1,9 @@
 package com.tsourcecode.wiki.lib.domain.search
 
-import com.tsourcecode.wiki.app.documents.Document
+import com.tsourcecode.wiki.lib.domain.documents.Document
 
 sealed interface SearchResultView
 
 class DocumentSearchResult(
-        val document: Document,
+    val document: Document,
 ) : SearchResultView

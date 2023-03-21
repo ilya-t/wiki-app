@@ -6,7 +6,9 @@ import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.recyclerview.widget.RecyclerView
 import com.tsourcecode.wiki.app.R
+import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
+import com.tsourcecode.wiki.lib.domain.documents.Element
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -37,8 +39,8 @@ class DocumentsAdapter() : RecyclerView.Adapter<DocumentViewHolder>() {
 }
 
 class DocumentViewHolder(
-        itemView: View,
-        private val openDelegate: (Element) -> Unit,
+    itemView: View,
+    private val openDelegate: (Element) -> Unit,
 ) : RecyclerView.ViewHolder(itemView) {
     private var boundedElement: Element? = null
     private val tvTitle = itemView.findViewById<AppCompatTextView>(R.id.tv_title)

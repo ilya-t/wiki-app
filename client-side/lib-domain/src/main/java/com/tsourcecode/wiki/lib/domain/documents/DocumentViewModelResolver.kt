@@ -1,6 +1,5 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
-import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import java.net.URI

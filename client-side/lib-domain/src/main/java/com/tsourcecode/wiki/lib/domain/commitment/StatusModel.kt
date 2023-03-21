@@ -1,10 +1,10 @@
 package com.tsourcecode.wiki.lib.domain.commitment
 
-import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.backend.CurrentRevisionInfoController
 import com.tsourcecode.wiki.lib.domain.backend.RevisionInfo
+import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive

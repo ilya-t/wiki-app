@@ -13,6 +13,7 @@ import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
+import com.tsourcecode.wiki.lib.domain.documents.Folder
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver

@@ -1,6 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.util
 
-import com.tsourcecode.wiki.app.documents.Document
+import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.project.Project
 import java.net.URI
 import java.net.URLEncoder

@@ -1,6 +1,5 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
-import com.tsourcecode.wiki.app.documents.Document
 import org.junit.Assert
 import org.junit.Test
 import java.io.File

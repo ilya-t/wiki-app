@@ -1,6 +1,5 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
-import com.tsourcecode.wiki.app.documents.Document
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.project.Project
@@ -33,7 +32,8 @@ class FileManagerModelTest {
         val projectDir = File("/tmp/project/root")
         underTest.open(project, Document(
                 projectDir, File(projectDir, "folder with spaces/1 file with spaces.txt")
-        ))
+        )
+        )
 
         Assert.assertEquals("edit://project_name/folder+with+spaces/1+file+with+spaces.txt", uri.lastValue.toString())
     }
