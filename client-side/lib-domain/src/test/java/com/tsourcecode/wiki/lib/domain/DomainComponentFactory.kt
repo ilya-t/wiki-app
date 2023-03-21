@@ -7,6 +7,12 @@ object DomainComponentFactory {
         return DomainComponent(
             platformDeps = JdkPlatformDeps(),
             networkConfigurator = { it.addInterceptor(responseInterceptor) },
-        )
+        ).apply {
+            quickStatusController.listener = { info: StatusInfo ->
+                info.error?.let {
+                    throw AssertionError("status: ${info.status} message: ${info.comment}", it)
+                }
+            }
+        }
     }
 }
