@@ -34,6 +34,7 @@ sealed interface ResponseMaker {
                 .protocol(Protocol.HTTP_1_1)
                 .request(request)
                 .body(responseBody)
+                .message("OK")
                 .build()
             teardown(file)
             return result

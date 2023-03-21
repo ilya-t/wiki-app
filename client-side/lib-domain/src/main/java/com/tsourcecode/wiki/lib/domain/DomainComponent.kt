@@ -13,7 +13,7 @@ import kotlinx.coroutines.GlobalScope
 import okhttp3.OkHttpClient
 
 class DomainComponent(
-    platformDeps: PlatformDeps,
+    val platformDeps: PlatformDeps,
     private val networkConfigurator: (OkHttpClient.Builder) -> OkHttpClient.Builder = { it },
 ) {
     private val workerScope = GlobalScope
