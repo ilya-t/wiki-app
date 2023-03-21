@@ -8,8 +8,8 @@ import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.hashing.FileHashSerializable
 import com.tsourcecode.wiki.lib.domain.hashing.Hashable
 import com.tsourcecode.wiki.lib.domain.project.Project
+import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.Threading
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -29,11 +29,12 @@ class BackendController(
         private val currentRevisionInfoController: CurrentRevisionInfoController,
         private val backendApi: WikiBackendAPIs,
         private val threading: Threading,
+        private val scopes: CoroutineScopes,
 ) {
     private var projectObserver: ((File) -> Unit)? = null
     private val _refreshFlow = MutableStateFlow(false)
     val refreshFlow: StateFlow<Boolean> = _refreshFlow
-    private val scope = GlobalScope
+    private val scope = scopes.worker
 
     fun observeProjectUpdates(observer: (File) -> Unit) {
         projectObserver = observer

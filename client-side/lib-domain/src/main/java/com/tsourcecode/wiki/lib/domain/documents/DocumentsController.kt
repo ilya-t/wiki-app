@@ -6,8 +6,8 @@ import com.tsourcecode.wiki.app.documents.Folder
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.project.Project
+import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.Threading
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -19,6 +19,7 @@ class DocumentsController(
     private val backendController: BackendController,
     private val changedFilesController: ChangedFilesController,
     private val threading: Threading,
+    private val scopes: CoroutineScopes,
 ) {
     private val _data = MutableStateFlow(Folder(project.repo, emptyList()))
     val data: StateFlow<Folder> = _data
@@ -28,7 +29,7 @@ class DocumentsController(
     }
 
     private fun notifyProjectUpdated(dir: File) {
-        GlobalScope.launch {
+        scopes.worker.launch {
             if (!dir.isDirectory) {
                 throw RuntimeException("Project dir($dir) is file!")
             }
@@ -79,7 +80,7 @@ class DocumentsController(
     }
     //TODO: save doc not here but also on sync
     fun save(d: Document, content: String) {
-        GlobalScope.launch {
+        scopes.worker.launch {
             changedFilesController.markChanged(d, content)
 
             //TODO: appcompat this

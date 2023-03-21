@@ -4,14 +4,14 @@ import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
-import kotlinx.coroutines.CoroutineScope
+import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 
 class ProjectComponentProvider(
         private val platformDeps: PlatformDeps,
         private val quickStatusController: QuickStatusController,
-        private val workerScope: CoroutineScope,
         private val navigator: AppNavigator,
         private val backendFactory: BackendFactory,
+        private val scopes: CoroutineScopes,
 ) {
     private val components = mutableMapOf<Project, ProjectComponent>()
     private val requestedProjects = mutableMapOf<String, Project>()
@@ -22,10 +22,10 @@ class ProjectComponentProvider(
                     p,
                     platformDeps,
                     quickStatusController,
-                    workerScope,
                     navigator,
                     platformDeps.persistentStorageProvider,
                     backendFactory,
+                    scopes,
             )
         }
 

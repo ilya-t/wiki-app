@@ -17,17 +17,18 @@ import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.search.SearchModel
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.PersistentStorageProvider
+import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
 class ProjectComponent(
-        val project: Project,
-        platformDeps: PlatformDeps,
-        quickStatusController: QuickStatusController,
-        workerScope: CoroutineScope,
-        navigator: AppNavigator,
-        storageProvider: PersistentStorageProvider,
-        private val backendFactory: BackendFactory,
+    val project: Project,
+    platformDeps: PlatformDeps,
+    quickStatusController: QuickStatusController,
+    navigator: AppNavigator,
+    storageProvider: PersistentStorageProvider,
+    private val backendFactory: BackendFactory,
+    scopes: CoroutineScopes,
 ) {
     private val threading = platformDeps.threading
 
@@ -61,22 +62,23 @@ class ProjectComponent(
             currentRevisionInfoController,
             wikiBackendAPIs,
             threading,
+            scopes,
     )
 
 
     private val changedFiles = ChangedFilesController(
         project,
-        workerScope,
+        scopes.worker,
     )
 
     private val stagedFiles = StagedFilesController(
         backendController,
-        workerScope,
+        scopes.worker,
         projectStorage,
     )
 
     private val fileStatusProvider = FileStatusProvider(
-            workerScope,
+            scopes.worker,
             changedFiles,
             stagedFiles,
     )
@@ -85,7 +87,7 @@ class ProjectComponent(
             project,
             backendController,
             fileStatusProvider,
-            workerScope,
+            scopes.worker,
             navigator,
             projectStorage,
             currentRevisionInfoController,
@@ -96,11 +98,12 @@ class ProjectComponent(
             backendController,
             changedFiles,
             threading,
+            scopes,
     )
 
     val searchModel = SearchModel(
             documentsController,
-            workerScope,
+            scopes.worker,
             navigator,
             project,
     )
