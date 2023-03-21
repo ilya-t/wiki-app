@@ -8,7 +8,7 @@ import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.hashing.FileHashSerializable
 import com.tsourcecode.wiki.lib.domain.hashing.Hashable
 import com.tsourcecode.wiki.lib.domain.project.Project
-import kotlinx.coroutines.Dispatchers
+import com.tsourcecode.wiki.lib.domain.util.Threading
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +28,7 @@ class BackendController(
         private val project: Project,
         private val currentRevisionInfoController: CurrentRevisionInfoController,
         private val backendApi: WikiBackendAPIs,
+        private val threading: Threading,
 ) {
     private var projectObserver: ((File) -> Unit)? = null
     private val _refreshFlow = MutableStateFlow(false)
@@ -79,7 +80,7 @@ class BackendController(
                     syncedFiles.deleteRecursively()
 
 
-                    scope.launch(Dispatchers.Main) {
+                    scope.launch(threading.main) {
                         projectObserver?.invoke(project.repo)
 
                         quickStatusController.udpate(QuickStatus.SYNCED, currentRevisionInfoController.currentRevision.toComment())
@@ -91,7 +92,7 @@ class BackendController(
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                scope.launch(Dispatchers.Main) {
+                scope.launch(threading.main) {
                     quickStatusController.error(QuickStatus.SYNC, e)
                 }
             }

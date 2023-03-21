@@ -6,7 +6,7 @@ import com.tsourcecode.wiki.app.documents.Folder
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.project.Project
-import kotlinx.coroutines.Dispatchers
+import com.tsourcecode.wiki.lib.domain.util.Threading
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +18,7 @@ class DocumentsController(
     private val project: Project,
     private val backendController: BackendController,
     private val changedFilesController: ChangedFilesController,
+    private val threading: Threading,
 ) {
     private val _data = MutableStateFlow(Folder(project.repo, emptyList()))
     val data: StateFlow<Folder> = _data
@@ -33,7 +34,7 @@ class DocumentsController(
             }
             val folder = parseFolder(dir, dir)
 
-            withContext(Dispatchers.Main) {
+            withContext(threading.main) {
                 _data.value = folder
             }
         }

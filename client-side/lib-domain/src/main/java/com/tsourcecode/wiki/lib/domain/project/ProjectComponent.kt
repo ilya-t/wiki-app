@@ -29,6 +29,8 @@ class ProjectComponent(
         storageProvider: PersistentStorageProvider,
         private val backendFactory: BackendFactory,
 ) {
+    private val threading = platformDeps.threading
+
     private val elementHashProvider = ElementHashProvider(
             project,
             object : CoroutineScope {
@@ -58,6 +60,7 @@ class ProjectComponent(
             project,
             currentRevisionInfoController,
             wikiBackendAPIs,
+            threading,
     )
 
 
@@ -92,6 +95,7 @@ class ProjectComponent(
             project,
             backendController,
             changedFiles,
+            threading,
     )
 
     val searchModel = SearchModel(

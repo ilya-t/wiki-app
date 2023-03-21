@@ -10,4 +10,5 @@ class AndroidPlatformDeps(
 ) : PlatformDeps {
     override val filesDir: File = context.filesDir
     override val persistentStorageProvider = AndroidStorageProvider(context)
+    override val threading = AndroidThreading()
 }
