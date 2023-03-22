@@ -13,6 +13,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.app.handlerforks.CodeEditHandler
 import com.tsourcecode.wiki.app.handlerforks.HeadingEditHandler
@@ -24,6 +25,9 @@ import io.noties.markwon.editor.MarkwonEditor
 import io.noties.markwon.editor.MarkwonEditorTextWatcher
 import io.noties.markwon.editor.handler.EmphasisEditHandler
 import io.noties.markwon.editor.handler.StrongEmphasisEditHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.URI
 import java.util.concurrent.Executors
 
@@ -33,6 +37,7 @@ class EditorScreenView(
     private val appCompatActivity: AppCompatActivity,
     private val documentViewModelResolver: DocumentViewModelResolver,
 ) : ScreenView {
+    private val scope = appCompatActivity.lifecycleScope
     private val root = LayoutInflater.from(appCompatActivity).inflate(
         if (EDITING_ENABLED) R.layout.document_editor else R.layout.document_viewer, null)
     override val view: View = root
@@ -54,13 +59,15 @@ class EditorScreenView(
 
     private fun configureViewer(viewModel: DocumentViewModel, container: View) {
         val textView = container.findViewById<AppCompatTextView>(R.id.tv_markwon)
-        val md = viewModel.getContent()
-        textView.configureScrolling()
+        scope.launch {
+            val md = withContext(Dispatchers.IO) {viewModel.getContent() }
 
-        // parse markdown and create styled text
-        val markwon = Markwon.create(textView.context)
-        val markdown: Spanned = markwon.toMarkdown(md);
-        textView.text = markdown
+            textView.configureScrolling()
+            // parse markdown and create styled text
+            val markwon = Markwon.create(textView.context)
+            val markdown: Spanned = markwon.toMarkdown(md);
+            textView.text = markdown
+        }
     }
 
     private fun configureEditor(viewModel: DocumentViewModel, container: View) {
@@ -68,19 +75,24 @@ class EditorScreenView(
         textView.configureMarkwon()
         textView.configureScrolling()
 
-
-        val md = viewModel.getContent()
-        textView.setText(md.subSequence(0, md.length - 1))
-        textView.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-
-            override fun afterTextChanged(s: Editable?) {
-                viewModel.save(textView.text.toString())
-
+        scope.launch {
+            val md = withContext(Dispatchers.IO) {
+                viewModel.getContent()
             }
-        })
+
+            textView.setText(md.subSequence(0, md.length - 1))
+            textView.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+
+                override fun afterTextChanged(s: Editable?) {
+                    viewModel.save(textView.text.toString())
+
+                }
+            })
+
+        }
     }
 
     private fun AppCompatEditText.configureScrolling() {
