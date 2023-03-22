@@ -14,4 +14,8 @@ class DocumentViewModel(
         component.documentsController.save(document, content)
     }
 
+    fun refresh() {
+        component.backendController.sync()
+    }
+
 }

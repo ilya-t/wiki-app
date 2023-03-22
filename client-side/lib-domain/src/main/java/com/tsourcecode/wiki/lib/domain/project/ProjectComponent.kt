@@ -63,6 +63,7 @@ class ProjectComponent(
             wikiBackendAPIs,
             threading,
             scopes,
+            projectStorage,
     )
 
 

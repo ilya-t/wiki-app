@@ -14,7 +14,7 @@ import okhttp3.OkHttpClient
 
 class DomainComponent(
     val platformDeps: PlatformDeps,
-    private val networkConfigurator: (OkHttpClient.Builder) -> OkHttpClient.Builder = { it },
+    private val networkConfigurator: OkHttpClient.Builder.() -> OkHttpClient.Builder = { this },
 ) {
     private val scopes = CoroutineScopes(
         platformDeps.threading,

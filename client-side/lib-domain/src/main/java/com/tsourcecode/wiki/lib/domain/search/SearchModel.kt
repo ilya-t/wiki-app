@@ -35,7 +35,7 @@ class SearchModel(
     }
 
     private fun searchDocuments(request: String): List<SearchResultView> {
-        val root = documentsController.data.value
+        val root = documentsController.data.value.folder
 
         if (request.isEmpty()) {
             return emptyList()

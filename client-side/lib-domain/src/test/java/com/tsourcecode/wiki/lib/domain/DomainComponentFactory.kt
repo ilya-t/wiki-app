@@ -3,10 +3,15 @@ package com.tsourcecode.wiki.lib.domain
 import okhttp3.Interceptor
 
 object DomainComponentFactory {
-    fun create(responseInterceptor: Interceptor): DomainComponent {
+    fun create(responseInterceptor: Interceptor? = null): DomainComponent {
         return DomainComponent(
             platformDeps = JdkPlatformDeps(),
-            networkConfigurator = { it.addInterceptor(responseInterceptor) },
+            networkConfigurator = {
+                if (responseInterceptor != null) {
+                    return@DomainComponent addInterceptor(responseInterceptor)
+                }
+                this
+            },
         ).apply {
             quickStatusController.listener = { info: StatusInfo ->
                 info.error?.let {

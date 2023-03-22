@@ -15,7 +15,7 @@ class DocumentViewModelResolver(
 
         val component = projectComponentResolver.tryResolve(uri) ?: return null
         val decodedPath = uri.path.removePrefix("/").split("/").joinToString("/") { URLDecoder.decode(it, "UTF-8") }
-        val element = component.documentsController.data.value.find(decodedPath)
+        val element = component.documentsController.data.value.folder.find(decodedPath)
         if (element is Document) {
             return DocumentViewModel(
                 component,

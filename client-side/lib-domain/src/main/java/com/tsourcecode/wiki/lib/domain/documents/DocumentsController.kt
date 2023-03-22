@@ -18,14 +18,17 @@ class DocumentsController(
     private val threading: Threading,
     private val scopes: CoroutineScopes,
 ) {
-    private val _data = MutableStateFlow(Folder(project.repo, emptyList()))
-    val data: StateFlow<Folder> = _data
+    private val _data = MutableStateFlow(ProjectFolder(
+        revision = null,
+        folder = Folder(project.repo, emptyList())
+    ))
+    val data: StateFlow<ProjectFolder> = _data
 
     init {
-        backendController.observeProjectUpdates { notifyProjectUpdated(it) }
+        backendController.observeProjectUpdates(this::notifyProjectUpdated)
     }
 
-    private fun notifyProjectUpdated(dir: File) {
+    private fun notifyProjectUpdated(revision: String?, dir: File) {
         scopes.worker.launch {
             if (!dir.isDirectory) {
                 throw RuntimeException("Project dir($dir) is file!")
@@ -33,7 +36,10 @@ class DocumentsController(
             val folder = parseFolder(dir, dir)
 
             withContext(threading.main) {
-                _data.value = folder
+                _data.value = ProjectFolder(
+                    revision = revision,
+                    folder = folder,
+                )
             }
         }
     }

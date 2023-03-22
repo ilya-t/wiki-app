@@ -6,6 +6,7 @@ import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import com.tsourcecode.wiki.lib.domain.util.NavigationUtils
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
 import java.net.URI
 
 class FileManagerModel(
@@ -30,7 +31,7 @@ class FileManagerModel(
 
     suspend fun show(component: ProjectComponent, filePath: String, folderObserver: (Folder) -> Unit) {
         //TODO: observe data appearance!
-        component.documentsController.data.collect {
+        component.documentsController.data.map { it.folder }.collect {
             val target = it.find(filePath)
 
             if (target == null || target !is Folder) {
