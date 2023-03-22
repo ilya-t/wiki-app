@@ -54,9 +54,10 @@ class BottomBarController(
             return
         }
 
-        val diffCount = projectComponent.statusModel.statusFlow.value
+        fun diffCount() = projectComponent.statusModel.statusFlow.value
                 .items.filterIsInstance<StatusViewItem.FileViewItem>()
                 .size
+        val diffCount = diffCount()
         if (diffCount > 0) {
             btnCommit.text = "status ($diffCount)"
         } else {
@@ -66,7 +67,7 @@ class BottomBarController(
         btnCommit.setOnClickListener {
             if (!AppNavigator.isChanges(navigator.data.value)) {
                 navigator.open(URI("settings://changes/${projectComponent.project.name}"))
-            } else {
+            } else if (diffCount() > 0){
                 Snackbar.make(activity.findViewById(R.id.content_container), "Ready to commit changes and push?", 4000).apply {
                     setAction("YES!") {
                         projectComponent.statusModel.commit()

@@ -87,7 +87,10 @@ class BackendController(
                         project.repo.deleteRecursively()
                         syncedFiles.renameTo(project.repo)
                     } else {
-                        File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR).copyRecursively(project.repo, overwrite = true)
+                        val f = File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
+                        if (f.exists()) {
+                            f.copyRecursively(project.repo, overwrite = true)
+                        }
                     }
 
                     syncedFiles.deleteRecursively()
