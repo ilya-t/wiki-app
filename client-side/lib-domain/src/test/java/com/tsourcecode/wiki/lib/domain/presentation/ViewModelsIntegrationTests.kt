@@ -95,11 +95,16 @@ class ViewModelsIntegrationTests {
     }
 
     private fun waitProjectFolderSynced(revision: ProjectRevision): Pair<Project, Folder> {
-        val project = domain.projectsRepository.data.value.first()
+        val project = runBlocking {
+            withTimeout(DEFAULT_TIMEOUT) {
+                val projects = domain.projectsRepository.data.first { it.isNotEmpty() }
+                projects.first()
+            }
+        }
+
         val projectFolder = runBlocking {
             withTimeout(DEFAULT_TIMEOUT) {
                 domain.projectComponents.get(project).documentsController.data.first {
-                    println("Checking: $it")
                     it.revision == revision.revision
                 }
             }

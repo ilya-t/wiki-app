@@ -1,10 +1,9 @@
 package com.tsourcecode.wiki.lib.domain.mocking
 
+import com.tsourcecode.wiki.lib.domain.backend.REVISION_ZIP_REPOSITORY_DIR
 import okhttp3.Interceptor
 import java.io.File
 import java.util.*
-
-private const val REVISION_ZIP_REPO_DIR = "repo"
 
 class Backend {
     private val mapLocal = mutableMapOf<String, ResponseMaker>(
@@ -37,7 +36,7 @@ class Backend {
                 Archiver.zipFile(
                     src = r.rootFileProvider(),
                     dst = file,
-                    rootDir = REVISION_ZIP_REPO_DIR,
+                    rootDir = REVISION_ZIP_REPOSITORY_DIR,
                 )
             })
         mapLocal["/api/1/revision/latest"] = fileResponse

@@ -24,6 +24,8 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.URLDecoder
 
+const val REVISION_ZIP_REPOSITORY_DIR = "repo"
+
 class BackendController(
         private val platformDeps: PlatformDeps,
         private val quickStatusController: QuickStatusController,
@@ -78,14 +80,14 @@ class BackendController(
                     currentRevisionInfoController.bumpRevisionToLatest()
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
                     val syncOutput = File(project.dir.absolutePath + "/sync")
-                    val syncedFiles = if (fullSync) File(syncOutput, "repo") else syncOutput
+                    val syncedFiles = if (fullSync) File(syncOutput, REVISION_ZIP_REPOSITORY_DIR) else syncOutput
                     Decompressor.decompress(zipFile, syncOutput.absolutePath)
 
                     if (fullSync) {
                         project.repo.deleteRecursively()
                         syncedFiles.renameTo(project.repo)
                     } else {
-                        syncedFiles.copyRecursively(project.repo, overwrite = true)
+                        File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR).copyRecursively(project.repo, overwrite = true)
                     }
 
                     syncedFiles.deleteRecursively()

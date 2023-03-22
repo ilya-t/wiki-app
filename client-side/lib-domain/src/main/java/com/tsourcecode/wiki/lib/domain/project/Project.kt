@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.project
 
+import com.tsourcecode.wiki.lib.domain.backend.REVISION_ZIP_REPOSITORY_DIR
 import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
 import java.io.File
 import java.net.URI
@@ -13,5 +14,5 @@ class Project(
     val repoUri: String
 ) {
     val dir = File(filesDir, id)
-    val repo: File = File(dir, "repo")
+    val repo: File = File(dir, REVISION_ZIP_REPOSITORY_DIR)
 }
