@@ -4,6 +4,7 @@ import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.net.URI
+import java.net.URLDecoder
 import java.util.*
 
 @OpenInTest
@@ -43,5 +44,16 @@ class AppNavigator {
         fun isDocumentEdit(uri: URI) = uri.scheme == "edit"
         fun isChanges(uri: URI) = uri.scheme == "settings" && uri.host == "changes"
         fun isSearch(uri: URI) = uri.scheme == "settings" && uri.host == "search"
+
+        fun extractDocumentPath(uri: URI): String? {
+            if (!isDocumentEdit(uri)) {
+                return null
+            }
+
+            return uri.path
+                .removePrefix("/")
+                .split("/")
+                .joinToString("/") { URLDecoder.decode(it, "UTF-8") }
+        }
     }
 }

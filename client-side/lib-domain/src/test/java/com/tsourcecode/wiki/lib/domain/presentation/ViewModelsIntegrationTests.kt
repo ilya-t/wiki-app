@@ -6,6 +6,7 @@ import com.tsourcecode.wiki.lib.domain.documents.Folder
 import com.tsourcecode.wiki.lib.domain.mocking.Backend
 import com.tsourcecode.wiki.lib.domain.mocking.ProjectRevision
 import com.tsourcecode.wiki.lib.domain.project.Project
+import com.tsourcecode.wiki.lib.domain.search.DocumentSearchResult
 import com.tsourcecode.wiki.lib.domain.util.NavigationUtils
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
@@ -92,6 +93,26 @@ class ViewModelsIntegrationTests {
 
         val v2Content = viewModel.getContent()
         Assert.assertNotEquals(v2Content, v1Content)
+    }
+
+    @Test
+    fun `import - view v1 - open search - view recents`() {
+        importProject()
+        val (project, projectFolder) = waitProjectFolderSynced(v1revision)
+        val document = projectFolder.documents.first()
+        domain.navigator.open(NavigationUtils.openDocument(project, document))
+
+        val searchModel = domain.viewModels.searchScreenModel(domain.projectComponents.get(project))
+        val searchViewModel = runBlocking {
+            withTimeout(DEFAULT_TIMEOUT) {
+                searchModel.data.first {
+                    it.results.isNotEmpty()
+                }
+            }
+        }
+
+        val result = searchViewModel.results.get(0) as DocumentSearchResult
+        Assert.assertEquals(document, result.document)
     }
 
     private fun waitProjectFolderSynced(revision: ProjectRevision): Pair<Project, Folder> {

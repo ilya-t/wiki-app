@@ -11,12 +11,15 @@ import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.documents.DocumentContentProvider
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
+import com.tsourcecode.wiki.lib.domain.documents.ProjectDocumentResolver
+import com.tsourcecode.wiki.lib.domain.documents.RecentDocumentsProvider
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.documents.staging.StagedFilesController
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.search.SearchModel
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.PersistentStorageProvider
+import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -102,11 +105,23 @@ class ProjectComponent(
             scopes,
     )
 
-    val searchModel = SearchModel(
+    private val documentResolver = ProjectDocumentResolver(
+        documentsController,
+    )
+
+    private val recentDocumentsProvider = RecentDocumentsProvider(
+        navigator,
+        scopes,
+        StoredPrimitive.stringList("recent_documents", projectStorage),
+        documentResolver,
+    )
+
+    internal val searchModel = SearchModel(
             documentsController,
             scopes.worker,
             navigator,
             project,
+            recentDocumentsProvider,
     )
 
     val docContentProvider = DocumentContentProvider(

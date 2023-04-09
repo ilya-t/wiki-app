@@ -31,11 +31,10 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
+import com.tsourcecode.wiki.app.AppComponent
 import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.AppNavigator
-import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
-import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import com.tsourcecode.wiki.lib.domain.search.DocumentSearchResult
 import com.tsourcecode.wiki.lib.domain.search.SearchModel
 import com.tsourcecode.wiki.lib.domain.search.SearchResultView
@@ -62,11 +61,13 @@ class SearchScreenView(activity: AppCompatActivity,
         }
 
         val component = projectComponentResolver.tryResolve(uri) ?: return false
+
         searchJob?.cancel()
         searchJob = scope.launch {
-            component.searchModel.data.collect {
+            val searchModel = AppComponent.INSTANCE.domain.viewModels.searchScreenModel(component)
+            searchModel.data.collect {
                 composeView.setContent {
-                    Render(viewModel = it, searchModel = component.searchModel)
+                    Render(viewModel = it, searchModel)
                 }
             }
         }

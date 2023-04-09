@@ -1,5 +1,10 @@
 package com.tsourcecode.wiki.lib.domain.storage
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+
 interface TypeConverter<T> {
     fun parse(s: String?): T?
     fun toString(t: T): String
@@ -28,6 +33,26 @@ class StoredPrimitive<T>(
                     override fun parse(s: String?) = s
 
                     override fun toString(t: String) = t
+                },
+                key,
+                storageProvider
+            )
+        }
+
+        fun stringList(key:String, storageProvider: KeyValueStorage): StoredPrimitive<List<String>> {
+            return StoredPrimitive(
+                object : TypeConverter<List<String>> {
+                    override fun parse(s: String?): List<String> {
+                        if (s == null) {
+                            return emptyList()
+                        }
+
+                        return Json.parseToJsonElement(s).jsonArray.map { it.toString() }
+                    }
+
+                    override fun toString(t: List<String>): String {
+                        return JsonArray(t.map { JsonPrimitive((it)) }).toString()
+                    }
                 },
                 key,
                 storageProvider

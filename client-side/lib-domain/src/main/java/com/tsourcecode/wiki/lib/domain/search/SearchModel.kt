@@ -5,23 +5,37 @@ import com.tsourcecode.wiki.lib.domain.commitment.toNavigationURI
 import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.documents.DocumentsController
 import com.tsourcecode.wiki.lib.domain.documents.Folder
+import com.tsourcecode.wiki.lib.domain.documents.RecentDocumentsProvider
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class SearchModel(
-        private val documentsController: DocumentsController,
-        private val searchScope: CoroutineScope,
-        private val navigator: AppNavigator,
-        private val project: Project,
+    private val documentsController: DocumentsController,
+    private val searchScope: CoroutineScope,
+    private val navigator: AppNavigator,
+    private val project: Project,
+    private val recentDocumentsProvider: RecentDocumentsProvider,
 ) {
     private val _data = MutableStateFlow(SearchViewModel())
-
     val data: Flow<SearchViewModel> = _data
+    private val recentsTracking: Job = searchScope.launch {
+        recentDocumentsProvider
+            .recentDocsFlow
+            .collect { docs ->
+                val recents = docs.map { DocumentSearchResult(it) }
+                _data.value = SearchViewModel(results = recents)
+            }
+    }
 
     fun search(request: String) {
+        if (recentsTracking.isActive) {
+            recentsTracking.cancel()
+        }
         val processed = request.trim().replace("\n", "")
 
         if (processed == _data.value.searchRequest) {
