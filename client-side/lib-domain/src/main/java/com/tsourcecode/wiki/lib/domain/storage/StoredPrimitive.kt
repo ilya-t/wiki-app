@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 
 interface TypeConverter<T> {
     fun parse(s: String?): T?
@@ -47,11 +48,11 @@ class StoredPrimitive<T>(
                             return emptyList()
                         }
 
-                        return Json.parseToJsonElement(s).jsonArray.map { it.toString() }
+                        return Json.parseToJsonElement(s).jsonArray.map { it.jsonPrimitive.content }
                     }
 
                     override fun toString(t: List<String>): String {
-                        return JsonArray(t.map { JsonPrimitive((it)) }).toString()
+                        return JsonArray(t.map { JsonPrimitive(it) }).toString()
                     }
                 },
                 key,
