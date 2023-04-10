@@ -23,7 +23,9 @@ class SearchModel(
 ) {
     private val _data = MutableStateFlow(SearchViewModel())
     val data: Flow<SearchViewModel> = _data
-    private val recentsTracking: Job = searchScope.launch {
+    private var recentsTracking: Job = startRecentsTracking()
+
+    private fun startRecentsTracking() = searchScope.launch {
         recentDocumentsProvider
             .recentDocsFlow
             .collect { docs ->
@@ -39,6 +41,12 @@ class SearchModel(
         val processed = request.trim().replace("\n", "")
 
         if (processed == _data.value.searchRequest) {
+            return
+        }
+
+        if (processed.isEmpty()) {
+            recentsTracking.cancel()
+            recentsTracking = startRecentsTracking()
             return
         }
         _data.value = _data.value.copy(searchRequest = processed)
