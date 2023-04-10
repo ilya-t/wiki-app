@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.sp
 import com.tsourcecode.wiki.app.AppComponent
 import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.AppNavigator
@@ -83,10 +84,10 @@ class SearchScreenView(activity: AppCompatActivity,
     @Composable
     private fun Render(viewModel: SearchViewModel, searchModel: SearchModel) {
         LazyColumn(
-                verticalArrangement = Arrangement.Top,
+                verticalArrangement = Arrangement.Bottom,
                 modifier = Modifier.padding(bottom = searchHeight + Dp(8f))
         ) {
-            items(viewModel.results) { item: SearchResultView ->
+            items(viewModel.results.reversed()) { item: SearchResultView ->
                 when (item) {
                     is DocumentSearchResult -> DocumentResultItem(item, searchModel)
                 }.apply { /*exhaustive*/ }
@@ -180,8 +181,9 @@ class SearchScreenView(activity: AppCompatActivity,
             ) {
                 Text(
                         modifier = Modifier
-                                .padding(Dp(8f)),
+                                .padding(Dp(12f)),
                         text = item.document.relativePath,
+                        fontSize = 16.sp,
                         color = Color.White,
                 )
             }
