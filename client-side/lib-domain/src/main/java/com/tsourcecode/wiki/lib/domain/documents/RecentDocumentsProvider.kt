@@ -16,18 +16,16 @@ class RecentDocumentsProvider(
     private val storedPrimitive: StoredPrimitive<List<String>>,
     private val documentResolver: ProjectDocumentResolver,
 ) {
-    private val navigationsToDocs = MutableStateFlow<List<URI>>(load())
+    private val navigationsToDocs = MutableStateFlow<Set<URI>>(load())
 
-    private fun load(): List<URI> {
-        val raw = storedPrimitive.value ?: emptyList()
-        return raw.mapNotNull { URI.create(it) }
+    private fun load(): Set<URI> {
+        val raw = storedPrimitive.value ?: emptySet()
+        return raw.mapNotNull { URI.create(it) }.toSet()
     }
 
     val recentDocsFlow: Flow<List<Document>> = navigationsToDocs.map { uris ->
-        uris.mapNotNull {
-            val document = documentResolver.resolve(it)
-            document
-        }
+        val documents = uris.mapNotNull { documentResolver.resolve(it) }
+        documents
     }
 
     init {
