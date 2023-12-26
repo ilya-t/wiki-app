@@ -132,12 +132,17 @@ class ScrollHandler(scroller: Scroller,
                     private val view: TextView) : View.OnTouchListener {
     // Could make this a field member on your activity
     var gesture = GestureDetector(view.context, object : GestureDetector.SimpleOnGestureListener() {
-        override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+        override fun onFling(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
             scroller.fling(0, view.scrollY, 0, (-velocityY).toInt(), 0, 0, 0, view.lineCount * view.lineHeight)
             return super.onFling(e1, e2, velocityX, velocityY)
         }
 
-        override fun onDown(e: MotionEvent?): Boolean {
+        override fun onDown(e: MotionEvent): Boolean {
             scroller.abortAnimation()
             return false
         }
