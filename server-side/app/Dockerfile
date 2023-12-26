@@ -1,7 +1,8 @@
 # FROM arm64v8/golang:1.14.1-buster
 FROM golang:1.17.7-alpine3.15
 EXPOSE 80
-RUN apk add --no-cache git=2.34.7-r0
+# git verion not specified cause https://gitlab.alpinelinux.org/alpine/abuild/-/issues/9996
+RUN apk add --no-cache git
 RUN apk add --no-cache zip
 RUN apk add --no-cache openssh
 RUN apk add --no-cache alpine-sdk
