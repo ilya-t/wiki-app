@@ -6,7 +6,6 @@ import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.navigation.NavigationScreen
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.net.URI
 
@@ -38,7 +37,7 @@ class ActivityNavigator(
 
                 contentContainer.addView(newScreen.screenView.view)
                 if (!newScreen.screenView.handle(uri)) {
-                    throw RuntimeException("Screen '$newScreen' failed handling of: '$uri'")
+                    appNavigator.goBack()
                 }
                 openedScreen = newScreen
             }

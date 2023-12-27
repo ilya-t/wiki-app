@@ -5,7 +5,7 @@ import com.tsourcecode.wiki.lib.domain.util.Threading
 import java.io.File
 
 interface PlatformDeps {
-    val filesDir: File
     val persistentStorageProvider: PersistentStorageProvider
     val threading: Threading
+    suspend fun filesDir(): File
 }

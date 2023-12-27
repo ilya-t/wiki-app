@@ -27,7 +27,7 @@ class ProjectsRepository(
                 Project(
                         sp.id,
                         sp.name,
-                        platformDeps.filesDir,
+                        platformDeps.filesDir(),
                         URI(sp.serverUrl),
                         sp.repoUrl,
                 )

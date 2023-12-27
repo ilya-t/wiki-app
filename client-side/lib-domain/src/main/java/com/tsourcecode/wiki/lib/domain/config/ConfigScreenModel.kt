@@ -10,12 +10,11 @@ import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
-import java.util.*
+import java.util.UUID
 
 class ConfigScreenModel(
         private val projectsRepository: ProjectsRepository,
@@ -74,7 +73,7 @@ class ConfigScreenModel(
                     Project(
                         id = it.name,
                         name = it.name,
-                        filesDir = platformDeps.filesDir,
+                        filesDir = platformDeps.filesDir(),
                         serverUri = url,
                         repoUri = it.repoUrl,
                     )
@@ -96,10 +95,10 @@ class ConfigScreenModel(
         }
     }
 
-    private fun ConfigScreenItem.EditableElement.toProject() = Project(
+    private suspend fun ConfigScreenItem.EditableElement.toProject() = Project(
             id = this.origin?.id ?: UUID.randomUUID().toString(),
             name = this.projectName,
-            filesDir = platformDeps.filesDir,
+            filesDir = platformDeps.filesDir(),
             serverUri = URI(this.serverAddress),
             repoUri = this.repoUrl,
     )
@@ -111,25 +110,26 @@ class ConfigScreenModel(
             return
         }
 
-        val project = try {
-            item.toProject()
-        } catch (e: URISyntaxException) {
-            e.printStackTrace()
-            quickStatusController.error(e)
-            return
+        workerScope.launch {
+            val project = try {
+                item.toProject()
+            } catch (e: URISyntaxException) {
+                e.printStackTrace()
+                quickStatusController.error(e)
+                return@launch
+            }
+
+            val currentList = projectsRepository.data.value.toMutableList()
+            val index = currentList.indexOfFirst { it.id == project.id }
+
+            if (index >= 0) {
+                currentList[index] = project
+            } else {
+                currentList.add(project)
+            }
+
+            projectsRepository.update(currentList)
         }
-
-        val currentList = projectsRepository.data.value.toMutableList()
-        val index = currentList.indexOfFirst { it.id == project.id }
-
-        if (index >= 0) {
-            currentList[index] = project
-        } else {
-            currentList.add(project)
-        }
-
-        projectsRepository.update(currentList)
-
     }
 
     fun addNewElement() {

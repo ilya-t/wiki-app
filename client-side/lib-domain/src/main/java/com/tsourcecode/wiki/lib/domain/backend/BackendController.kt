@@ -119,7 +119,7 @@ class BackendController(
     /**
      * Heavy way of sync useful as "first-time-sync".
      */
-    private fun requestLastRevisionSnapshot(files: List<Hashable>): String? {
+    private suspend fun requestLastRevisionSnapshot(files: List<Hashable>): String? {
         try {
             val response = if (files.isEmpty()) {
                 backendApi.latestRevision(project.name).execute()
@@ -140,7 +140,7 @@ class BackendController(
             //Log.that("  response: ${response.code()}")
             val fileName = extractFileName(response.headers().get("Content-Disposition")?:"")
             val input: InputStream = response.body()?.byteStream() ?: return null
-            val file = platformDeps.filesDir.absolutePath + "/" + fileName
+            val file = platformDeps.filesDir().absolutePath + "/" + fileName
 
 
             FileOutputStream(file, false).use { outputStream ->
