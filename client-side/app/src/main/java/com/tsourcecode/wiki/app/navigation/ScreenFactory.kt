@@ -8,11 +8,12 @@ import com.tsourcecode.wiki.app.documents.FileManagerView
 import com.tsourcecode.wiki.app.editor.EditorScreenView
 import com.tsourcecode.wiki.app.search.SearchScreenView
 import com.tsourcecode.wiki.lib.domain.DomainComponent
+import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.navigation.NavigationScreen
 
 class ScreenFactory(
         private val activity: AppCompatActivity,
-        private val domainComponent: DomainComponent,
+        private val domainComponent: DomainComponent<out PlatformDeps>,
 ) {
     fun create(screen: NavigationScreen): ScreenView {
         return when (screen) {

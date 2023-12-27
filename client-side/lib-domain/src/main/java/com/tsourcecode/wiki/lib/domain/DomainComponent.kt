@@ -12,8 +12,8 @@ import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import okhttp3.OkHttpClient
 
-class DomainComponent(
-    val platformDeps: PlatformDeps,
+class DomainComponent<T: PlatformDeps>(
+    val platformDeps: T,
     private val networkConfigurator: OkHttpClient.Builder.() -> OkHttpClient.Builder = { this },
 ) {
     private val scopes = CoroutineScopes(

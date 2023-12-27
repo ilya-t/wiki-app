@@ -1,6 +1,8 @@
 package com.tsourcecode.wiki.app
 
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.tsourcecode.wiki.app.bottombar.BottomBarController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.ScreenFactory
@@ -37,5 +39,18 @@ class ActivityComponent(
         }
 
         return false
+    }
+
+    init {
+        val externalStorageAccess = appComponent.domain.platformDeps.externalStorageAccess
+        externalStorageAccess.bind(activity)
+        activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                super.onDestroy(owner)
+                externalStorageAccess.bind(null)
+            }
+        })
+
+
     }
 }
