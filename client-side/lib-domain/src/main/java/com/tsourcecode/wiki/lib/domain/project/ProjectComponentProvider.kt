@@ -5,6 +5,7 @@ import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
+import com.tsourcecode.wiki.lib.domain.util.Logger
 
 class ProjectComponentProvider(
         private val platformDeps: PlatformDeps,
@@ -12,6 +13,7 @@ class ProjectComponentProvider(
         private val navigator: AppNavigator,
         private val backendFactory: BackendFactory,
         private val scopes: CoroutineScopes,
+        private val logger: Logger,
 ) {
     private val components = mutableMapOf<Project, ProjectComponent>()
     private val requestedProjects = mutableMapOf<String, Project>()
@@ -26,6 +28,7 @@ class ProjectComponentProvider(
                     platformDeps.persistentStorageProvider,
                     backendFactory,
                     scopes,
+                    logger,
             )
         }
 

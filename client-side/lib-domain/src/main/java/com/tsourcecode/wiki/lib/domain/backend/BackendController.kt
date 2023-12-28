@@ -13,6 +13,7 @@ import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
+import com.tsourcecode.wiki.lib.domain.util.Logger
 import com.tsourcecode.wiki.lib.domain.util.Threading
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +39,7 @@ class BackendController(
     private val threading: Threading,
     private val scopes: CoroutineScopes,
     private val keyValueStorage: KeyValueStorage,
+    private val logger: Logger,
 ) {
     internal var fileStatusProvider: FileStatusProvider? = null
     private val dirRevisionStorage = StoredPrimitive.string("dir_revision", keyValueStorage)
@@ -76,13 +78,18 @@ class BackendController(
     }
 
     private fun doSync(fullSync: Boolean) {
+        val sync = logger.fork("-sync:")
         scope.launch {
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
                 quickStatusController.udpate(QuickStatus.SYNC)
+                val localRevision = currentRevisionInfoController.state.value?.revision
+                    ?.trimEnd('\n') // TODO: fix server-side
+                sync.log { "start! (fullSync: $fullSync local-rev: '$localRevision')" }
                 val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
                 requestLastRevisionSnapshot(files)?.let { snapshot ->
-                    currentRevisionInfoController.bumpRevisionToLatest()
+                    val serverRevision = snapshot.revision
+                    sync.log { "received server revision: '$serverRevision'" }
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
                     val syncOutput = File(platformDeps.internalFiles, project.id + "/sync")
                     val syncedFiles = if (fullSync) File(syncOutput, REVISION_ZIP_REPOSITORY_DIR) else syncOutput
@@ -94,26 +101,37 @@ class BackendController(
                         project.repo.deleteRecursively()
                         syncedFiles.renameTo(project.repo)
                     } else {
-                        val localRevision = currentRevisionInfoController.state.value?.revision
-                            ?.trimEnd('\n') // TODO: fix server-side
-                        val serverRevision = snapshot.revision
+                        val syncDir = File(syncOutput, REVISION_ZIP_REPOSITORY_DIR)
                         if (localRevision == serverRevision) {
-                            val syncDir = File(syncOutput, REVISION_ZIP_REPOSITORY_DIR)
+                            sync.log { "staging non-synced files!" }
                             syncedFiles
                                 .walkTopDown()
                                 .asSequence()
                                 .mapNotNull { resolveDocument(it, syncDir) }
                                 .toList()
-                                .forEach { stage(it) }
+                                .forEach {
+                                    sync.log { "staging: ${it.relativePath}" }
+                                    stage(it)
+                                }
                             fileStatusProvider?.update()
                         } else {
-                            val f = File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
-                            if (f.exists()) {
-                                f.copyRecursively(project.repo, overwrite = true)
-                            }
+                            sync.log { "sync to new revision '$localRevision' -> '$serverRevision'" }
+                            File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
+                                .walkTopDown()
+                                .asSequence()
+                                .mapNotNull {
+                                    val d = resolveDocument(it, syncOutput) ?: return@mapNotNull null
+                                    it to d
+                                }
+                                .toList()
+                                .forEach { (src: File, dst: Document) ->
+                                    sync.log { "syncing: ${dst.relativePath}" }
+                                    dst.file.parentFile.mkdirs()
+                                    src.copyTo(dst.file)
+                                }
                         }
                     }
-
+                    currentRevisionInfoController.bumpRevisionToLatest()
                     syncedFiles.deleteRecursively()
 
                     dirRevision = snapshot.zipFile.nameWithoutExtension
@@ -121,7 +139,7 @@ class BackendController(
                         projectObserver?.invoke(dirRevision, project.repo)
                         quickStatusController.udpate(QuickStatus.SYNCED, currentRevisionInfoController.state.value?.toComment() ?: "null")
                     }
-
+                    sync.log { "completed!" }
                     scope.launch {
                         elementHashProvider.notifyProjectFullySynced()
                     }

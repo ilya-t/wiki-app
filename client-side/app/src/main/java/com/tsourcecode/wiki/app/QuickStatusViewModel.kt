@@ -11,6 +11,7 @@ import androidx.appcompat.widget.AppCompatTextView
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.StatusInfo
+import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 
 class QuickStatusViewModel(
         private val activity: AppCompatActivity,
@@ -37,13 +38,26 @@ class QuickStatusViewModel(
                         FrameLayout.LayoutParams.MATCH_PARENT,
                         FrameLayout.LayoutParams.WRAP_CONTENT,
                 )
-                (activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).apply {
-                    setPrimaryClip(ClipData(
+                val clipboardManager =
+                    activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val error = lastStatus?.error
+
+                if (error != null) {
+                    clipboardManager.setPrimaryClip(
+                        ClipData(
                             ClipDescription("stack", arrayOf("")),
                             ClipData.Item(lastStatus?.error?.stackTraceToString())
-                    ))
-
+                        )
+                    )
                     Toast.makeText(activity, "Stack at clipboard!", Toast.LENGTH_SHORT).show()
+                } else {
+                    clipboardManager.setPrimaryClip(
+                        ClipData(
+                            ClipDescription("logs", arrayOf("")),
+                            ClipData.Item(DebugLogger.inMemoryLogs.joinToString("\n"))
+                        )
+                    )
+                    Toast.makeText(activity, "Logs at clipboard!", Toast.LENGTH_SHORT).show()
                 }
             }
         }

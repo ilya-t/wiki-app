@@ -21,6 +21,7 @@ import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.PersistentStorageProvider
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
+import com.tsourcecode.wiki.lib.domain.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
@@ -32,8 +33,10 @@ class ProjectComponent(
     storageProvider: PersistentStorageProvider,
     private val backendFactory: BackendFactory,
     scopes: CoroutineScopes,
+    logger: Logger,
 ) {
     private val threading = platformDeps.threading
+    private val projectLogger: Logger = logger.fork("project: '${project.name}'")
 
     private val elementHashProvider = ElementHashProvider(
             project,
@@ -67,6 +70,7 @@ class ProjectComponent(
             threading,
             scopes,
             projectStorage,
+            projectLogger,
     )
 
 

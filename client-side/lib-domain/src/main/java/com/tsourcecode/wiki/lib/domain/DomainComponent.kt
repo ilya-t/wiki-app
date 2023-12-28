@@ -11,6 +11,9 @@ import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
+import com.tsourcecode.wiki.lib.domain.util.DebugLogger
+import com.tsourcecode.wiki.lib.domain.util.Logger
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
 class DomainComponent<T : PlatformDeps>(
@@ -33,6 +36,16 @@ class DomainComponent<T : PlatformDeps>(
 
     val quickStatusController = QuickStatusController()
     private val backendFactory = BackendFactory(networkConfigurator)
+    private val logger = Logger { message ->
+        DebugLogger.log(message)
+        scopes.main.launch {
+            if (DebugLogger.inMemoryLogs.size > 10_000) {
+                DebugLogger.inMemoryLogs.clear()
+                DebugLogger.inMemoryLogs.add("auto-cleanup")
+            }
+            DebugLogger.inMemoryLogs.add(message)
+        }
+    }
 
     val projectComponents = ProjectComponentProvider(
         platformDeps,
@@ -40,6 +53,7 @@ class DomainComponent<T : PlatformDeps>(
         navigator,
         backendFactory,
         scopes,
+        logger,
     )
 
     val projectComponentResolver = ProjectComponentResolver(
