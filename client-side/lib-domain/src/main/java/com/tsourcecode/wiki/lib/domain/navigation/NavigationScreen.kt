@@ -17,17 +17,17 @@ enum class NavigationScreen {
                 return PROJECTS
             }
             if (AppNavigator.isFileManagerNavigation(uri)) {
-                return FILE_MANAGER
+                return null
             }
             if (AppNavigator.isDocumentEdit(uri)) {
-                return EDITOR
+                return null
             }
             if (AppNavigator.isChanges(uri)) {
                 return CHANGES
             }
 
             if (AppNavigator.isSearch(uri)) {
-                return SEARCH
+                return null
             }
 
             return null

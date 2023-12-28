@@ -5,14 +5,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.lib.domain.AppNavigator
+import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.navigation.NavigationScreen
 import kotlinx.coroutines.launch
 import java.net.URI
 
 class ActivityNavigator(
-        private val activity: AppCompatActivity,
-        private val appNavigator: AppNavigator,
-        private val screenFactory: ScreenFactory,
+    private val activity: AppCompatActivity,
+    private val appNavigator: AppNavigator,
+    private val screenFactory: ScreenFactory,
+    quickStatusController: QuickStatusController,
 ) {
     private var openedScreen: ScreenDetails? = null
     private val contentContainer: FrameLayout
@@ -24,6 +26,11 @@ class ActivityNavigator(
         activity.lifecycleScope.launch {
             appNavigator.data.collect { uri ->
                 val navigationScreen = resolveScreen(uri)
+
+                if (navigationScreen == null) {
+                    quickStatusController.error(RuntimeException("No-one can handle: $uri"))
+                    return@collect
+                }
                 if (openedScreen?.screen == navigationScreen &&
                         openedScreen?.screenView?.handle(uri) == true) {
                     return@collect
@@ -44,8 +51,8 @@ class ActivityNavigator(
         }
     }
 
-    private fun resolveScreen(uri: URI): NavigationScreen {
-        return NavigationScreen.resolveScreen(uri) ?: throw RuntimeException("No-one can handle: $uri")
+    private fun resolveScreen(uri: URI): NavigationScreen? {
+        return NavigationScreen.resolveScreen(uri)
     }
 }
 

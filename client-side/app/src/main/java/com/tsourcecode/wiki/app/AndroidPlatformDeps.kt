@@ -25,6 +25,8 @@ class AndroidPlatformDeps(
         return filesDir.filterNotNull().first()
     }
 
+    override val internalFiles: File = context.filesDir
+
     override val persistentStorageProvider = AndroidStorageProvider(context)
     override val threading = AndroidThreading()
 }

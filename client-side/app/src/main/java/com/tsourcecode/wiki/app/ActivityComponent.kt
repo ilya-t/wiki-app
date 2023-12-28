@@ -20,6 +20,7 @@ class ActivityComponent(
             activity,
             appComponent.domain.navigator,
             screenFactory,
+            domain.quickStatusController,
     )
 
     private val bottomBarView = BottomBarController(

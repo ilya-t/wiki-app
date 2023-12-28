@@ -3,7 +3,7 @@ package com.tsourcecode.wiki.lib.domain
 import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
 
 @OpenInTest
-class QuickStatusController {
+class QuickStatusController() {
     var listener: ((StatusInfo) -> Unit)? = null
 
     fun udpate(status: QuickStatus, comment: String = "") {

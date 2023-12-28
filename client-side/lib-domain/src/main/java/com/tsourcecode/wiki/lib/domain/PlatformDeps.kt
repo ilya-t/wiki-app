@@ -10,4 +10,5 @@ interface PlatformDeps {
     val threading: Threading
     val externalStorageAccess: ExternalStorageAccessHandler
     suspend fun filesDir(): File
+    val internalFiles: File
 }

@@ -11,7 +11,6 @@ import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.net.URI
 
@@ -22,8 +21,8 @@ class BottomBarController(
         private val rootView: View,
 ) {
     private val scope: CoroutineScope = activity.lifecycleScope
-    private val btnFiles = rootView.findViewById<View>(R.id.btn_files)
-    private val btnSearch = rootView.findViewById<View>(R.id.btn_search)
+    private val btnHome = rootView.findViewById<View>(R.id.btn_home)
+    private val btnSync = rootView.findViewById<View>(R.id.btn_sync)
 
     private val btnCommit = rootView.findViewById<AppCompatButton>(R.id.btn_commit)
 
@@ -33,17 +32,15 @@ class BottomBarController(
                 val projectComponent = projectComponentResolver.tryResolve(uri)
                 bindCommitButton(projectComponent)
                 bindFilesButton(projectComponent)
-                bindSearchButton(projectComponent)
+                bindSyncButton(projectComponent)
                 rootView.visibility = if (projectComponent == null) View.GONE else View.VISIBLE
             }
         }
     }
 
     private fun bindFilesButton(projectComponent: ProjectComponent?) {
-        btnFiles.setOnClickListener {
-            val name = projectComponent?.project?.name ?: return@setOnClickListener
-            navigator.open(URI("open://$name/"))
-            navigator.clearBackstack()
+        btnHome.setOnClickListener {
+            navigator.open(AppNavigator.PROJECTS_URI)
         }
     }
 
@@ -78,10 +75,9 @@ class BottomBarController(
         }
     }
 
-    private fun bindSearchButton(component: ProjectComponent?) {
-        btnSearch.setOnClickListener {
-            val name = component?.project?.name ?: return@setOnClickListener
-            navigator.open(URI("settings://search/${name}"))
+    private fun bindSyncButton(component: ProjectComponent?) {
+        btnSync.setOnClickListener {
+            component?.backendController?.sync()
         }
     }
 }

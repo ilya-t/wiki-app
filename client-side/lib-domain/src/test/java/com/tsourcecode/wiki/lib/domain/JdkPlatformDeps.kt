@@ -11,9 +11,15 @@ class JdkPlatformDeps : PlatformDeps {
     override val externalStorageAccess = object : ExternalStorageAccessHandler {
         override val accessGranted = true
 
-        override suspend fun requestAccess() = Unit
+        override fun requestAccess() = Unit
     }
 
+    override val internalFiles: File
+        get() {
+            return File("/tmp/wiki.test.${UUID.randomUUID()}").apply {
+                mkdirs()
+            }
+        }
 
     override suspend fun filesDir(): File {
         return File("/tmp/wiki.test.${UUID.randomUUID()}").apply {

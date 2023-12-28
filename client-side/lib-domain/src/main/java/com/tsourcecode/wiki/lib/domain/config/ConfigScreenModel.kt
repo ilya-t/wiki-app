@@ -143,7 +143,7 @@ class ConfigScreenModel(
     }
 
     fun open(item: ConfigScreenItem.PreviewElement) {
-        navigator.open(URI("open://${item.projectName}/"))
+        navigator.open(URI("settings://changes/${item.projectName}"))
     }
 }
 
