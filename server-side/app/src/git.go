@@ -145,6 +145,30 @@ func (g *Git) softReset() error {
 
 }
 
+func (g *Git) Pull() error {
+	hadChanges, changesErr := g.hasUncommitedChanges()
+
+	if changesErr != nil {
+		return changesErr
+	}
+
+	if hadChanges {
+		return errors.New("got changes, pull declined")
+	}
+
+	_, pullErr := g.execute("git pull --rebase " + g.remote + " " + g.branch)
+
+	if pullErr != nil {
+		return errors.New("Pull failed! " + pullErr.Error())
+	}
+
+	return nil
+}
+
+func (g *Git) AbortRebase() {
+	g.execute("git rebase --abort")
+}
+
 func (g *Git) Rebase() error {
 	hadChanges, changesErr := g.hasUncommitedChanges()
 

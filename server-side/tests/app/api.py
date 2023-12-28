@@ -54,6 +54,7 @@ class RestApi:
         self._latest_api: str = project_endpoint + '/api/1/revision/latest'
         self._sync_api: str = project_endpoint + '/api/1/revision/sync'
         self._show_api: str = project_endpoint + '/api/1/revision/show'
+        self._pull_api: str = project_endpoint + '/api/1/pull'
         self._projects_api: str = endpoint + '/api/1/projects'
 
     def show(self, revision: str) -> requests.Response:
@@ -120,6 +121,10 @@ class RestApi:
 
     def status(self) -> dict:
         response = requests.post(self._status_api)
+        return response.json()
+    
+    def pull(self) -> dict:
+        response = requests.post(self._pull_api)
         return response.json()
 
     def get_projects(self) -> [dict]:

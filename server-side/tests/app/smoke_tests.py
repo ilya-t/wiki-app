@@ -147,6 +147,20 @@ class AcceptanceTests(unittest.TestCase):
         self.assertNotEquals(revision, response.json()['revision'])
         self.assertEquals('added test_rebase_after_stage.md\n\n', response.json()['message'])
 
+    def test_pull_api(self):
+        # remember current revision
+        revision = 'HEAD~0'
+        old_head = self.api_user.show(revision).json()['revision']
+
+        # commit on remote
+        self.repo_user.submit(file='test_pull_api.md', content='# content by git')
+        # pull
+        status = self.api_user.pull()
+        print(status)
+        new_head = status['revision']
+        # assert
+        self.assertNotEquals(old_head, new_head)
+
 
 def find(path: str, files: [dict]) -> dict:
     for f in files:

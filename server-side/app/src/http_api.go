@@ -63,7 +63,7 @@ func (p *ProjectHttpApi) Start() {
 	http.HandleFunc(prefix+"/api/1/status", p.getStatus)
 	http.HandleFunc(prefix+"/api/1/commit", p.postCommit)
 	http.HandleFunc(prefix+"/api/1/stage", p.stageFiles)
-
+	http.HandleFunc(prefix+"/api/1/pull", p.pullChanges)
 }
 
 func (p *ProjectHttpApi) getOutdatedAtLastRevision(w http.ResponseWriter, req *http.Request) {
@@ -186,6 +186,23 @@ func (p *ProjectHttpApi) postCommit(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	fmt.Fprint(w, "{ \"result\": \"true\"")
+}
+
+func (p *ProjectHttpApi) pullChanges(w http.ResponseWriter, req *http.Request) {
+	if e := p.git.Pull(); e != nil {
+		p.git.AbortRebase()
+		writeError(w, "Pull failed", e)
+		return
+	}
+
+	revision, e := p.git.ShowRevision("HEAD~0")
+
+	if e != nil {
+		writeError(w, "Revision check", e)
+		return
+	}
+
+	writeJsonStruct(revision, w, req)
 }
 
 func (p *ProjectHttpApi) stageFiles(w http.ResponseWriter, req *http.Request) {
