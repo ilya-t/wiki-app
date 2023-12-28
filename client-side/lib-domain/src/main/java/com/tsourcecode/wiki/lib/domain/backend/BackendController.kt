@@ -24,7 +24,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.URLDecoder
 
-const val REVISION_ZIP_REPOSITORY_DIR = "repo"
+private const val REVISION_ZIP_REPOSITORY_DIR = "repo"
 
 class BackendController(
         private val platformDeps: PlatformDeps,
@@ -61,6 +61,8 @@ class BackendController(
 
     fun sync() {
         doSync(needFullSync())
+        // rebuild hashes
+        // receive what needs to be uploaded
     }
 
     private fun needFullSync(): Boolean {
@@ -79,7 +81,7 @@ class BackendController(
                 requestLastRevisionSnapshot(files)?.let { zipFile ->
                     currentRevisionInfoController.bumpRevisionToLatest()
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
-                    val syncOutput = File(project.dir.absolutePath + "/sync")
+                    val syncOutput = File(platformDeps.internalFiles, project.id + "/sync")
                     val syncedFiles = if (fullSync) File(syncOutput, REVISION_ZIP_REPOSITORY_DIR) else syncOutput
                     Decompressor.decompress(zipFile, syncOutput.absolutePath)
 

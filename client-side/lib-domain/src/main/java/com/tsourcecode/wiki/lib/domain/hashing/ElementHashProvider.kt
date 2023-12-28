@@ -43,6 +43,10 @@ class ElementHashProvider(
      */
     private fun calculateHashes(digest: MessageDigest): List<Hashable> {
         val filesList = project.repo.listFiles()?.toList() ?: emptyList()
+
+        if (filesList.isEmpty()) {
+            return emptyList()
+        }
         return filesList.map {
             it.extractHashes(digest)
         }
@@ -53,6 +57,10 @@ class ElementHashProvider(
             val filesList = this.listFiles()?.toList() ?: emptyList()
             val fileHashes = filesList.map {
                 it.extractHashes(digest)
+            }
+
+            if (fileHashes.isEmpty()) {
+                return DirHash(this.name, "", fileHashes)
             }
 
             val compositeHash = fileHashes
