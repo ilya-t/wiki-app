@@ -11,9 +11,10 @@ import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.launch
-import java.net.URI
 
 class BottomBarController(
         private val activity: AppCompatActivity,
@@ -23,55 +24,50 @@ class BottomBarController(
 ) {
     private val scope: CoroutineScope = activity.lifecycleScope
     private val btnHome = rootView.findViewById<View>(R.id.btn_home)
-    private val btnSync = rootView.findViewById<View>(R.id.btn_sync)
+    private val btnPull = rootView.findViewById<View>(R.id.btn_pull)
 
     private val btnCommit = rootView.findViewById<AppCompatButton>(R.id.btn_commit)
 
     init {
+        btnHome.setOnClickListener {
+            navigator.open(AppNavigator.PROJECTS_URI)
+        }
         scope.launch {
             navigator.data.collect { uri ->
                 val projectComponent = projectComponentResolver.tryResolve(uri)
                 bindCommitButton(projectComponent)
-                bindFilesButton(projectComponent)
                 bindSyncButton(projectComponent)
+                syncButtonJob?.cancel()
+                syncButtonJob = scope.launch(Dispatchers.Main) {
+                    projectComponent?.fileStatusProvider?.statusFlow?.collect { status ->
+                        btnPull.isEnabled = status == null || status.files.isEmpty()
+                        btnCommit.isEnabled = status != null && status.files.isNotEmpty()
+                    }
+                }
+
                 rootView.visibility = if (projectComponent == null) View.GONE else View.VISIBLE
             }
         }
     }
 
-    private fun bindFilesButton(projectComponent: ProjectComponent?) {
-        btnHome.setOnClickListener {
-            navigator.open(AppNavigator.PROJECTS_URI)
-        }
-    }
-
     private fun bindCommitButton(projectComponent: ProjectComponent?) {
         if (projectComponent == null) {
-            btnCommit.text = "status"
+            btnCommit.isEnabled = false
             btnCommit.setOnClickListener(null)
             return
         }
 
-        btnCommit.text = "status"
-        scope.launch {
-            suspend fun diffCount() = projectComponent
-                .statusModel
-                .statusFlow
-                .last()
-                .items.filterIsInstance<StatusViewItem.FileViewItem>()
-                .size
+        btnCommit.setOnClickListener {
+            scope.launch(Dispatchers.Main) {
+                suspend fun diffCount() = projectComponent
+                    .statusModel
+                    .statusFlow
+                    .last()
+                    .items.filterIsInstance<StatusViewItem.FileViewItem>()
+                    .size
 
-            val diffCount = diffCount()
-            if (diffCount > 0) {
-                btnCommit.text = "status ($diffCount)"
-            } else {
-                btnCommit.text = "status"
-            }
-
-            btnCommit.setOnClickListener {
-                if (!AppNavigator.isChanges(navigator.data.value)) {
-                    navigator.open(URI("settings://changes/${projectComponent.project.name}"))
-                } else if (diffCount > 0){
+                val diffCount = diffCount()
+                if (diffCount > 0){
                     Snackbar.make(activity.findViewById(R.id.content_container), "Ready to commit changes and push?", 4000).apply {
                         setAction("YES!") {
                             projectComponent.statusModel.commit()
@@ -83,8 +79,9 @@ class BottomBarController(
         }
     }
 
+    private var syncButtonJob: Job? = null
     private fun bindSyncButton(component: ProjectComponent?) {
-        btnSync.setOnClickListener {
+        btnPull.setOnClickListener {
             component?.backendController?.pullAndSync()
         }
     }

@@ -3,7 +3,9 @@ package com.tsourcecode.wiki.lib.domain.backend
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
+import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.StatusResponse
+import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
 import com.tsourcecode.wiki.lib.domain.hashing.FileHashSerializable
 import com.tsourcecode.wiki.lib.domain.hashing.Hashable
@@ -27,16 +29,17 @@ import java.net.URLDecoder
 private const val REVISION_ZIP_REPOSITORY_DIR = "repo"
 
 class BackendController(
-        private val platformDeps: PlatformDeps,
-        private val quickStatusController: QuickStatusController,
-        private val elementHashProvider: ElementHashProvider,
-        private val project: Project,
-        private val currentRevisionInfoController: CurrentRevisionInfoController,
-        private val backendApi: WikiBackendAPIs,
-        private val threading: Threading,
-        private val scopes: CoroutineScopes,
-        private val keyValueStorage: KeyValueStorage,
+    private val platformDeps: PlatformDeps,
+    private val quickStatusController: QuickStatusController,
+    private val elementHashProvider: ElementHashProvider,
+    private val project: Project,
+    private val currentRevisionInfoController: CurrentRevisionInfoController,
+    private val backendApi: WikiBackendAPIs,
+    private val threading: Threading,
+    private val scopes: CoroutineScopes,
+    private val keyValueStorage: KeyValueStorage,
 ) {
+    internal var fileStatusProvider: FileStatusProvider? = null
     private val dirRevisionStorage = StoredPrimitive.string("dir_revision", keyValueStorage)
     private var projectObserver: ((String?, File) -> Unit)? = null
     private val _refreshFlow = MutableStateFlow(false)
@@ -78,26 +81,42 @@ class BackendController(
             try {
                 quickStatusController.udpate(QuickStatus.SYNC)
                 val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
-                requestLastRevisionSnapshot(files)?.let { zipFile ->
+                requestLastRevisionSnapshot(files)?.let { snapshot ->
                     currentRevisionInfoController.bumpRevisionToLatest()
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
                     val syncOutput = File(platformDeps.internalFiles, project.id + "/sync")
                     val syncedFiles = if (fullSync) File(syncOutput, REVISION_ZIP_REPOSITORY_DIR) else syncOutput
-                    Decompressor.decompress(zipFile, syncOutput.absolutePath)
+                    Decompressor.decompress(
+                        zipFile = snapshot.zipFile.absolutePath,
+                        outputDir = syncOutput.absolutePath)
 
                     if (fullSync) {
                         project.repo.deleteRecursively()
                         syncedFiles.renameTo(project.repo)
                     } else {
-                        val f = File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
-                        if (f.exists()) {
-                            f.copyRecursively(project.repo, overwrite = true)
+                        val localRevision = currentRevisionInfoController.state.value?.revision
+                            ?.trimEnd('\n') // TODO: fix server-side
+                        val serverRevision = snapshot.revision
+                        if (localRevision == serverRevision) {
+                            val syncDir = File(syncOutput, REVISION_ZIP_REPOSITORY_DIR)
+                            syncedFiles
+                                .walkTopDown()
+                                .asSequence()
+                                .mapNotNull { resolveDocument(it, syncDir) }
+                                .toList()
+                                .forEach { stage(it) }
+                            fileStatusProvider?.update()
+                        } else {
+                            val f = File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
+                            if (f.exists()) {
+                                f.copyRecursively(project.repo, overwrite = true)
+                            }
                         }
                     }
 
                     syncedFiles.deleteRecursively()
 
-                    dirRevision = File(zipFile).nameWithoutExtension
+                    dirRevision = snapshot.zipFile.nameWithoutExtension
                     scope.launch(threading.main) {
                         projectObserver?.invoke(dirRevision, project.repo)
                         quickStatusController.udpate(QuickStatus.SYNCED, currentRevisionInfoController.state.value?.toComment() ?: "null")
@@ -117,10 +136,28 @@ class BackendController(
         }
     }
 
+    private fun resolveDocument(fileFromSync: File, syncDir: File): Document? {
+        if (fileFromSync.isDirectory) {
+            return null
+        }
+        val projectFile = File(project.dir.absolutePath +
+                fileFromSync.absolutePath.substring(startIndex = syncDir.absolutePath.length))
+
+        if (!projectFile.exists()) {
+            return null
+        }
+        return Document(project.dir, origin = projectFile)
+    }
+
+    private class RevisionSnapshot(
+        val revision: String,
+        val zipFile: File,
+    )
+
     /**
      * Heavy way of sync useful as "first-time-sync".
      */
-    private suspend fun requestLastRevisionSnapshot(files: List<Hashable>): String? {
+    private suspend fun requestLastRevisionSnapshot(files: List<Hashable>): RevisionSnapshot? {
         try {
             val response = if (files.isEmpty()) {
                 backendApi.latestRevision(project.name).execute()
@@ -153,11 +190,17 @@ class BackendController(
                 }
                 //Log.that("DONE!")
             }
-            return file
+            val f = File(file)
+            return RevisionSnapshot(revision = f.nameWithoutExtension, zipFile = f)
         } catch (e: IOException) {
 //            e.printStackTrace()
             throw e
         }
+    }
+
+    private fun stage(d: Document) {
+        val b64 = com.tsourcecode.wiki.lib.domain.util.Base64.getEncoder().encodeToString(d.file.readBytes())
+        stage(d.relativePath, b64)
     }
 
     fun stage(relativePath: String, b64: String): Boolean {

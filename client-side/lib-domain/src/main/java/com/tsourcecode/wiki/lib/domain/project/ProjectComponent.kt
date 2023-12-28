@@ -81,10 +81,11 @@ class ProjectComponent(
         projectStorage,
     )
 
-    private val fileStatusProvider = FileStatusProvider(
+    val fileStatusProvider = FileStatusProvider(
             scopes.worker,
             changedFiles,
             stagedFiles,
+            backendController,
     )
 
     val statusModel = StatusModel(

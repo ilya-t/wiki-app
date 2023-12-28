@@ -1,11 +1,11 @@
 package com.tsourcecode.wiki.lib.domain.commitment
 
+import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.documents.staging.StagedFilesController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -13,6 +13,7 @@ class FileStatusProvider(
     private val workerScope: CoroutineScope,
     private val changedFiles: ChangedFilesController,
     private val stagedFiles: StagedFilesController,
+    private val backendController: BackendController,
 ) {
 
     private val _statusFlow = MutableStateFlow<StatusResponse?>(
@@ -22,6 +23,7 @@ class FileStatusProvider(
     val statusFlow: StateFlow<StatusResponse?> = _statusFlow
 
     init {
+        backendController.fileStatusProvider = this
         workerScope.launch {
             stagedFiles.update()
             stagedFiles.data.combine(changedFiles.data) { staged, changed ->
