@@ -1,7 +1,7 @@
 package com.tsourcecode.wiki.lib.domain.commitment
 
 class StatusViewModel(
-        val items: List<StatusViewItem> = listOf(StatusViewItem.CommitViewItem()),
+        val items: List<StatusViewItem> = listOf(),
 )
 
 sealed interface StatusViewItem {

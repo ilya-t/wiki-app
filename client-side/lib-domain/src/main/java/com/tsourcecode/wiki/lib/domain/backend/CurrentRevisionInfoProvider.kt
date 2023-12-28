@@ -2,6 +2,8 @@ package com.tsourcecode.wiki.lib.domain.backend
 
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
 import java.io.IOException
 
@@ -12,19 +14,8 @@ class CurrentRevisionInfoController(
     private val wikiBackendAPIs: WikiBackendAPIs,
     private val keyValueStorage: KeyValueStorage,
 ) {
-    var currentRevision: RevisionInfo? = readFromCache()
-        set(value) {
-            if (field == value) {
-                return
-            }
-            field = value
-
-            if (value != null) {
-                keyValueStorage[KEY] = Json.encodeToString(RevisionInfo.serializer(), value)
-            } else {
-                keyValueStorage[KEY] = null
-            }
-        }
+    private val _state = MutableStateFlow<RevisionInfo?>(readFromCache())
+    val state: StateFlow<RevisionInfo?> = _state
 
     private fun readFromCache(): RevisionInfo? {
         keyValueStorage[KEY]?.let {
@@ -35,7 +26,9 @@ class CurrentRevisionInfoController(
     }
 
     fun bumpRevisionToLatest() {
-        currentRevision = getRevisionInfo("HEAD~0")
+        val info = getRevisionInfo("HEAD~0")
+        _state.value = info
+        keyValueStorage[KEY] = Json.encodeToString(RevisionInfo.serializer(), info)
     }
 
     @Throws(IOException::class)
@@ -43,6 +36,5 @@ class CurrentRevisionInfoController(
         val response = wikiBackendAPIs.showRevision(project.name, RevisionSpec(revision)).execute()
         val body = response.body()?.string() ?: throw IOException("Empty body received!")
         return Json.decodeFromString(RevisionInfo.serializer(), body)
-
     }
 }

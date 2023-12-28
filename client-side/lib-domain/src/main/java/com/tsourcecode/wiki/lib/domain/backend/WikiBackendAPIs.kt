@@ -24,6 +24,8 @@ interface WikiBackendAPIs {
     fun showRevision(@Path("project") name: String, @Body spec: RevisionSpec): Call<ResponseBody>
     @POST("/{project}/api/1/commit")
     fun commit(@Path("project") name: String, @Body c: Commitment): Call<ResponseBody>
+    @POST("/{project}/api/1/pull")
+    fun pull(@Path("project") name: String): Call<ResponseBody>
 
     data class Staging(
             val files: List<FileStaging>

@@ -100,8 +100,7 @@ class BackendController(
                     dirRevision = File(zipFile).nameWithoutExtension
                     scope.launch(threading.main) {
                         projectObserver?.invoke(dirRevision, project.repo)
-
-                        quickStatusController.udpate(QuickStatus.SYNCED, currentRevisionInfoController.currentRevision.toComment())
+                        quickStatusController.udpate(QuickStatus.SYNCED, currentRevisionInfoController.state.value?.toComment() ?: "null")
                     }
 
                     scope.launch {
@@ -218,6 +217,33 @@ class BackendController(
         val result = Json.decodeFromString(StatusResponse.serializer(), body)
         quickStatusController.udpate(QuickStatus.STATUS_UPDATED)
         return result
+    }
+
+    fun pullAndSync() {
+        scope.launch {
+            if (pull()) {
+                sync()
+            }
+
+        }
+
+    }
+
+    private fun pull(): Boolean {
+        quickStatusController.udpate(QuickStatus.STATUS_UPDATE, "pulling")
+        val response = backendApi.pull(project.name).execute()
+        if (!response.isSuccessful) {
+            quickStatusController.error(
+                QuickStatus.SYNC,
+                IOException("error code(${response.code()}) with error: \n" +
+                        response.errorBody()?.string()))
+            return false
+        }
+        //TODO: maybe use revision from body?
+        val body = response.body()?.string() ?: return false
+        val revision = Json.decodeFromString(RevisionInfo.serializer(), body)
+        quickStatusController.udpate(QuickStatus.STATUS_UPDATE, "Pulled to: ${revision.revision}")
+        return true
     }
 }
 

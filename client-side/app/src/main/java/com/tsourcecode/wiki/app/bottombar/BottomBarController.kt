@@ -11,6 +11,7 @@ import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.launch
 import java.net.URI
 
@@ -51,25 +52,32 @@ class BottomBarController(
             return
         }
 
-        fun diffCount() = projectComponent.statusModel.statusFlow.value
+        btnCommit.text = "status"
+        scope.launch {
+            suspend fun diffCount() = projectComponent
+                .statusModel
+                .statusFlow
+                .last()
                 .items.filterIsInstance<StatusViewItem.FileViewItem>()
                 .size
-        val diffCount = diffCount()
-        if (diffCount > 0) {
-            btnCommit.text = "status ($diffCount)"
-        } else {
-            btnCommit.text = "status"
-        }
 
-        btnCommit.setOnClickListener {
-            if (!AppNavigator.isChanges(navigator.data.value)) {
-                navigator.open(URI("settings://changes/${projectComponent.project.name}"))
-            } else if (diffCount() > 0){
-                Snackbar.make(activity.findViewById(R.id.content_container), "Ready to commit changes and push?", 4000).apply {
-                    setAction("YES!") {
-                        projectComponent.statusModel.commit()
+            val diffCount = diffCount()
+            if (diffCount > 0) {
+                btnCommit.text = "status ($diffCount)"
+            } else {
+                btnCommit.text = "status"
+            }
+
+            btnCommit.setOnClickListener {
+                if (!AppNavigator.isChanges(navigator.data.value)) {
+                    navigator.open(URI("settings://changes/${projectComponent.project.name}"))
+                } else if (diffCount > 0){
+                    Snackbar.make(activity.findViewById(R.id.content_container), "Ready to commit changes and push?", 4000).apply {
+                        setAction("YES!") {
+                            projectComponent.statusModel.commit()
+                        }
+                        show()
                     }
-                    show()
                 }
             }
         }
@@ -77,7 +85,7 @@ class BottomBarController(
 
     private fun bindSyncButton(component: ProjectComponent?) {
         btnSync.setOnClickListener {
-            component?.backendController?.sync()
+            component?.backendController?.pullAndSync()
         }
     }
 }
