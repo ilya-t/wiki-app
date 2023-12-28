@@ -1,15 +1,18 @@
 package com.tsourcecode.wiki.lib.domain
 
+import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.net.URI
 import java.net.URLDecoder
-import java.util.*
+import java.util.Stack
 
 @OpenInTest
-class AppNavigator {
-    private val _data = MutableStateFlow(PROJECTS_URI)
+class AppNavigator(
+    private val lastUri: StoredPrimitive<String>,
+) {
+    private val _data = MutableStateFlow(lastUri.value?.let { URI.create(it) } ?: PROJECTS_URI)
     val data: StateFlow<URI> = _data
     private val stack = Stack<URI>()
 
@@ -22,6 +25,7 @@ class AppNavigator {
 
         stack.push(existing)
         _data.value = uri
+        lastUri.value = uri.toString()
     }
 
     fun goBack(): Boolean {

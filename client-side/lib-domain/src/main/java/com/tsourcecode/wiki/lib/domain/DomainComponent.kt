@@ -9,20 +9,26 @@ import com.tsourcecode.wiki.lib.domain.presentation.ViewModels
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
+import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import okhttp3.OkHttpClient
 
-class DomainComponent<T: PlatformDeps>(
+class DomainComponent<T : PlatformDeps>(
     val platformDeps: T,
     private val networkConfigurator: OkHttpClient.Builder.() -> OkHttpClient.Builder = { this },
 ) {
     private val scopes = CoroutineScopes(
         platformDeps.threading,
     )
-    val navigator = AppNavigator()
+    val navigator = AppNavigator(
+        StoredPrimitive.string(
+            "navigator_uri",
+            platformDeps.persistentStorageProvider.getKeyValueStorage("navigator"),
+        ),
+    )
     val projectsRepository = ProjectsRepository(
-            platformDeps,
-            scopes.worker,
+        platformDeps,
+        scopes.worker,
     )
 
     val quickStatusController = QuickStatusController()
@@ -56,8 +62,8 @@ class DomainComponent<T: PlatformDeps>(
     )
 
     val fileManagerModel = FileManagerModel(
-            navigator,
-            quickStatusController,
+        navigator,
+        quickStatusController,
     )
 
     private val initialNavigationController = InitialNavigationController(
