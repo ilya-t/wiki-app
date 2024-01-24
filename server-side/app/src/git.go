@@ -83,6 +83,7 @@ func (g *Git) LastRevision() (string, error) {
 func (g *Git) Rollback(f *FileRollback) error {
 	filePath := strings.ReplaceAll(f.Path, "\"", "\\\"")
 	fmt.Printf("Rolling back '%v'", filePath)
+	g.shell.PrintOutput("git status")
 
 	resetCmd := "git reset \"" + filePath + "\""
 	resetOut, err := g.execute(resetCmd)
@@ -90,7 +91,8 @@ func (g *Git) Rollback(f *FileRollback) error {
 		return err
 	}
 
-	fmt.Printf("-> Git Reset: '%v' -> '%v'", resetCmd, resetOut)
+	fmt.Printf("-> Git Reset: '%v' -> '%v'\n", resetCmd, resetOut)
+	g.shell.PrintOutput("git status")
 
 	checkoutCmd := "git checkout \"" + filePath + "\""
 	checkoutOut, err := g.execute(checkoutCmd)
@@ -98,7 +100,8 @@ func (g *Git) Rollback(f *FileRollback) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("-> Git Checkout: '%v' -> '%v'", checkoutCmd, checkoutOut)
+	fmt.Printf("-> Git Checkout: '%v' -> '%v'\n", checkoutCmd, checkoutOut)
+	g.shell.PrintOutput("git status")
 	return nil
 }
 
