@@ -84,15 +84,23 @@ func (g *Git) Rollback(f *FileRollback) error {
 	filePath := g.repoDir + "/" + f.Path
 
 	filePath = strings.ReplaceAll(filePath, "\"", "\\\"")
+	fmt.Printf("Rolling back '%v'", filePath)
 
-	if _, err := g.execute("git reset \"" + filePath + "\""); err != nil {
+	resetCmd := "git reset \"" + filePath + "\""
+	resetOut, err := g.execute(resetCmd)
+	if err != nil {
 		return err
 	}
 
-	if _, err := g.execute("git checkout \"" + filePath + "\""); err != nil {
+	fmt.Printf("-> Git Reset: '%v' -> '%v'", resetCmd, resetOut)
+
+	checkoutCmd := "git checkout \"" + filePath + "\""
+	checkoutOut, err := g.execute(checkoutCmd)
+
+	if err != nil {
 		return err
 	}
-
+	fmt.Printf("-> Git Checkout: '%v' -> '%v'", checkoutCmd, checkoutOut)
 	return nil
 }
 
