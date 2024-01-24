@@ -81,9 +81,7 @@ func (g *Git) LastRevision() (string, error) {
 }
 
 func (g *Git) Rollback(f *FileRollback) error {
-	filePath := g.repoDir + "/" + f.Path
-
-	filePath = strings.ReplaceAll(filePath, "\"", "\\\"")
+	filePath := strings.ReplaceAll(f.Path, "\"", "\\\"")
 	fmt.Printf("Rolling back '%v'", filePath)
 
 	resetCmd := "git reset \"" + filePath + "\""
