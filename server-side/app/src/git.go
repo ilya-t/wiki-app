@@ -16,6 +16,13 @@ const (
 	StatusUntracked = "untracked"
 )
 
+type FileRollback struct {
+	Path string `json:"path"`
+}
+type RollbackSpec struct {
+	Files []*FileRollback `json:"files"`
+}
+
 type Staging struct {
 	Files []*FileContent `json:"files"`
 }
@@ -71,6 +78,22 @@ func (g *Git) LastRevision() (string, error) {
 	}
 
 	return strings.Replace(result, "\n", "", -1), nil
+}
+
+func (g *Git) Rollback(f *FileRollback) error {
+	filePath := g.repoDir + "/" + f.Path
+
+	filePath = strings.ReplaceAll(filePath, "\"", "\\\"")
+
+	if _, err := g.execute("git reset \"" + filePath + "\""); err != nil {
+		return err
+	}
+
+	if _, err := g.execute("git checkout \"" + filePath + "\""); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (g *Git) Stage(f *FileContent) error {

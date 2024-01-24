@@ -71,6 +71,13 @@ class AcceptanceTests(unittest.TestCase):
         actual_contents = subprocess.check_output('cat ' + REPO_DIR + '/README.md', universal_newlines=True, shell=True)
 
         self.assertEqual(expected_contents, actual_contents)
+    
+    def test_rollback(self):
+        expected_contents = '# Sample Repo for Tests (STAGED)'
+        self.api_user.stage(file='README.md', content=expected_contents)
+        self.api_user.rollback(path='README.md')
+        _, files = self.api_user.latest_revision()
+        self.assertEqual('# Sample Repo for Tests\n', files['README.md'], msg=json.dumps(files, indent=4))
 
     def test_commitment(self):
         self.api_user.stage(file='new_file.md', content='# sample content')

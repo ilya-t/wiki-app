@@ -64,6 +64,7 @@ func (p *ProjectHttpApi) Start() {
 	http.HandleFunc(prefix+"/api/1/commit", p.postCommit)
 	http.HandleFunc(prefix+"/api/1/stage", p.stageFiles)
 	http.HandleFunc(prefix+"/api/1/pull", p.pullChanges)
+	http.HandleFunc(prefix+"/api/1/rollback", p.rollbackChanges)
 }
 
 func (p *ProjectHttpApi) getOutdatedAtLastRevision(w http.ResponseWriter, req *http.Request) {
@@ -205,6 +206,29 @@ func (p *ProjectHttpApi) pullChanges(w http.ResponseWriter, req *http.Request) {
 	writeJsonStruct(revision, w, req)
 }
 
+func (p *ProjectHttpApi) rollbackChanges(w http.ResponseWriter, req *http.Request) {
+	r, e := ioutil.ReadAll(req.Body)
+
+	if e != nil {
+		panic(e)
+	}
+
+	var rollback *RollbackSpec
+	err := json.Unmarshal(r, &rollback)
+
+	if err != nil {
+		writeError(w, "Parsing", err)
+		return
+	}
+
+	for _, f := range rollback.Files {
+		e := p.git.Rollback(f)
+		if e != nil {
+			writeError(w, "Reset "+f.Path, e)
+			return
+		}
+	}
+}
 func (p *ProjectHttpApi) stageFiles(w http.ResponseWriter, req *http.Request) {
 	r, e := ioutil.ReadAll(req.Body)
 

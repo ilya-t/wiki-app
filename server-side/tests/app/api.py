@@ -49,6 +49,7 @@ class RestApi:
         project_endpoint = endpoint + '/' + project
         self._artifacts_prefix: str = artifacts_prefix
         self._stage_api: str = project_endpoint + '/api/1/stage'
+        self._rollback_api: str = project_endpoint + '/api/1/rollback'
         self._commit_api: str = project_endpoint + '/api/1/commit'
         self._status_api: str = project_endpoint + '/api/1/status'
         self._latest_api: str = project_endpoint + '/api/1/revision/latest'
@@ -68,6 +69,15 @@ class RestApi:
                 {
                     'path': file,
                     'content': base64.b64encode(content.encode('utf-8')).decode("utf-8"),
+                }
+            ]
+        })
+    
+    def rollback(self, path: str) -> requests.Response:
+        return requests.post(self._rollback_api, json={
+            'files': [
+                {
+                    'path': path,
                 }
             ]
         })
