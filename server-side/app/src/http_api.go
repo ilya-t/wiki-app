@@ -68,12 +68,7 @@ func (p *ProjectHttpApi) Start() {
 }
 
 func (p *ProjectHttpApi) getOutdatedAtLastRevision(w http.ResponseWriter, req *http.Request) {
-	e := p.git.Rebase()
-	if e != nil {
-		writeError(w, "Rebase failed", e)
-		return
-	}
-
+	p.tryRebase() //TODO: log error somewhere
 	revision, e := p.git.LastRevision()
 
 	if e != nil {
@@ -262,12 +257,22 @@ func (p *ProjectHttpApi) headers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (p *ProjectHttpApi) getLastRevision(w http.ResponseWriter, req *http.Request) {
-	e := p.git.Rebase()
-	if e != nil {
-		writeError(w, "Rebase failed", e)
-		return
+func (p *ProjectHttpApi) tryRebase() error {
+	changes, e := p.git.hasUncommitedChanges()
+
+	if e != nil || changes {
+		return nil
 	}
+
+	if e := p.git.Rebase(); e != nil {
+		return e
+	}
+
+	return nil
+}
+
+func (p *ProjectHttpApi) getLastRevision(w http.ResponseWriter, req *http.Request) {
+	p.tryRebase() //TODO: log error somewhere
 
 	revision, e := p.git.LastRevision()
 
