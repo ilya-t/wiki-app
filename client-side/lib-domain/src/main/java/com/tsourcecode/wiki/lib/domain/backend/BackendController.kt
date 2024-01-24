@@ -65,7 +65,10 @@ class BackendController(
     }
 
     fun sync() {
-        doSync(needFullSync())
+        doSync(SyncContext(
+            rollbackSpecs = RollbackSpecs(emptyList()),
+            fullSync = needFullSync(),
+        ))
         // rebuild hashes
         // receive what needs to be uploaded
     }
@@ -77,7 +80,12 @@ class BackendController(
         return false
     }
 
-    private fun doSync(fullSync: Boolean) {
+    private class SyncContext(
+        val rollbackSpecs: RollbackSpecs,
+        val fullSync: Boolean,
+    )
+
+    private fun doSync(syncContext: SyncContext) {
         val sync = logger.fork("-sync:")
         scope.launch {
             _refreshFlow.compareAndSet(expect = false, update = true)
@@ -85,6 +93,7 @@ class BackendController(
                 quickStatusController.udpate(QuickStatus.SYNC)
                 val localRevision = currentRevisionInfoController.state.value?.revision
                     ?.trimEnd('\n') // TODO: fix server-side
+                val fullSync = syncContext.fullSync
                 sync.log { "start! (fullSync: $fullSync local-rev: '$localRevision')" }
                 val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
                 requestLastRevisionSnapshot(files)?.let { snapshot ->
@@ -95,8 +104,11 @@ class BackendController(
                     val syncedFiles = if (fullSync) File(syncOutput, REVISION_ZIP_REPOSITORY_DIR) else syncOutput
                     Decompressor.decompress(
                         zipFile = snapshot.zipFile.absolutePath,
-                        outputDir = syncOutput.absolutePath)
-
+                        outputDir = syncOutput.absolutePath,
+                        logger = { m ->
+                            quickStatusController.udpate(QuickStatus.DECOMPRESS, m)
+                        })
+                    quickStatusController.udpate(QuickStatus.SYNC)
                     if (fullSync) {
                         project.repo.deleteRecursively()
                         syncedFiles.renameTo(project.repo)
@@ -104,32 +116,41 @@ class BackendController(
                         val syncDir = File(syncOutput, REVISION_ZIP_REPOSITORY_DIR)
                         if (localRevision == serverRevision) {
                             sync.log { "staging non-synced files!" }
-                            syncedFiles
-                                .walkTopDown()
-                                .asSequence()
-                                .mapNotNull { resolveDocument(it, syncDir) }
-                                .toList()
-                                .forEach {
-                                    sync.log { "staging: ${it.relativePath}" }
-                                    stage(it)
-                                }
-                            fileStatusProvider?.update()
+//                            syncedFiles
+//                                .walkTopDown()
+//                                .asSequence()
+//                                .mapNotNull { resolveDocument(it, syncDir) }
+//                                .toList()
+//                                .forEach {
+//                                    if (isRollback) {
+//                                        do sync
+//                                    }
+//                                    sync.log { "staging: ${it.relativePath}" }
+//                                    stage(it)
+//                                }
+//                            fileStatusProvider?.update()
                         } else {
                             sync.log { "sync to new revision '$localRevision' -> '$serverRevision'" }
-                            File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
-                                .walkTopDown()
-                                .asSequence()
-                                .mapNotNull {
-                                    val d = resolveDocument(it, syncOutput) ?: return@mapNotNull null
-                                    it to d
-                                }
-                                .toList()
-                                .forEach { (src: File, dst: Document) ->
-                                    sync.log { "syncing: ${dst.relativePath}" }
-                                    dst.file.parentFile.mkdirs()
-                                    src.copyTo(dst.file)
-                                }
                         }
+
+                        File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
+                            .walkTopDown()
+                            .asSequence()
+                            .mapNotNull {
+                                val d = resolveDocument(it, syncOutput) ?: return@mapNotNull null
+                                it to d
+                            }
+                            .toList()
+                            .forEach { (backendRevision: File, localRevision: Document) ->
+                                sync.log { "syncing: ${localRevision.relativePath}" }
+                                if (canSync(syncContext, localRevision)) {
+                                    localRevision.file.parentFile.mkdirs()
+                                    backendRevision.copyTo(localRevision.file)
+                                } else {
+                                    stage(localRevision)
+                                }
+                            }
+                        fileStatusProvider?.update()
                     }
                     currentRevisionInfoController.bumpRevisionToLatest()
                     syncedFiles.deleteRecursively()
@@ -152,6 +173,14 @@ class BackendController(
             }
             _refreshFlow.compareAndSet(expect = true, update = false)
         }
+    }
+
+    private fun canSync(
+        syncContext: SyncContext,
+        localRevision: Document
+    ): Boolean {
+        val wasRolledBack = syncContext.rollbackSpecs.files.find { it.path == localRevision.relativePath } != null
+        return wasRolledBack
     }
 
     private fun resolveDocument(fileFromSync: File, syncDir: File): Document? {
@@ -305,6 +334,33 @@ class BackendController(
         val revision = Json.decodeFromString(RevisionInfo.serializer(), body)
         quickStatusController.udpate(QuickStatus.STATUS_UPDATE, "Pulled to: ${revision.revision}")
         return true
+    }
+
+    fun rollback(relativePath: String) {
+        scope.launch {
+            val rollbackSpecs = RollbackSpecs(
+                files = listOf(
+                    FileRollback(
+                        path = relativePath
+                    )
+                )
+            )
+            val response = backendApi.rollback(
+                project.name, rollbackSpecs
+            ).execute()
+            if (!response.isSuccessful) {
+                quickStatusController.error(
+                    QuickStatus.STAGE,
+                    IOException(
+                        "error code(${response.code()}) with error: \n" +
+                                response.errorBody()?.string()
+                    )
+                )
+                return@launch
+            }
+
+            doSync(SyncContext(rollbackSpecs, fullSync = false))
+        }
     }
 }
 

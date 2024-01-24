@@ -4,9 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import okhttp3.ResponseBody
 import retrofit2.Call
-import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.POST
 
 interface ProjectBackendAPIs {
     @GET("/api/1/projects")
@@ -18,6 +16,16 @@ interface ProjectBackendAPIs {
 @Serializable
 data class RevisionSpec(
     val revision: String,
+)
+
+@Serializable
+data class RollbackSpecs(
+    val files: List<FileRollback>,
+)
+
+@Serializable
+data class FileRollback(
+    val path: String,
 )
 
 @Serializable

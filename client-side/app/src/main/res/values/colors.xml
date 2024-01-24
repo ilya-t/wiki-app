@@ -7,4 +7,5 @@
     <color name="launcher_background_stroke">#4045838A</color>
     <color name="launcher_literal">#6FEEEF</color>
     <color name="toolbar_background">#5A5A5A</color>
+    <color name="white">#FFFFFF</color>
 </resources>

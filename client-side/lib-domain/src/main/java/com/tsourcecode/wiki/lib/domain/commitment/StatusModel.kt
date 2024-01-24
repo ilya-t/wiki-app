@@ -38,13 +38,26 @@ class StatusModel(
         }
     }
 
+    private fun rollback(fs: FileStatus) {
+        backendController.rollback(relativePath=fs.path)
+    }
+
     private fun toStatusViewModel(revision: RevisionInfo?, status: StatusResponse?, commitText: String): StatusViewModel {
         val items = mutableListOf<StatusViewItem>()
         if (status?.files?.isNotEmpty() == true) {
-            items.add(StatusViewItem.CommitViewItem(commitText))
+            items.add(StatusViewItem.CommitViewItem(
+                commitText,
+                "Changed files: ${status.files.size}",
+            ) { updateCommitText(it) })
         }
-        status?.files?.forEach {
-            items.add(StatusViewItem.FileViewItem(it))
+        status?.files?.forEach { fs: FileStatus ->
+            items.add(
+                StatusViewItem.FileViewItem(
+                    fileStatus = fs,
+                    onFileClick = { notifyItemClicked(fs) },
+                    onRollbackClick = { rollback(fs) },
+                )
+            )
         }
         revision?.toMessage()?.let {
             items.add(StatusViewItem.RevisionViewItem(it))
@@ -77,8 +90,8 @@ class StatusModel(
         fileStatus.update()
     }
 
-    fun notifyItemClicked(item: StatusViewItem.FileViewItem) {
-        val f = File(project.repo, item.fileStatus.path)
+    private fun notifyItemClicked(fileStatus: FileStatus) {
+        val f = File(project.repo, fileStatus.path)
         val d = Document(
                 projectDir = project.repo,
                 origin = f,

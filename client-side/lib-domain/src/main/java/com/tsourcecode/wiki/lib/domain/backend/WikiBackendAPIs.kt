@@ -26,6 +26,8 @@ interface WikiBackendAPIs {
     fun commit(@Path("project") name: String, @Body c: Commitment): Call<ResponseBody>
     @POST("/{project}/api/1/pull")
     fun pull(@Path("project") name: String): Call<ResponseBody>
+    @POST("/{project}/api/1/rollback")
+    fun rollback(@Path("project") project: String, @Body spec: RollbackSpecs): Call<ResponseBody>
 
     data class Staging(
             val files: List<FileStaging>
