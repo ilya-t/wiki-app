@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.lib.domain
 
+import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 import okhttp3.Interceptor
 
 object DomainComponentFactory {
@@ -13,6 +14,9 @@ object DomainComponentFactory {
                 this
             },
         ).apply {
+            DebugLogger.impl = {
+                println(it)
+            }
             quickStatusController.listener = { info: StatusInfo ->
                 info.error?.let {
                     throw AssertionError("status: ${info.status} message: ${info.comment}", it)

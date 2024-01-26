@@ -3,7 +3,8 @@ package com.tsourcecode.wiki.lib.domain.mocking
 import com.tsourcecode.wiki.lib.domain.backend.REVISION_ZIP_REPOSITORY_DIR
 import okhttp3.Interceptor
 import java.io.File
-import java.util.*
+import java.util.Date
+import java.util.UUID
 
 class Backend {
     private val mapLocal = mutableMapOf<String, ResponseMaker>(
@@ -41,6 +42,7 @@ class Backend {
             })
         mapLocal["/api/1/revision/latest"] = fileResponse
         mapLocal["/api/1/revision/sync"] = fileResponse
+        mapLocal["/notes/api/1/stage"] = ResponseMaker.ResponseOK
 
         mapLocal["/notes/api/1/revision/show"] = ResponseMaker.JsonResponse(
             """

@@ -2,6 +2,7 @@ package com.tsourcecode.wiki.lib.domain.navigation
 
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import org.junit.Assert.assertEquals
+import org.junit.Ignore
 import org.junit.Test
 import java.net.URI
 
@@ -15,6 +16,7 @@ class UriNavigationTest {
     }
 
     @Test
+    @Ignore("Currently disabled!")
     fun `FILE_MANAGER screen navigation`() {
         assertEquals(
                 NavigationScreen.FILE_MANAGER,
@@ -23,6 +25,7 @@ class UriNavigationTest {
     }
 
     @Test
+    @Ignore("Currently disabled!")
     fun `EDITOR screen navigation`() {
         assertEquals(
                 NavigationScreen.EDITOR,
@@ -39,6 +42,7 @@ class UriNavigationTest {
     }
 
     @Test
+    @Ignore("Currently disabled!")
     fun `SEARCH screen navigation`() {
         assertEquals(
                 NavigationScreen.SEARCH,

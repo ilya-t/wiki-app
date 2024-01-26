@@ -15,6 +15,18 @@ import java.nio.file.Files
 sealed interface ResponseMaker {
     operator fun invoke(request: Request): Response
 
+    object ResponseOK : ResponseMaker {
+        override fun invoke(request: Request): Response {
+            return Response.Builder()
+                .code(200)
+                .request(request)
+                .protocol(Protocol.HTTP_1_1)
+                .message("OK")
+                .body(ResponseBody.create(MediaType.parse("application/json"), ""))
+                .build()
+        }
+    }
+
     class FileResponse(
         private val file: File,
         private val setup: (File) -> Unit = {},

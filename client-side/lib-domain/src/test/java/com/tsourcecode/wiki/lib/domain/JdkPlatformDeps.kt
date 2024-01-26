@@ -14,15 +14,17 @@ class JdkPlatformDeps : PlatformDeps {
         override fun requestAccess() = Unit
     }
 
+    private val filesRoot = File("/tmp/wiki.test.${UUID.randomUUID()}")
+
     override val internalFiles: File
         get() {
-            return File("/tmp/wiki.test.${UUID.randomUUID()}").apply {
+            return File(filesRoot, "internal").apply {
                 mkdirs()
             }
         }
 
     override suspend fun filesDir(): File {
-        return File("/tmp/wiki.test.${UUID.randomUUID()}").apply {
+        return File(filesRoot, "public").apply {
             mkdirs()
         }
     }

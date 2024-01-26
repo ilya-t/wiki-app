@@ -51,7 +51,7 @@ class ViewModelsIntegrationTests {
         val projectElements = importedResults
             .filterIsInstance<ConfigScreenItem.PreviewElement>()
 
-        Assert.assertEquals(1, projectElements.size)
+        Assert.assertEquals("Instead import contains: $importedResults", 1, projectElements.size)
         Assert.assertEquals("notes", projectElements.first().projectName)
     }
 
@@ -76,7 +76,7 @@ class ViewModelsIntegrationTests {
     }
 
     @Test
-    fun `import - sync - view v1 - sync - view v2`() {
+    fun `import - sync - view v1 - sync - view v1(local content wins)`() {
         importProject()
         val (project, projectFolder) = waitProjectFolderSynced(v1revision)
         val document = projectFolder.documents.first()
@@ -91,8 +91,8 @@ class ViewModelsIntegrationTests {
         viewModel.refresh()
         waitProjectFolderSynced(v2revision)
 
-        val v2Content = viewModel.getContent()
-        Assert.assertNotEquals(v2Content, v1Content)
+        val contentAfterSync = viewModel.getContent()
+        Assert.assertEquals(v1Content, contentAfterSync)
     }
 
     @Test

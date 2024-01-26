@@ -27,7 +27,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.URLDecoder
 
-private const val REVISION_ZIP_REPOSITORY_DIR = "repo"
+internal const val REVISION_ZIP_REPOSITORY_DIR = "repo"
 
 class BackendController(
     private val platformDeps: PlatformDeps,
@@ -113,7 +113,6 @@ class BackendController(
                         project.repo.deleteRecursively()
                         syncedFiles.renameTo(project.repo)
                     } else {
-                        val syncDir = File(syncOutput, REVISION_ZIP_REPOSITORY_DIR)
                         if (localRevision == serverRevision) {
                             sync.log { "staging non-synced files!" }
 //                            syncedFiles
@@ -133,22 +132,31 @@ class BackendController(
                             sync.log { "sync to new revision '$localRevision' -> '$serverRevision'" }
                         }
 
-                        File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
+                        val syncRelativePath = File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
+                        syncRelativePath
                             .walkTopDown()
                             .asSequence()
                             .mapNotNull {
-                                val d = resolveDocument(it, syncOutput) ?: return@mapNotNull null
+                                val d = resolveDocument(it, syncRelativePath) ?: run {
+                                    if (it.isFile) {
+                                        sync.log { "no document found for $it" }
+                                    }
+                                    return@mapNotNull null
+                                }
                                 it to d
                             }
                             .toList()
                             .forEach { (backendRevision: File, localRevision: Document) ->
-                                sync.log { "syncing: ${localRevision.relativePath}" }
+                                var resolution: String? = null
                                 if (canSync(syncContext, localRevision)) {
                                     localRevision.file.parentFile.mkdirs()
                                     backendRevision.copyTo(localRevision.file)
+                                    resolution = "accepted from backend"
                                 } else {
+                                    resolution = "declined from backend, staged"
                                     stage(localRevision)
                                 }
+                                sync.log { "syncing file: ${localRevision.relativePath}: $resolution" }
                             }
                         fileStatusProvider?.update()
                     }
