@@ -321,10 +321,14 @@ class BackendController(
         return result
     }
 
-    fun pullAndSync() {
+    fun pullOrSync() {
         scope.launch {
-            if (pull()) {
+            if (fileStatusProvider?.statusFlow?.value?.files?.isNotEmpty() == true) {
                 sync()
+            } else {
+                if (pull()) {
+                    sync()
+                }
             }
 
         }

@@ -81,9 +81,11 @@ class StatusModel(
     }
 
     fun commit() {
-        val lastSeenCommitText = commitTextFlow.value
-        if (lastSeenCommitText.isNotEmpty()) {
-            backendController.commit(lastSeenCommitText)
+        worker.launch {
+            val lastSeenCommitText = commitTextFlow.value
+            if (lastSeenCommitText.isNotEmpty()) {
+                backendController.commit(lastSeenCommitText)
+            }
         }
     }
 
