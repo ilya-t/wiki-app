@@ -64,8 +64,8 @@ class BackendController(
         sync()
     }
 
-    fun sync() {
-        doSync(SyncContext(
+    fun sync(): SyncJob {
+        return doSync(SyncContext(
             rollbackSpecs = RollbackSpecs(emptyList()),
             fullSync = needFullSync(),
         ))
@@ -85,8 +85,9 @@ class BackendController(
         val fullSync: Boolean,
     )
 
-    private fun doSync(syncContext: SyncContext) {
+    private fun doSync(syncContext: SyncContext): SyncJob {
         val sync = logger.fork("-sync:")
+        val job = SyncJob()
         scope.launch {
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
@@ -150,7 +151,7 @@ class BackendController(
                                 var resolution: String? = null
                                 if (canSync(syncContext, localRevision)) {
                                     localRevision.file.parentFile.mkdirs()
-                                    backendRevision.copyTo(localRevision.file)
+                                    backendRevision.copyTo(localRevision.file, overwrite = true)
                                     resolution = "accepted from backend"
                                 } else {
                                     resolution = "declined from backend, staged"
@@ -179,8 +180,11 @@ class BackendController(
                     quickStatusController.error(QuickStatus.SYNC, e)
                 }
             }
+            job.notifyCompleted()
             _refreshFlow.compareAndSet(expect = true, update = false)
         }
+
+        return job
     }
 
     private fun canSync(

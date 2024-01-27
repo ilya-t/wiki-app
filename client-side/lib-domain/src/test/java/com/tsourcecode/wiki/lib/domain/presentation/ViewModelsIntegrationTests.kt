@@ -1,9 +1,12 @@
 package com.tsourcecode.wiki.lib.domain.presentation
 
 import com.tsourcecode.wiki.lib.domain.DomainComponentFactory
+import com.tsourcecode.wiki.lib.domain.backend.SyncJob
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
+import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.documents.Folder
 import com.tsourcecode.wiki.lib.domain.mocking.Backend
+import com.tsourcecode.wiki.lib.domain.mocking.NOTES_PROJECT_STAGE_API
 import com.tsourcecode.wiki.lib.domain.mocking.ProjectRevision
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.search.DocumentSearchResult
@@ -18,13 +21,14 @@ import org.junit.Test
 import java.io.File
 
 private const val DEFAULT_TIMEOUT = 5_000L
+private const val README_FILE = "README.md"
 
 class ViewModelsIntegrationTests {
     private val v1revision = ProjectRevision(
         message = "revision#1",
         revision = "hash_for_r1",
         rootFileProvider = {
-            File("/tmp/README.md").apply {
+            File("/tmp/$README_FILE").apply {
                 writeText("v1")
             }
         }
@@ -33,7 +37,7 @@ class ViewModelsIntegrationTests {
         message = "revision#2",
         revision = "hash_for_r2",
         rootFileProvider = {
-            File("/tmp/README.md").apply {
+            File("/tmp/$README_FILE").apply {
                 writeText("v2")
             }
         }
@@ -115,6 +119,33 @@ class ViewModelsIntegrationTests {
         Assert.assertEquals(document, result.document)
     }
 
+    @Test
+    fun `import - edit - sync - see file unchanged`() {
+        importProject()
+        val (project, projectFolder) = waitProjectFolderSynced(v1revision)
+        val readmeDoc = projectFolder.documents.first { it.file.name == README_FILE }
+
+        val locallyChanged = "<File edited locally>"
+        readmeDoc.file.writeText(locallyChanged)
+        domain.projectComponents.get(project).statusModel.sync()
+        waitProjectFolderSynced(v1revision)
+
+        Assert.assertEquals(locallyChanged, readmeDoc.file.readText())
+    }
+
+    @Test
+    fun `import - edit - sync - see file staged`() {
+        importProject()
+        val (project, projectFolder) = waitProjectFolderSynced(v1revision)
+        val readmeDoc = projectFolder.documents.first { it.file.name == README_FILE }
+
+        val locallyChanged = "<File edited locally>"
+        readmeDoc.file.writeText(locallyChanged)
+
+        domain.projectComponents.get(project).statusModel.sync().waitWithTimeout()
+        backend.verifyStageCall(readmeDoc)
+    }
+
     private fun waitProjectFolderSynced(revision: ProjectRevision): Pair<Project, Folder> {
         val project = runBlocking {
             withTimeout(DEFAULT_TIMEOUT) {
@@ -147,3 +178,34 @@ class ViewModelsIntegrationTests {
         return results.last()
     }
 }
+
+private fun SyncJob.waitWithTimeout() {
+    runBlocking {
+        withTimeout(DEFAULT_TIMEOUT) {
+            wait()
+        }
+    }
+}
+
+private fun Backend.verifyStageCall(readmeDoc: Document) {
+    val stageCalls: List<RequestResponse> = captureInterceptions().filter { (req, _) ->
+        req.url().toString().contains(NOTES_PROJECT_STAGE_API)
+    }.map { (req, _) ->
+        val buffer = okio.Buffer()
+        req.body()?.writeTo(buffer)
+        val body = buffer.toString()
+        RequestResponse(
+            url = req.url().toString(),
+            response = body
+        )
+    }
+    val calls = stageCalls.joinToString("\n    -")
+    Assert.assertNotNull(
+        "Document(${readmeDoc.relativePath}) not found at requests to stage api! Stage calls(${stageCalls.size}): ${calls}",
+        stageCalls.find { (_, res) -> res.contains(readmeDoc.relativePath) })
+}
+
+private data class RequestResponse(
+    val url: String,
+    val response: String,
+)

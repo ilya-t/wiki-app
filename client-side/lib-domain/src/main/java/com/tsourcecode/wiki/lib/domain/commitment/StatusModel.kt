@@ -4,6 +4,7 @@ import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.backend.CurrentRevisionInfoController
 import com.tsourcecode.wiki.lib.domain.backend.RevisionInfo
+import com.tsourcecode.wiki.lib.domain.backend.SyncJob
 import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
@@ -100,6 +101,10 @@ class StatusModel(
         if (f.exists()) {
             navigator.open(d.toNavigationURI(project))
         }
+    }
+
+    fun sync(): SyncJob {
+        return backendController.sync()
     }
 }
 

@@ -2,9 +2,13 @@ package com.tsourcecode.wiki.lib.domain.mocking
 
 import com.tsourcecode.wiki.lib.domain.backend.REVISION_ZIP_REPOSITORY_DIR
 import okhttp3.Interceptor
+import okhttp3.Request
+import okhttp3.Response
 import java.io.File
 import java.util.Date
 import java.util.UUID
+
+const val NOTES_PROJECT_STAGE_API = "/notes/api/1/stage"
 
 class Backend {
     private val mapLocal = mutableMapOf<String, ResponseMaker>(
@@ -25,9 +29,19 @@ class Backend {
                     {"files":[]}
                 """.trimIndent()
         ),
+        NOTES_PROJECT_STAGE_API to ResponseMaker.ResponseOK,
     )
 
-    val interceptor: Interceptor = ApiResponseInterceptor(mapLocal)
+    val interceptor: Interceptor = ApiResponseInterceptor(mapLocal, this::record)
+    private val interceptions = mutableListOf<Pair<Request,Response>>()
+
+    fun captureInterceptions(): List<Pair<Request,Response>> = interceptions.toList()
+
+    private fun record(request: Request, response: Response) {
+        synchronized(this) {
+            interceptions.add(request to response)
+        }
+    }
 
     fun updateRevision(r: ProjectRevision) {
         val zipFile = File("/tmp/${r.revision}.zip")
@@ -42,7 +56,6 @@ class Backend {
             })
         mapLocal["/api/1/revision/latest"] = fileResponse
         mapLocal["/api/1/revision/sync"] = fileResponse
-        mapLocal["/notes/api/1/stage"] = ResponseMaker.ResponseOK
 
         mapLocal["/notes/api/1/revision/show"] = ResponseMaker.JsonResponse(
             """
@@ -53,8 +66,6 @@ class Backend {
                     }
                 """.trimIndent()
         )
-
-
     }
 }
 

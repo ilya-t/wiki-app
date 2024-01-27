@@ -81,14 +81,17 @@ sealed interface ResponseMaker {
 
 class ApiResponseInterceptor(
     private val mapLocal: Map<String, ResponseMaker>,
+    private val onInterception: (req: Request, res: Response) -> Unit,
 ) : Interceptor {
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request()
+        val request: Request = chain.request()
         val url = request.url().url().toString()
         val key = mapLocal.keys.firstOrNull { url.contains(it) }
             ?: throw IOException("No mocks available for '$url'")
         val responseProvider = mapLocal[key]!!
-        return responseProvider.invoke(request)
+        val response = responseProvider.invoke(request)
+        onInterception(request, response)
+        return response
     }
 }
