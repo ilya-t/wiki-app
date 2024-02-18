@@ -9,6 +9,7 @@ import java.util.Date
 import java.util.UUID
 
 const val NOTES_PROJECT_STAGE_API = "/notes/api/1/stage"
+const val NOTES_PROJECT_COMMIT_API = "/notes/api/1/commit"
 
 class Backend {
     private val mapLocal = mutableMapOf<String, ResponseMaker>(
@@ -30,6 +31,7 @@ class Backend {
                 """.trimIndent()
         ),
         NOTES_PROJECT_STAGE_API to ResponseMaker.ResponseOK,
+        NOTES_PROJECT_COMMIT_API to ResponseMaker.ResponseOK,
     )
 
     val interceptor: Interceptor = ApiResponseInterceptor(mapLocal, this::record)

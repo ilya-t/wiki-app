@@ -10,8 +10,8 @@ import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.io.File
@@ -28,14 +28,22 @@ class StatusModel(
 ) {
     private val messageStorage = StoredPrimitive.string("commit_message", projectStorage)
     private val commitTextFlow = MutableStateFlow("")
-    val statusFlow: Flow<StatusViewModel> = combine(
-        currentRevisionInfoController.state,
-        fileStatus.statusFlow,
-        commitTextFlow, transform = this@StatusModel::toStatusViewModel)
+    private val _statusFlow = MutableStateFlow(StatusViewModel())
+    val statusFlow: StateFlow<StatusViewModel> = _statusFlow
+
 
     init {
         worker.launch {
             commitTextFlow.value = messageStorage.value ?: ""
+        }
+
+        worker.launch {
+            combine(
+                currentRevisionInfoController.state,
+                fileStatus.statusFlow,
+                commitTextFlow, transform = this@StatusModel::toStatusViewModel).collect {
+                    _statusFlow.value = it
+            }
         }
     }
 
@@ -83,8 +91,8 @@ class StatusModel(
     fun commit() {
         worker.launch {
             val lastSeenCommitText = commitTextFlow.value
-            if (lastSeenCommitText.isNotEmpty()) {
-                backendController.commit(lastSeenCommitText)
+            if (lastSeenCommitText.isNotEmpty() && backendController.commit(lastSeenCommitText)) {
+                backendController.sync()
             }
         }
     }

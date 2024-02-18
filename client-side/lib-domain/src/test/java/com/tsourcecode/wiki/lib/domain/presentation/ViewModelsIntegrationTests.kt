@@ -2,6 +2,7 @@ package com.tsourcecode.wiki.lib.domain.presentation
 
 import com.tsourcecode.wiki.lib.domain.DomainComponentFactory
 import com.tsourcecode.wiki.lib.domain.backend.SyncJob
+import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
 import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.documents.Folder
@@ -19,27 +20,29 @@ import kotlinx.coroutines.withTimeout
 import org.junit.Assert
 import org.junit.Test
 import java.io.File
+import java.util.UUID
 
 private const val DEFAULT_TIMEOUT = 5_000L
 private const val README_FILE = "README.md"
+private const val LICENCE_FILE = "LICENCE.md"
 
 class ViewModelsIntegrationTests {
     private val v1revision = ProjectRevision(
         message = "revision#1",
         revision = "hash_for_r1",
         rootFileProvider = {
-            File("/tmp/$README_FILE").apply {
-                writeText("v1")
-            }
+            buildDirectory(
+                README_FILE to "v1"
+            )
         }
     )
     private val v2revision = ProjectRevision(
         message = "revision#2",
         revision = "hash_for_r2",
         rootFileProvider = {
-            File("/tmp/$README_FILE").apply {
-                writeText("v2")
-            }
+            buildDirectory(
+                README_FILE to "v2"
+            )
         }
     )
 
@@ -146,22 +149,62 @@ class ViewModelsIntegrationTests {
         backend.verifyStageCall(readmeDoc)
     }
 
-    private fun waitProjectFolderSynced(revision: ProjectRevision): Pair<Project, Folder> {
-        val project = runBlocking {
-            withTimeout(DEFAULT_TIMEOUT) {
-                val projects = domain.projectsRepository.data.first { it.isNotEmpty() }
-                projects.first()
-            }
-        }
+    @Test
+    fun `edit - commit - auto-sync to latest revision`() {
+        importProject()
+        val (project, projectFolder) = waitProjectFolderSynced(v1revision)
+        val readmeDoc = projectFolder.documents.first { it.file.name == README_FILE }
 
-        val projectFolder = runBlocking {
-            withTimeout(DEFAULT_TIMEOUT) {
-                domain.projectComponents.get(project).documentsController.data.first {
+        val locallyChanged = "<File edited locally>"
+        readmeDoc.file.writeText(locallyChanged)
+
+        val next = ProjectRevision(
+            message = "v3",
+            rootFileProvider = {
+                buildDirectory(
+                    README_FILE to locallyChanged,
+                    LICENCE_FILE to "apache 2.0",
+                )
+            }
+        )
+        backend.updateRevision(next)
+        val statusModel = domain.projectComponents.get(project).statusModel
+        statusModel.updateCommitText("upd")
+        statusModel.commit()
+        waitProjectFolderSynced(next)
+
+        val changes = statusModel
+            .statusFlow
+            .value
+            .items
+            .filterIsInstance<StatusViewItem.FileViewItem>()
+        Assert.assertEquals(
+            "Got Changes: ",
+            0, changes.size)
+    }
+
+    private fun buildDirectory(vararg nameAndContent: Pair<String, String>): File {
+        val root = File("/tmp/${UUID.randomUUID()}")
+        root.mkdirs()
+        nameAndContent.forEach { (name, content) ->
+            File(root, name).writeText(content)
+        }
+        return root
+    }
+
+    private fun waitProjectFolderSynced(revision: ProjectRevision): Pair<Project, Folder> {
+        return runBlocking {
+            withTimeout(5000L) {
+                val projects = domain.projectsRepository.data.first { it.isNotEmpty() }
+                val project = projects.first()
+                val projectComponent = domain.projectComponents.get(project)
+                val projectFolder = projectComponent.documentsController.data.first {
+                    println("want: ${revision.revision} got: ${it.revision}")
                     it.revision == revision.revision
                 }
+                project to projectFolder.folder
             }
         }
-        return project to projectFolder.folder
     }
 
     private fun importProject(): List<ConfigScreenItem> {
