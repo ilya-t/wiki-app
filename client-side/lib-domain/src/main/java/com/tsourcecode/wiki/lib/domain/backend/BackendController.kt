@@ -286,21 +286,21 @@ class BackendController(
         }
     }
 
-    fun commit(message: String) {
+    fun commit(message: String): Boolean {
         quickStatusController.udpate(QuickStatus.COMMIT)
         val response = backendApi.commit(project.name,
                 WikiBackendAPIs.Commitment(message)
         ).execute()
-        if (response.code() != 200) {
-            quickStatusController.error(
-                    QuickStatus.COMMITED,
-                    RuntimeException("Commit failed with ${response.errorBody()?.string()}")
-            )
-
-        } else {
+        val success = response.code() == 200
+        if (success) {
             quickStatusController.udpate(QuickStatus.COMMITED)
+        } else {
+            quickStatusController.error(
+                QuickStatus.COMMITED,
+                RuntimeException("Commit failed with ${response.errorBody()?.string()}")
+            )
         }
-
+        return success
     }
 
     @Throws(IOException::class)
