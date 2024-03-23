@@ -2,16 +2,34 @@ package com.tsourcecode.wiki.lib.domain
 
 import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 import okhttp3.Interceptor
+import java.net.InetSocketAddress
+import java.net.Proxy
+
 
 object TestDomainComponentFactory {
-    fun create(responseInterceptor: Interceptor? = null): DomainComponent<JdkPlatformDeps> {
+    data class ProxyConfig(
+        val host: String,
+        val port: Int,
+    )
+    fun create(
+        responseInterceptor: Interceptor? = null,
+        proxy: ProxyConfig? = null,
+        ): DomainComponent<JdkPlatformDeps> {
         return DomainComponent(
             platformDeps = JdkPlatformDeps(),
             networkConfigurator = {
+                val builder = this
                 if (responseInterceptor != null) {
-                    return@DomainComponent addInterceptor(responseInterceptor)
+                    builder.addInterceptor(responseInterceptor)
                 }
-                this
+
+                if (proxy != null) {
+                    builder.proxy(
+                        Proxy(Proxy.Type.HTTP, InetSocketAddress(proxy.host, proxy.port))
+                    )
+                }
+
+                builder
             },
         ).apply {
             DebugLogger.impl = {

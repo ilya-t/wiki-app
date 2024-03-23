@@ -65,6 +65,7 @@ class DomainComponent<T : PlatformDeps>(
     )
 
     val viewModels: ViewModels = ViewModels(
+        projectComponentResolver = projectComponentResolver,
         configScreenModel = ConfigScreenModel(
             projectsRepository,
             platformDeps,
