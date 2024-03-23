@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 import java.io.File
 import java.io.FileOutputStream
@@ -149,7 +149,7 @@ class BackendController(
                             .toList()
                             .forEach { (backendRevision: File, localRevision: Document) ->
                                 var resolution: String? = null
-                                if (canSync(syncContext, localRevision)) {
+                                if (canUpdateWithBackendRevision(syncContext, localRevision)) {
                                     localRevision.file.parentFile.mkdirs()
                                     backendRevision.copyTo(localRevision.file, overwrite = true)
                                     resolution = "accepted from backend"
@@ -187,7 +187,7 @@ class BackendController(
         return job
     }
 
-    private fun canSync(
+    private fun canUpdateWithBackendRevision(
         syncContext: SyncContext,
         localRevision: Document
     ): Boolean {
@@ -222,7 +222,7 @@ class BackendController(
                 backendApi.latestRevision(project.name).execute()
             } else {
                 val hashes = FileHashSerializable.serializeList(files)
-                val body = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), hashes)
+                val body = RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), hashes)
                 backendApi.sync(project.name, body).execute()
             }
             //Log.that("1. Requesting")

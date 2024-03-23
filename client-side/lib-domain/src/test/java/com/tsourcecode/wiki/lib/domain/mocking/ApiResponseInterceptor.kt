@@ -44,7 +44,7 @@ sealed interface ResponseMaker {
             val result = Response.Builder()
                 .code(200)
                 .header("Content-Disposition", "attachment; filename=${file.name}")
-                .protocol(Protocol.HTTP_1_1)
+                .protocol(Protocol.HTTP_1_1)[]
                 .request(request)
                 .body(responseBody)
                 .message("OK")

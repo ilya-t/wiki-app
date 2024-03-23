@@ -35,7 +35,6 @@ class DomainComponent<T : PlatformDeps>(
     )
 
     val quickStatusController = QuickStatusController()
-    private val backendFactory = BackendFactory(networkConfigurator)
     private val logger = Logger { message ->
         DebugLogger.log(message)
         scopes.main.launch {
@@ -46,6 +45,10 @@ class DomainComponent<T : PlatformDeps>(
             DebugLogger.inMemoryLogs.add(message)
         }
     }
+    private val backendFactory = BackendFactory(
+        logger,
+        networkConfigurator)
+
 
     val projectComponents = ProjectComponentProvider(
         platformDeps,
