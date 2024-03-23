@@ -1,6 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.presentation
 
-import com.tsourcecode.wiki.lib.domain.DomainComponentFactory
+import com.tsourcecode.wiki.lib.domain.TestDomainComponentFactory
 import com.tsourcecode.wiki.lib.domain.backend.SyncJob
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
@@ -50,7 +50,7 @@ class ViewModelsIntegrationTests {
         updateRevision(v1revision)
     }
 
-    private val domain = DomainComponentFactory.create(backend.interceptor)
+    private val domain = TestDomainComponentFactory.create(backend.interceptor)
 
     @Test
     fun `import`() {
@@ -232,13 +232,13 @@ private fun SyncJob.waitWithTimeout() {
 
 private fun Backend.verifyStageCall(readmeDoc: Document) {
     val stageCalls: List<RequestResponse> = captureInterceptions().filter { (req, _) ->
-        req.url().toString().contains(NOTES_PROJECT_STAGE_API)
+        req.url.toString().contains(NOTES_PROJECT_STAGE_API)
     }.map { (req, _) ->
         val buffer = okio.Buffer()
-        req.body()?.writeTo(buffer)
+        req.body?.writeTo(buffer)
         val body = buffer.toString()
         RequestResponse(
-            url = req.url().toString(),
+            url = req.url.toString(),
             response = body
         )
     }

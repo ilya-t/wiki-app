@@ -3,7 +3,7 @@ package com.tsourcecode.wiki.lib.domain
 import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 import okhttp3.Interceptor
 
-object DomainComponentFactory {
+object TestDomainComponentFactory {
     fun create(responseInterceptor: Interceptor? = null): DomainComponent<JdkPlatformDeps> {
         return DomainComponent(
             platformDeps = JdkPlatformDeps(),

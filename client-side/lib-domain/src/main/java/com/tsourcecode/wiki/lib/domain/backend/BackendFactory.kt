@@ -31,9 +31,9 @@ class BackendFactory(
     private fun createOkHttpClient(): OkHttpClient {
 
         val builder = OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
 
         return networkConfigurator.invoke(builder)
-            .addInterceptor(loggingInterceptor)
             .build()
     }
 

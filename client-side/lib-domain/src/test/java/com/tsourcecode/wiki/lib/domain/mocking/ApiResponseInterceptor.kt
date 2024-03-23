@@ -2,11 +2,13 @@ package com.tsourcecode.wiki.lib.domain.mocking
 
 import okhttp3.Interceptor
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody
-import okio.Okio
+import okio.buffer
+import okio.source
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -22,7 +24,7 @@ sealed interface ResponseMaker {
                 .request(request)
                 .protocol(Protocol.HTTP_1_1)
                 .message("OK")
-                .body(ResponseBody.create(MediaType.parse("application/json"), ""))
+                .body(ResponseBody.create("application/json".toMediaTypeOrNull(), ""))
                 .build()
         }
     }
@@ -38,13 +40,13 @@ sealed interface ResponseMaker {
             if (!file.exists()) {
                 throw FileNotFoundException(file.absolutePath)
             }
-            val source = Okio.buffer(Okio.source(file))
+            val source = file.source().buffer()
             val mediaType = file.detectMediaType()
             val responseBody = ResponseBody.create(mediaType, file.length(), source)
             val result = Response.Builder()
                 .code(200)
                 .header("Content-Disposition", "attachment; filename=${file.name}")
-                .protocol(Protocol.HTTP_1_1)[]
+                .protocol(Protocol.HTTP_1_1)
                 .request(request)
                 .body(responseBody)
                 .message("OK")
@@ -59,13 +61,13 @@ sealed interface ResponseMaker {
             if (contentType == null) {
                 contentType = "application/octet-stream" // fallback to binary data if content type cannot be detected
             }
-            return MediaType.parse(contentType)
+            return contentType.toMediaTypeOrNull()
         }
     }
 
     class JsonResponse(private val jsonString: String) : ResponseMaker {
         override fun invoke(request: Request): Response {
-            val mediaType = MediaType.parse("application/json")
+            val mediaType = "application/json".toMediaTypeOrNull()
             val responseBody = ResponseBody.create(mediaType, jsonString)
             return Response.Builder()
                 .code(200)
@@ -86,7 +88,7 @@ class ApiResponseInterceptor(
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
         val request: Request = chain.request()
-        val url = request.url().url().toString()
+        val url = request.url.toUrl().toString()
         val key = mapLocal.keys.firstOrNull { url.contains(it) }
             ?: throw IOException("No mocks available for '$url'")
         val responseProvider = mapLocal[key]!!
