@@ -6,13 +6,15 @@ import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import java.io.File
 
 /**
  * Playground for debugging purposes. Boots app.
  */
-class Playground {
+class Playground(private val playgroundDir: File? = null) {
     private val domain = TestDomainComponentFactory.create(
-        proxy = TestDomainComponentFactory.ProxyConfig("localhost", 9999)
+        proxy = TestDomainComponentFactory.ProxyConfig("localhost", 9999),
+        filesRoot = playgroundDir,
     )
     val viewModels: ViewModels = domain.viewModels
 

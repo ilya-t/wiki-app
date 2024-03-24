@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.app
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -63,17 +64,22 @@ class QuickStatusViewModel(
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun updateStatus(status: StatusInfo) {
         if (status.error != null) {
             tvStatus.setBackgroundColor(
                     activity.resources.getColor(R.color.status_error)
             )
-            tvStatus.text = status.status.name + ":" + status.error?.message?:""
+            tvStatus.text = "${status.status.name}: ${status.error?.message?:"null"}"
         } else {
             tvStatus.setBackgroundColor(
                     activity.resources.getColor(status.status.color())
                     )
-            tvStatus.text = status.status.name + status.comment
+            tvStatus.text = if (status.comment.isBlank()) {
+                status.status.name
+            } else {
+                "${status.status.name}: ${status.comment}"
+            }
         }
 
         this.lastStatus = status

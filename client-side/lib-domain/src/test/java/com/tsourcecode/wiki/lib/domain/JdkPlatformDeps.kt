@@ -5,7 +5,9 @@ import com.tsourcecode.wiki.lib.domain.util.JdkThreading
 import java.io.File
 import java.util.UUID
 
-class JdkPlatformDeps : PlatformDeps {
+class JdkPlatformDeps(
+    private val filesRoot: File = File("/tmp/wiki.test.${UUID.randomUUID()}")
+) : PlatformDeps {
     override val persistentStorageProvider = InMemoryStorageProvider()
     override val threading = JdkThreading()
     override val externalStorageAccess = object : ExternalStorageAccessHandler {
@@ -14,7 +16,7 @@ class JdkPlatformDeps : PlatformDeps {
         override fun requestAccess() = Unit
     }
 
-    private val filesRoot = File("/tmp/wiki.test.${UUID.randomUUID()}")
+
 
     override val internalFiles: File
         get() {

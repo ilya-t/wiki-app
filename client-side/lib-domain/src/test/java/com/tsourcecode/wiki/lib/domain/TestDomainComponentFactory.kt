@@ -2,6 +2,7 @@ package com.tsourcecode.wiki.lib.domain
 
 import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 import okhttp3.Interceptor
+import java.io.File
 import java.net.InetSocketAddress
 import java.net.Proxy
 
@@ -14,9 +15,15 @@ object TestDomainComponentFactory {
     fun create(
         responseInterceptor: Interceptor? = null,
         proxy: ProxyConfig? = null,
+        filesRoot: File? = null,
         ): DomainComponent<JdkPlatformDeps> {
+        val platformDeps = if (filesRoot != null) {
+            JdkPlatformDeps(filesRoot)
+        } else {
+            JdkPlatformDeps()
+        }
         return DomainComponent(
-            platformDeps = JdkPlatformDeps(),
+            platformDeps = platformDeps,
             networkConfigurator = {
                 val builder = this
                 if (responseInterceptor != null) {

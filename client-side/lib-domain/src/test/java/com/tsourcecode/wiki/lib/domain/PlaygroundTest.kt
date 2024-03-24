@@ -1,12 +1,16 @@
 package com.tsourcecode.wiki.lib.domain
 
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
-import org.junit.Ignore
 import org.junit.Test
+import java.io.File
 
 class PlaygroundTest {
-    private val underTest = Playground()
+    private val playgroundDir = File("/tmp/wiki_playground").apply {
+        mkdirs()
+    }
+    private val underTest = Playground(
+        playgroundDir
+    )
 
     @Test
     @Ignore("only for debugging purposes")
@@ -15,12 +19,8 @@ class PlaygroundTest {
         val statusScreenModel = underTest.viewModels
             .statusScreenModel("notes")!!
         runBlocking {
-            withTimeout(5000L) {
-                statusScreenModel.sync().wait()
-            }
-            withTimeout(5000L) {
-                statusScreenModel.sync().wait()
-            }
+            statusScreenModel.sync().wait()
+            statusScreenModel.sync().wait()
         }
     }
 }

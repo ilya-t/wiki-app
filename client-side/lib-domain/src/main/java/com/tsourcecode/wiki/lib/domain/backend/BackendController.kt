@@ -106,13 +106,18 @@ class BackendController(
                     Decompressor.decompress(
                         zipFile = snapshot.zipFile.absolutePath,
                         outputDir = syncOutput.absolutePath,
-                        logger = { m ->
+                        logger = { m: String ->
+                            sync.log { "decompress: '$m'" }
                             quickStatusController.udpate(QuickStatus.DECOMPRESS, m)
                         })
                     quickStatusController.udpate(QuickStatus.SYNC)
                     if (fullSync) {
                         project.repo.deleteRecursively()
-                        syncedFiles.renameTo(project.repo)
+                        if (!syncedFiles.renameTo(project.repo)) {
+                            quickStatusController.error(java.lang.RuntimeException(
+                                "Move failed ($syncedFiles -> ${project.repo}"
+                            ))
+                        }
                     } else {
                         if (localRevision == serverRevision) {
                             sync.log { "staging non-synced files!" }
@@ -137,14 +142,14 @@ class BackendController(
                         syncRelativePath
                             .walkTopDown()
                             .asSequence()
-                            .mapNotNull {
-                                val d = resolveDocument(it, syncRelativePath) ?: run {
-                                    if (it.isFile) {
-                                        sync.log { "no document found for $it" }
+                            .mapNotNull { syncedFile ->
+                                val d = resolveDocument(syncedFile, syncRelativePath) ?: run {
+                                    if (syncedFile.isFile) {
+                                        sync.log { "no document found for $syncedFile" }
                                     }
                                     return@mapNotNull null
                                 }
-                                it to d
+                                syncedFile to d
                             }
                             .toList()
                             .forEach { (backendRevision: File, localRevision: Document) ->
@@ -191,7 +196,11 @@ class BackendController(
         syncContext: SyncContext,
         localRevision: Document
     ): Boolean {
-        val wasRolledBack = syncContext.rollbackSpecs.files.find { it.path == localRevision.relativePath } != null
+        if (!localRevision.file.exists()) {
+            return true
+        }
+        val wasRolledBack = syncContext.rollbackSpecs.files
+            .find { it.path == localRevision.relativePath } != null
         return wasRolledBack
     }
 
@@ -202,9 +211,6 @@ class BackendController(
         val projectFile = File(project.dir.absolutePath +
                 fileFromSync.absolutePath.substring(startIndex = syncDir.absolutePath.length))
 
-        if (!projectFile.exists()) {
-            return null
-        }
         return Document(project.dir, origin = projectFile)
     }
 
