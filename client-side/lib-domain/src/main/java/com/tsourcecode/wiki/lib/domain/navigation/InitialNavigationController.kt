@@ -4,7 +4,6 @@ import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.net.URI
 
@@ -19,9 +18,12 @@ class InitialNavigationController(
     private val storage = platformDeps.persistentStorageProvider.get("default_project")
     private val defaultProjectName: String? = storage.all[PREF_KEY]
     init {
-        defaultProjectName?.let {
-            navigator.open(URI("open://$defaultProjectName/"))
+        val initialScreen = if (defaultProjectName != null) {
+            URI("open://$defaultProjectName/")
+        } else {
+            AppNavigator.PROJECTS_URI
         }
+        navigator.open(initialScreen)
 
         scope.launch {
             navigator.data.collect {
