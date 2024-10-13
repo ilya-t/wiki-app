@@ -25,6 +25,7 @@ docker run \
     --volume $host_ssh_keys:/root/.ssh \
     --volume $host_volumes/config:/app/config \
     --volume $host_volumes/repo-store:/app/repo-store \
+    --restart unless-stopped \
     --name wiki_backend_local \
     wiki_backend:latest
 
