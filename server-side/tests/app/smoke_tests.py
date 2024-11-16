@@ -168,6 +168,32 @@ class AcceptanceTests(unittest.TestCase):
         # assert
         self.assertNotEquals(old_head, new_head)
 
+    def test_not_staged_detection(self):
+        file_path = 'status/modified_file.md'
+        
+        response = self.api_user.show_not_staged({
+            'revision': 'HEAD~0',
+            'files': [
+                {
+                    'path': 'file_with_fixed_sha1',
+                    'hash': '0758fe8844f102aaa616c30c94ea4f8eb9326b06'
+                },
+                {
+                    'path': file_path,
+                    'hash': 'some_hash'
+                }
+            ]
+        })
+
+        if response.status_code != 200:
+            self.fail(
+                "response returned non-200 code: " + str(response.status_code) + "\n response body:\n" + response.text)
+        not_staged: dict = response.json()
+        files: [str] = not_staged['files']
+        self.assertEqual(1, len(files), msg='Wrong size: ' + json.dumps(not_staged, indent=4))
+        self.assertEqual(file_path, files[0], msg='Wrong contents: ' + json.dumps(not_staged, indent=4))
+
+
 
 def find(path: str, files: [dict]) -> dict:
     for f in files:

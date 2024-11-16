@@ -60,6 +60,7 @@ func (p *ProjectHttpApi) Start() {
 	http.HandleFunc(prefix+"/api/1/revision/latest", p.getLastRevision)
 	http.HandleFunc(prefix+"/api/1/revision/sync", p.getOutdatedAtLastRevision)
 	http.HandleFunc(prefix+"/api/1/revision/show", p.postRevisionShow)
+	http.HandleFunc(prefix+"/api/1/show_not_staged", p.postShowNotStaged)
 	http.HandleFunc(prefix+"/api/1/status", p.getStatus)
 	http.HandleFunc(prefix+"/api/1/commit", p.postCommit)
 	http.HandleFunc(prefix+"/api/1/stage", p.stageFiles)
@@ -148,6 +149,31 @@ func (p *ProjectHttpApi) postRevisionShow(w http.ResponseWriter, req *http.Reque
 	writeJsonStruct(revisionInfo, w, req)
 }
 
+func (p *ProjectHttpApi) postShowNotStaged(w http.ResponseWriter, req *http.Request) {
+	r, e := ioutil.ReadAll(req.Body)
+
+	if e != nil {
+		writeError(w, "unexpected request body", join(e, string(r)))
+		return
+	}
+
+	var localStatus *LocalStatus
+	err := json.Unmarshal(r, &localStatus)
+
+	if err != nil {
+		writeError(w, "request body parsing", join(err, string(r)))
+		return
+	}
+
+	notStaged, err := p.diffProvider.ShowNotStaged(localStatus)
+	if err != nil {
+		writeError(w, "revision show", join(err, string(r)))
+		return
+	}
+
+	writeJsonStruct(notStaged, w, req)
+}
+
 func (p *ProjectHttpApi) postCommit(w http.ResponseWriter, req *http.Request) {
 	r, e := ioutil.ReadAll(req.Body)
 
@@ -224,6 +250,7 @@ func (p *ProjectHttpApi) rollbackChanges(w http.ResponseWriter, req *http.Reques
 		}
 	}
 }
+
 func (p *ProjectHttpApi) stageFiles(w http.ResponseWriter, req *http.Request) {
 	r, e := ioutil.ReadAll(req.Body)
 

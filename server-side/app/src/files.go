@@ -4,7 +4,9 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"os"
 	"sort"
 	"strings"
 )
@@ -154,6 +156,46 @@ func hashOfDir(dirFiles []*File) string {
 	h.Write([]byte(strings.Join(hashes, "")))
 
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+type FileHash struct {
+	Path string `json:"path"`
+	Hash string `json:"hash"`
+}
+
+type LocalStatus struct {
+	Revision string      `json:"revision"`
+	Files    []*FileHash `json:"files"`
+}
+
+type NotStaged struct {
+	Files []string `json:"files"`
+}
+
+func (p *DiffProvider) ShowNotStaged(status *LocalStatus) (*NotStaged, error) {
+	notStagedFiles := []string{}
+
+	for _, fileStatus := range status.Files {
+		filePath := p.repoDir + "/" + fileStatus.Path
+
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			notStagedFiles = append(notStagedFiles, fileStatus.Path)
+			continue
+		} else if err != nil {
+			return nil, fmt.Errorf("error checking file existence %s: %w", filePath, err)
+		}
+
+		currentHash, err := hashOfFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("error hashing file %s: %w", filePath, err)
+		}
+
+		if currentHash != fileStatus.Hash {
+			notStagedFiles = append(notStagedFiles, fileStatus.Path)
+		}
+	}
+
+	return &NotStaged{Files: notStagedFiles}, nil
 }
 
 func hashOfFile(filePath string) (string, error) {

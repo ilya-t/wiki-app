@@ -56,6 +56,7 @@ class RestApi:
         self._sync_api: str = project_endpoint + '/api/1/revision/sync'
         self._show_api: str = project_endpoint + '/api/1/revision/show'
         self._pull_api: str = project_endpoint + '/api/1/pull'
+        self._show_not_staged_api: str = project_endpoint + '/api/1/show_not_staged'
         self._projects_api: str = endpoint + '/api/1/projects'
 
     def show(self, revision: str) -> requests.Response:
@@ -140,6 +141,9 @@ class RestApi:
     def get_projects(self) -> [dict]:
         response = requests.get(self._projects_api)
         return response.json()['configs']
+
+    def show_not_staged(self, payload: dict) -> [dict]:
+        return requests.post(self._show_not_staged_api, json=payload)
 
 
 class GitApi:
