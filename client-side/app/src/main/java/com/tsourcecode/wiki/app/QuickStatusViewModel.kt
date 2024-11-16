@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import android.util.Log
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -67,6 +68,7 @@ class QuickStatusViewModel(
     @SuppressLint("SetTextI18n")
     private fun updateStatus(status: StatusInfo) {
         if (status.error != null) {
+            Log.e("QuickStatusViewModel", "unexpected error! (status comment: ${status.comment})", status.error)
             tvStatus.setBackgroundColor(
                     activity.resources.getColor(R.color.status_error)
             )

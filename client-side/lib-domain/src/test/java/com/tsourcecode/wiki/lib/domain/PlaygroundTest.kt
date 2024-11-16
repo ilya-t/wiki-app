@@ -1,6 +1,7 @@
 package com.tsourcecode.wiki.lib.domain
 
 import kotlinx.coroutines.runBlocking
+import org.junit.Ignore
 import org.junit.Test
 import java.io.File
 

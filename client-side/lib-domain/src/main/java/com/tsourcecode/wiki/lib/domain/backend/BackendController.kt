@@ -3,11 +3,14 @@ package com.tsourcecode.wiki.lib.domain.backend
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
+import com.tsourcecode.wiki.lib.domain.backend.api.SyncApiPayload
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.StatusResponse
+import com.tsourcecode.wiki.lib.domain.commitment.UnstagedResponse
 import com.tsourcecode.wiki.lib.domain.documents.Document
+import com.tsourcecode.wiki.lib.domain.hashing.DirHash
 import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
-import com.tsourcecode.wiki.lib.domain.hashing.FileHashSerializable
+import com.tsourcecode.wiki.lib.domain.hashing.FileHash
 import com.tsourcecode.wiki.lib.domain.hashing.Hashable
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
@@ -19,8 +22,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody
+import okhttp3.ResponseBody
+import retrofit2.Response
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -91,12 +94,28 @@ class BackendController(
         scope.launch {
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
-                quickStatusController.udpate(QuickStatus.SYNC)
-                val localRevision = currentRevisionInfoController.state.value?.revision
+                val localRevision: String? = currentRevisionInfoController.state.value?.revision
                     ?.trimEnd('\n') // TODO: fix server-side
                 val fullSync = syncContext.fullSync
                 sync.log { "start! (fullSync: $fullSync local-rev: '$localRevision')" }
+
+                quickStatusController.udpate(QuickStatus.SYNC, "calculating hashes")
                 val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
+                if (!fullSync) {
+                    if (localRevision != null) {
+                        val filesWithoutRollbacks = files.filter {
+                            val relPath: String = it.relativePath
+                            syncContext.rollbackSpecs.files.none { f -> f.path == relPath }
+                        }
+                        if (!tryStageChanges(localRevision, filesWithoutRollbacks, sync)) {
+                            return@launch
+                        }
+                    } else {
+                        sync.log { "staging skipped! No revision provided" }
+                    }
+                }
+
+                quickStatusController.udpate(QuickStatus.SYNC, "syncing with backend")
                 requestLastRevisionSnapshot(files)?.let { snapshot ->
                     val serverRevision = snapshot.revision
                     sync.log { "received server revision: '$serverRevision'" }
@@ -154,7 +173,7 @@ class BackendController(
                             .toList()
                             .forEach { (backendRevision: File, localRevision: Document) ->
                                 var resolution: String? = null
-                                if (canUpdateWithBackendRevision(syncContext, localRevision)) {
+                                if (true || canUpdateWithBackendRevision(syncContext, localRevision)) {
                                     localRevision.file.parentFile.mkdirs()
                                     backendRevision.copyTo(localRevision.file, overwrite = true)
                                     resolution = "accepted from backend"
@@ -180,6 +199,7 @@ class BackendController(
                     }
                 }
             } catch (e: Exception) {
+                sync.log("ERROR: $e")
                 e.printStackTrace()
                 scope.launch(threading.main) {
                     quickStatusController.error(QuickStatus.SYNC, e)
@@ -192,16 +212,85 @@ class BackendController(
         return job
     }
 
+    private suspend fun tryStageChanges(
+        localRevision: String,
+        files: List<Hashable>,
+        logger: Logger): Boolean {
+
+        val localStatus = WikiBackendAPIs.LocalStatus(
+            localRevision, files
+                .flatMap {
+                    when (it) {
+                        is DirHash -> it.fileHashes + it
+                        is FileHash -> listOf(it)
+                    }
+                }
+                .map {
+                    WikiBackendAPIs.LocalStatus.FileHash(
+                        it.relativePath,
+                        it.hash,
+                    )
+                }
+        )
+        val response: Response<ResponseBody> = try {
+            backendApi.showNotStaged(project.name, localStatus).execute()
+        } catch (e: IOException) {
+            e.printStackTrace()
+            logger.log("Changes request failed: ${e.message}")
+            quickStatusController.error(QuickStatus.STAGE, e)
+            return false
+        }
+
+        if (response.code() != 200) {
+            logger.log("Changes request failed with code: ${response.code()}")
+            quickStatusController.error(QuickStatus.STAGE,
+                RuntimeException("Staging failed with ${response.errorBody()?.string()}")
+            )
+            return false
+        }
+
+        val body = response.body()?.string() ?: throw IllegalStateException("Empty body received!")
+        logger.log("Detecting non staged. request: $localStatus")
+        logger.log("Detecting non staged. response: $body")
+        val notStaged = Json.decodeFromString(UnstagedResponse.serializer(), body)
+
+        notStaged.files.forEach {
+            val file = File(project.dir, it)
+            if (file.isDirectory) {
+                return@forEach
+            }
+
+            if (!file.exists()) {
+                val error = RuntimeException("File for staging did disappeared: $file")
+                logger.log("ERROR: ${error.message}")
+                quickStatusController.error(error)
+                return@forEach
+            }
+            val d = Document(project.dir, origin = file)
+
+            logger.log("Staging: $it (resolved to: $d)")
+            if (!stage(d)) {
+                logger.log("Staging '$it' failed!")
+            } else {
+                logger.log("Staged successfully: $it")
+            }
+        }
+
+        quickStatusController.udpate(QuickStatus.STAGED)
+        return true
+    }
+
     private fun canUpdateWithBackendRevision(
         syncContext: SyncContext,
         localRevision: Document
     ): Boolean {
+        //maybe always accept?
         if (!localRevision.file.exists()) {
             return true
         }
-        val wasRolledBack = syncContext.rollbackSpecs.files
+        val rollbackRequested = syncContext.rollbackSpecs.files
             .find { it.path == localRevision.relativePath } != null
-        return wasRolledBack
+        return rollbackRequested
     }
 
     private fun resolveDocument(fileFromSync: File, syncDir: File): Document? {
@@ -227,9 +316,7 @@ class BackendController(
             val response = if (files.isEmpty()) {
                 backendApi.latestRevision(project.name).execute()
             } else {
-                val hashes = FileHashSerializable.serializeList(files)
-                val body = RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), hashes)
-                backendApi.sync(project.name, body).execute()
+                backendApi.sync(project.name, SyncApiPayload.toBody(files)).execute()
             }
             //Log.that("1. Requesting")
 
@@ -263,9 +350,9 @@ class BackendController(
         }
     }
 
-    private fun stage(d: Document) {
+    private fun stage(d: Document): Boolean {
         val b64 = com.tsourcecode.wiki.lib.domain.util.Base64.getEncoder().encodeToString(d.file.readBytes())
-        stage(d.relativePath, b64)
+        return stage(d.relativePath, b64)
     }
 
     fun stage(relativePath: String, b64: String): Boolean {
@@ -384,6 +471,10 @@ class BackendController(
             doSync(SyncContext(rollbackSpecs, fullSync = false))
         }
     }
+
+    val Hashable.relativePath: String
+        get() = this.file.absolutePath.substring(project.repo.absolutePath.length + 1)
+
 }
 
 private fun extractFileName(contentDisposition: String): String? {

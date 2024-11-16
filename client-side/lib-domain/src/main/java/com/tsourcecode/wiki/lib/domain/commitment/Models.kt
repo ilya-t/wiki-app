@@ -10,6 +10,12 @@ class StatusResponse(
 )
 
 @Serializable
+class UnstagedResponse(
+        @SerialName("files")
+        val files: List<String>,
+)
+
+@Serializable
 class FileStatus(
         @SerialName("path")
         val path: String,

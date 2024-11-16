@@ -1,5 +1,7 @@
 package com.tsourcecode.wiki.lib.domain.documents
 
+import com.tsourcecode.wiki.lib.domain.QuickStatus
+import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.project.Project
@@ -17,6 +19,7 @@ class DocumentsController(
     private val changedFilesController: ChangedFilesController,
     private val threading: Threading,
     private val scopes: CoroutineScopes,
+    private val quickStatusController: QuickStatusController,
 ) {
     private val _data = MutableStateFlow(ProjectFolder(
         revision = null,
@@ -30,8 +33,15 @@ class DocumentsController(
 
     private fun notifyProjectUpdated(revision: String?, dir: File) {
         scopes.worker.launch {
+            if (!dir.exists()) {
+                quickStatusController.error(QuickStatus.SYNC,
+                    RuntimeException("Project dir($dir) not exists!"))
+                return@launch
+            }
             if (!dir.isDirectory) {
-                throw RuntimeException("Project dir($dir) is file!")
+                quickStatusController.error(QuickStatus.SYNC,
+                    RuntimeException("Project dir($dir) is file!"))
+                return@launch
             }
             val folder = parseFolder(dir, dir)
 

@@ -18,6 +18,8 @@ interface WikiBackendAPIs {
     fun sync(@Path("project") name: String, @Body body: RequestBody): Call<ResponseBody>
     @POST("/{project}/api/1/stage")
     fun stage(@Path("project") name: String, @Body staging: Staging): Call<ResponseBody>
+    @POST("/{project}/api/1/show_not_staged")
+    fun showNotStaged(@Path("project") name: String, @Body localStatus: LocalStatus): Call<ResponseBody>
     @POST("/{project}/api/1/status")
     fun status(@Path("project") name: String): Call<ResponseBody>
     @POST("/{project}/api/1/revision/show")
@@ -28,6 +30,17 @@ interface WikiBackendAPIs {
     fun pull(@Path("project") name: String): Call<ResponseBody>
     @POST("/{project}/api/1/rollback")
     fun rollback(@Path("project") project: String, @Body spec: RollbackSpecs): Call<ResponseBody>
+
+    data class LocalStatus(
+        val revision: String,
+        val files: List<FileHash>,
+        ) {
+        data class FileHash(
+            val path: String,
+            val hash: String,
+        )
+    }
+
 
     data class Staging(
             val files: List<FileStaging>

@@ -9,7 +9,6 @@ import org.junit.Test
 import org.junit.rules.TestName
 import java.io.File
 import java.net.URI
-import java.net.URL
 
 class ElementHashProviderTest {
     @get:Rule val rule = TestName()

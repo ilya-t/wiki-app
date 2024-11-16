@@ -108,6 +108,7 @@ class ProjectComponent(
             changedFiles,
             threading,
             scopes,
+            quickStatusController,
     )
 
     private val documentResolver = ProjectDocumentResolver(

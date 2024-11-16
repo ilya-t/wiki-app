@@ -19,6 +19,8 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults.textFieldColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -94,6 +96,8 @@ private fun ComposeCommitScreen(viewModel: StatusViewModel) {
 
 @Composable
 fun CommitItem(item: StatusViewItem.CommitViewItem) {
+    val textState = remember { mutableStateOf(item.commitMessage) }
+
     Column(
         modifier = Modifier
             .padding(Dp(8f))
@@ -106,8 +110,11 @@ fun CommitItem(item: StatusViewItem.CommitViewItem) {
                     color = Color.Gray,
                     shape = RoundedCornerShape(CornerSize(Dp(4f))),
                 ),
-            value = item.commitMessage,
-            onValueChange = { item.updateCommitText(it) },
+            value = textState.value,
+            onValueChange = {
+                textState.value = it
+                item.updateCommitText(it)
+            },
             label = {
                 Text(
                     text = "Commit message",
