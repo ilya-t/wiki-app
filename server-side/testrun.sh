@@ -10,28 +10,33 @@ mkdir -p $config_dir
 rm -rf ./build_artifacts
 mkdir ./build_artifacts
 
+echo "Preparing test repo"
 cd tests
 ./init_repo.sh
 cp ./test_config.json $config_dir/config.json
 cd ..
 
+echo "Running integration tests"
 set +e
 rm .env
 echo "host_port=80" >> .env
 echo "repo_store_dir=$repo_on_app" >> .env
 echo "config_dir=$config_dir" >> .env
 echo "target_ssh_keys=~/.ssh" >> .env
-docker-compose up --build --abort-on-container-exit
+docker compose up --build --abort-on-container-exit
 RESULT_INTGR=$?
-docker-compose logs > ./build_artifacts/compose.log
-docker-compose down --volumes
+docker compose logs > ./build_artifacts/compose.log
+docker compose down --volumes
+
+echo "Building images"
+./build_image.sh
 
 echo "Running unit tests"
-./build_image.sh
 docker run --rm \
 --name server-side-units \
 server-side-app:latest \
 sh -c "go test -timeout 30s"  > ./build_artifacts/unit_test.log
+
 RESULT_UNIT=$?
 
 STATUS_I=""
