@@ -167,7 +167,7 @@ func (p *ProjectHttpApi) postShowNotStaged(w http.ResponseWriter, req *http.Requ
 
 	notStaged, err := p.diffProvider.ShowNotStaged(localStatus)
 	if err != nil {
-		writeError(w, "revision show", join(err, string(r)))
+		writeError(w, "not staged detection failed", join(err, string(r)))
 		return
 	}
 

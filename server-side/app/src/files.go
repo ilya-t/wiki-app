@@ -178,11 +178,17 @@ func (p *DiffProvider) ShowNotStaged(status *LocalStatus) (*NotStaged, error) {
 	for _, fileStatus := range status.Files {
 		filePath := p.repoDir + "/" + fileStatus.Path
 
-		if _, err := os.Stat(filePath); os.IsNotExist(err) {
-			notStagedFiles = append(notStagedFiles, fileStatus.Path)
-			continue
-		} else if err != nil {
+		info, err := os.Stat(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				notStagedFiles = append(notStagedFiles, fileStatus.Path)
+				continue
+			}
 			return nil, fmt.Errorf("error checking file existence %s: %w", filePath, err)
+		}
+
+		if info.IsDir() {
+			continue
 		}
 
 		currentHash, err := hashOfFile(filePath)
