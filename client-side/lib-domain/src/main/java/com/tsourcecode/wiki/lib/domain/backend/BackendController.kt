@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import java.io.File
@@ -132,7 +134,9 @@ class BackendController(
                     quickStatusController.udpate(QuickStatus.SYNC)
                     if (fullSync) {
                         project.repo.deleteRecursively()
-                        if (!syncedFiles.renameTo(project.repo)) {
+                        val result = syncedFiles.copyTo(project.repo, overwrite = true)
+                        syncedFiles.deleteRecursively()
+                        if (!result.exists()) {
                             quickStatusController.error(java.lang.RuntimeException(
                                 "Move failed ($syncedFiles -> ${project.repo}"
                             ))
@@ -316,7 +320,13 @@ class BackendController(
             val response = if (files.isEmpty()) {
                 backendApi.latestRevision(project.name).execute()
             } else {
-                backendApi.sync(project.name, SyncApiPayload.toBody(files)).execute()
+                backendApi.sync(
+                    project.name,
+                    RequestBody.create(
+                        "application/json; charset=utf-8".toMediaTypeOrNull(),
+                        SyncApiPayload.toBody(files)
+                    )
+                ).execute()
             }
             //Log.that("1. Requesting")
 

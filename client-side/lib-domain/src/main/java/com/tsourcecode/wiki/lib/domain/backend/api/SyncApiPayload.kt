@@ -14,16 +14,12 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody
 
 object SyncApiPayload {
-    fun toBody(files: List<Hashable>): RequestBody {
-        val hashes = SyncPayloadSerializer.serializeList(files.map {
+    fun toBody(files: List<Hashable>): String {
+        return SyncPayloadSerializer.serializeList(files.map {
             it.toHashableElement()
         })
-
-        return RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), hashes)
     }
 }
 

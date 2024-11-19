@@ -48,7 +48,7 @@ class ElementHashProviderTest {
             underTest.getHashes()
         }
 
-        val sha1file = results.find { it.name == fixedSha1File.name }!!
+        val sha1file = results.find { it.file.name == fixedSha1File.name }!!
 
         val message = "File content: '${fixedSha1File.readText()}'"
         Assert.assertEquals(message,
@@ -63,11 +63,11 @@ class ElementHashProviderTest {
             underTest.getHashes()
         }
 
-        val content = results.find { it.name == contentDir.name } as DirHash
+        val content = results.find { it.file.name == contentDir.name } as DirHash
 
         Assert.assertEquals(2, content.fileHashes.size)
-        Assert.assertEquals("content_file_1", content.fileHashes.find { it.name == "content_file_1" }!!.name)
-        Assert.assertEquals("content_file_2", content.fileHashes.find { it.name == "content_file_2" }!!.name)
+        Assert.assertEquals("content_file_1", content.fileHashes.find { it.file.name == "content_file_1" }!!.file.name)
+        Assert.assertEquals("content_file_2", content.fileHashes.find { it.file.name == "content_file_2" }!!.file.name)
     }
 
     private fun generateProjectStructure() {
