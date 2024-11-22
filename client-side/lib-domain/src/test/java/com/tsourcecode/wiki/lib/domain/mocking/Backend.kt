@@ -9,6 +9,7 @@ import java.io.File
 import java.util.Date
 import java.util.UUID
 
+const val NOTES_PROJECT_ROLLBACK_API = "/notes/api/1/rollback"
 const val NOTES_PROJECT_STAGE_API = "/notes/api/1/stage"
 const val NOTES_PROJECT_COMMIT_API = "/notes/api/1/commit"
 
@@ -26,12 +27,13 @@ class Backend {
                     }
                 """.trimIndent()
         ),
-        "/api/1/status" to ResponseMaker.JsonResponse(
-            """
-                    {"files":[]}
-                """.trimIndent()
-        ),
+//        "/api/1/status" to ResponseMaker.JsonResponse(
+//            """
+//                    {"files":[]}
+//                """.trimIndent()
+//        ),
         NOTES_PROJECT_STAGE_API to ResponseMaker.ResponseOK,
+        NOTES_PROJECT_ROLLBACK_API to ResponseMaker.ResponseOK,
         NOTES_PROJECT_COMMIT_API to ResponseMaker.ResponseOK,
     )
 
@@ -73,7 +75,24 @@ class Backend {
         mapLocal["/notes/api/1/show_not_staged"] = ResponseMaker.JsonResponse(
             """
                 {
-                    "files":[ ${r.notStaged.joinToString(prefix = "\"", postfix = "\"")}]
+                    "files":[ ${r.notStagedFiles.joinToString(prefix = "\"", postfix = "\"")}]
+                }
+            """.trimIndent()
+        )
+
+        val files = r.statusApiFiles.joinToString {
+            """
+                {
+                    "path": "$it",
+                    "status": "modified",
+                    "diff": "<some diff>"
+                }
+            """.trimIndent()
+        }
+        mapLocal["/notes/api/1/status"] = ResponseMaker.JsonResponse(
+            """
+                {
+                    "files": [ $files ]
                 }
             """.trimIndent()
         )
@@ -84,9 +103,20 @@ data class ProjectRevision(
     val message: String,
     val rootFileProvider: () -> File,
     val revision: String = UUID.randomUUID().toString(),
-    val notStaged: List<String> = emptyList()
+    val statusApiFiles: List<String> = emptyList(),
+    val notStagedFiles: List<String> = emptyList(),
 ) {
     fun markUnstaged(readmeDoc: Document): ProjectRevision {
-        return this.copy(notStaged = notStaged + readmeDoc.relativePath)
+        return this.copy(notStagedFiles = notStagedFiles + readmeDoc.relativePath)
+    }
+
+    fun includeToDiff(readmeDoc: Document): ProjectRevision {
+        return this.copy(statusApiFiles = statusApiFiles + readmeDoc.relativePath)
     }
 }
+
+class DiffFromServer(
+    val path: String,
+//    val status: Status,
+//    val diff: String,
+)

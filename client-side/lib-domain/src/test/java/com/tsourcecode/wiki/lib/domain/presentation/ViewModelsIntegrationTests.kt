@@ -3,24 +3,30 @@ package com.tsourcecode.wiki.lib.domain.presentation
 import com.tsourcecode.wiki.lib.domain.TestDomainComponentFactory
 import com.tsourcecode.wiki.lib.domain.backend.SyncJob
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
+import com.tsourcecode.wiki.lib.domain.commitment.StatusViewModel
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
 import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.documents.Folder
 import com.tsourcecode.wiki.lib.domain.mocking.Backend
+import com.tsourcecode.wiki.lib.domain.mocking.NOTES_PROJECT_ROLLBACK_API
 import com.tsourcecode.wiki.lib.domain.mocking.NOTES_PROJECT_STAGE_API
 import com.tsourcecode.wiki.lib.domain.mocking.ProjectRevision
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.search.DocumentSearchResult
 import com.tsourcecode.wiki.lib.domain.util.NavigationUtils
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert
 import org.junit.Test
 import java.io.File
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val DEFAULT_TIMEOUT = 5_000L
 private const val README_FILE = "README.md"
@@ -114,6 +120,38 @@ class ViewModelsIntegrationTests {
         waitProjectFolderSynced(v1revision)
 
         Assert.assertEquals(locallyChanged, readmeDoc.file.readText())
+    }
+
+    @Test
+    fun `import - edit - rollback - see file unchanged`() = runTest(timeout = DEFAULT_TIMEOUT.milliseconds) {
+        println("=> import")
+        importProject()
+        val (project, projectFolder) = waitProjectFolderSynced(v1revision)
+
+        println("=> edit")
+        val readmeDoc = projectFolder.documents.first { it.file.name == README_FILE }
+        backend.updateRevision(v2revision.includeToDiff(readmeDoc))
+
+        println("=> sync again")
+        val statusModel = domain.projectComponents.get(project).statusModel
+        statusModel.sync().waitWithTimeout()
+
+        println("=> resolving file for rollback")
+        statusModel.notifyCommitScreenOpened()
+        val statusFlow: StateFlow<StatusViewModel> = statusModel.statusFlow
+        val changedFiles: StatusViewItem.FileViewItem = statusFlow
+            .mapNotNull { viewModel: StatusViewModel ->
+                viewModel.items.filterIsInstance<StatusViewItem.FileViewItem>().firstOrNull()
+            }
+            .first()
+
+        println("=> rollback")
+        val v3 = v2revision.copy(revision = "v3")
+        backend.updateRevision(v3)
+        changedFiles.onRollbackClick()
+
+        statusModel.sync().waitWithTimeout()
+        backend.verifyRollbackCall(readmeDoc)
     }
 
     @Test
@@ -227,6 +265,24 @@ private fun Backend.verifyStageCall(readmeDoc: Document) {
     Assert.assertNotNull(
         "Document(${readmeDoc.relativePath}) not found at requests to stage api! Stage calls(${stageCalls.size}): ${calls}",
         stageCalls.find { (_, res) -> res.contains(readmeDoc.relativePath) })
+}
+
+private fun Backend.verifyRollbackCall(readmeDoc: Document) {
+    val capturedCalls: List<RequestResponse> = captureInterceptions().filter { (req, _) ->
+        req.url.toString().contains(NOTES_PROJECT_ROLLBACK_API)
+    }.map { (req, _) ->
+        val buffer = okio.Buffer()
+        req.body?.writeTo(buffer)
+        val body = buffer.toString()
+        RequestResponse(
+            url = req.url.toString(),
+            response = body
+        )
+    }
+    val prettifiedCalls = capturedCalls.joinToString("\n    -")
+    Assert.assertNotNull(
+        "Document(${readmeDoc.relativePath}) not found at requests to revert api! Revert calls(${capturedCalls.size}): ${prettifiedCalls}",
+        capturedCalls.find { (_, res) -> res.contains(readmeDoc.relativePath) })
 }
 
 private data class RequestResponse(
