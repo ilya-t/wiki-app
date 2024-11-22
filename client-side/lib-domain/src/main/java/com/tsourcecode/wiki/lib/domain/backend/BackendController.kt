@@ -91,7 +91,7 @@ class BackendController(
     )
 
     private fun doSync(syncContext: SyncContext): SyncJob {
-        val sync = logger.fork("-sync:")
+        val sync = logger.fork("-sync: ")
         val job = SyncJob()
         scope.launch {
             _refreshFlow.compareAndSet(expect = false, update = true)
@@ -136,10 +136,11 @@ class BackendController(
                         project.repo.deleteRecursively()
                         val result = syncedFiles.copyTo(project.repo, overwrite = true)
                         syncedFiles.deleteRecursively()
-                        if (!result.exists()) {
-                            quickStatusController.error(java.lang.RuntimeException(
-                                "Move failed ($syncedFiles -> ${project.repo}"
-                            ))
+                        if (!result) {
+                            quickStatusController.error(
+                                RuntimeException("Move failed ($syncedFiles -> ${project.repo})"))
+                        } else {
+                            sync.log { "Move completed ($syncedFiles -> ${project.repo})" }
                         }
                     } else {
                         if (localRevision == serverRevision) {

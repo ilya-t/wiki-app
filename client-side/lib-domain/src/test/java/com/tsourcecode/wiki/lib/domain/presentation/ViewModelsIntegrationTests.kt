@@ -66,7 +66,7 @@ class ViewModelsIntegrationTests {
     fun `import - sync`() {
         importProject()
         val (_, projectFolder) = waitProjectFolderSynced(v1revision)
-        Assert.assertEquals(1, projectFolder.documents.size)
+        Assert.assertEquals("not synced: $projectFolder", 1, projectFolder.documents.size)
     }
 
     @Test
@@ -199,7 +199,7 @@ class ViewModelsIntegrationTests {
                 val project = projects.first()
                 val projectComponent = domain.projectComponents.get(project)
                 val projectFolder = projectComponent.documentsController.data.first {
-                    println("want: ${revision.revision} got: ${it.revision}")
+                    println("Waiting for local revision '${revision.revision}' got: ${it.revision}")
                     it.revision == revision.revision
                 }
                 project to projectFolder.folder

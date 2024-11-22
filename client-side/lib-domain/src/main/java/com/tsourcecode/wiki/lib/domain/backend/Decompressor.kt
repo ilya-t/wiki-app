@@ -7,7 +7,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
 object Decompressor {
-    fun decompress(zipFile: String, outputDir: String, logger: ((String) -> Unit)? = null) {
+    fun decompress(zipFile: String, outputDir: String, logger: ((message: String) -> Unit)? = null) {
         logger?.invoke("preparing decompression dir: $outputDir")
         with(File(outputDir)) {
             if (!exists()) {
@@ -24,7 +24,7 @@ object Decompressor {
                 tryCreateDir(outputDir + "/"+ zipEntry.name)
             } else {
                 val outputFile = File(outputDir + "/" + zipEntry.name)
-                logger?.invoke(zipEntry.name)
+                logger?.invoke(outputFile.toString())
                 if (!outputFile.parentFile.exists()) {
                     outputFile.parentFile.mkdirs()
                 }
@@ -36,11 +36,14 @@ object Decompressor {
                 }
                 zipInputStream.closeEntry()
                 outputStream.close()
+
+                if (!outputFile.exists()) {
+                    logger?.invoke("File not decompressed: $outputFile")
+                }
             }
         } != null) { /*all job at also*/}
         zipInputStream.close()
-        logger?.invoke("decompression completed. dir: $outputDir")
-
+        logger?.invoke("decompression completed. output dir: $outputDir")
     }
 
     private fun tryCreateDir(dir: String) {
