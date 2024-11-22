@@ -105,10 +105,12 @@ class BackendController(
                 val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
                 if (!fullSync) {
                     if (localRevision != null) {
-                        val filesWithoutRollbacks = files.filter {
-                            val relPath: String = it.relativePath
-                            syncContext.rollbackSpecs.files.none { f -> f.path == relPath }
-                        }
+                        val filesWithoutRollbacks: List<FileHash> = files
+                            .flatFilesList()
+                            .filter {
+                                val relPath: String = it.relativePath
+                                syncContext.rollbackSpecs.files.none { f -> f.path == relPath }
+                            }
                         if (!tryStageChanges(localRevision, filesWithoutRollbacks, sync)) {
                             return@launch
                         }
@@ -219,17 +221,11 @@ class BackendController(
 
     private suspend fun tryStageChanges(
         localRevision: String,
-        files: List<Hashable>,
+        files: List<FileHash>,
         logger: Logger): Boolean {
 
         val localStatus = WikiBackendAPIs.LocalStatus(
             localRevision, files
-                .flatMap {
-                    when (it) {
-                        is DirHash -> it.fileHashes + it
-                        is FileHash -> listOf(it)
-                    }
-                }
                 .map {
                     WikiBackendAPIs.LocalStatus.FileHash(
                         it.relativePath,
@@ -486,6 +482,15 @@ class BackendController(
     val Hashable.relativePath: String
         get() = this.file.absolutePath.substring(project.repo.absolutePath.length + 1)
 
+}
+
+private fun List<Hashable>.flatFilesList(): List<FileHash> {
+    return this.flatMap {
+        when (it) {
+            is DirHash -> it.fileHashes.flatFilesList()
+            is FileHash -> listOf(it)
+        }
+    }
 }
 
 private fun extractFileName(contentDisposition: String): String? {
