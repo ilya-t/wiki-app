@@ -134,7 +134,7 @@ class BackendController(
                     quickStatusController.udpate(QuickStatus.SYNC)
                     if (fullSync) {
                         project.repo.deleteRecursively()
-                        val result = syncedFiles.copyTo(project.repo, overwrite = true)
+                        val result = syncedFiles.copyRecursively(project.repo, overwrite = true)
                         syncedFiles.deleteRecursively()
                         if (!result) {
                             quickStatusController.error(
