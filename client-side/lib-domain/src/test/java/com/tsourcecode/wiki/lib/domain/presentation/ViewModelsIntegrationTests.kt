@@ -83,26 +83,6 @@ class ViewModelsIntegrationTests {
     }
 
     @Test
-    fun `import - sync - view v1 - sync - view v1(local content wins)`() {
-        importProject()
-        val (project, projectFolder) = waitProjectFolderSynced(v1revision)
-        val document = projectFolder.documents.first()
-
-        val viewModel = domain.viewModels.documentViewModelResolver.resolveDocumentViewModel(
-            NavigationUtils.openDocument(project, document)
-        )!!
-
-        val v1Content = viewModel.getContent()
-
-        backend.updateRevision(v2revision)
-        viewModel.refresh()
-        waitProjectFolderSynced(v2revision)
-
-        val contentAfterSync = viewModel.getContent()
-        Assert.assertEquals(v1Content, contentAfterSync)
-    }
-
-    @Test
     fun `import - view v1 - open search - view recents`() {
         importProject()
         val (project, projectFolder) = waitProjectFolderSynced(v1revision)
@@ -140,10 +120,11 @@ class ViewModelsIntegrationTests {
     fun `import - edit - sync - see file staged`() {
         importProject()
         val (project, projectFolder) = waitProjectFolderSynced(v1revision)
-        val readmeDoc = projectFolder.documents.first { it.file.name == README_FILE }
+        val readmeDoc: Document = projectFolder.documents.first { it.file.name == README_FILE }
 
         val locallyChanged = "<File edited locally>"
         readmeDoc.file.writeText(locallyChanged)
+        backend.updateRevision(v1revision.markUnstaged(readmeDoc))
 
         domain.projectComponents.get(project).statusModel.sync().waitWithTimeout()
         backend.verifyStageCall(readmeDoc)

@@ -1,6 +1,7 @@
 package com.tsourcecode.wiki.lib.domain.mocking
 
 import com.tsourcecode.wiki.lib.domain.backend.REVISION_ZIP_REPOSITORY_DIR
+import com.tsourcecode.wiki.lib.domain.documents.Document
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
@@ -68,11 +69,24 @@ class Backend {
                     }
                 """.trimIndent()
         )
+
+        mapLocal["/notes/api/1/show_not_staged"] = ResponseMaker.JsonResponse(
+            """
+                {
+                    "files":[ ${r.notStaged.joinToString(prefix = "\"", postfix = "\"")}]
+                }
+            """.trimIndent()
+        )
     }
 }
 
-class ProjectRevision(
+data class ProjectRevision(
     val message: String,
     val rootFileProvider: () -> File,
     val revision: String = UUID.randomUUID().toString(),
-)
+    val notStaged: List<String> = emptyList()
+) {
+    fun markUnstaged(readmeDoc: Document): ProjectRevision {
+        return this.copy(notStaged = notStaged + readmeDoc.relativePath)
+    }
+}
