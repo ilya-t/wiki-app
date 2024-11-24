@@ -38,11 +38,6 @@ class BottomBarController(
                 syncButtonJob?.cancel()
                 syncButtonJob = scope.launch(Dispatchers.Main) {
                     projectComponent?.fileStatusProvider?.statusFlow?.collect { status ->
-                        btnPullOrSync.text = if (status == null || status.files.isEmpty()) {
-                            "pull"
-                        } else {
-                            "sync"
-                        }
                         btnCommit.isEnabled = status != null && status.files.isNotEmpty()
                     }
                 }
