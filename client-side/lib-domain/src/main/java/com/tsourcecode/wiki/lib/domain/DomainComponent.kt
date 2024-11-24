@@ -4,7 +4,6 @@ import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenModel
 import com.tsourcecode.wiki.lib.domain.documents.DocumentViewModelResolver
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
-import com.tsourcecode.wiki.lib.domain.navigation.InitialNavigationController
 import com.tsourcecode.wiki.lib.domain.presentation.ViewModels
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
@@ -82,12 +81,5 @@ class DomainComponent<T : PlatformDeps>(
     val fileManagerModel = FileManagerModel(
         navigator,
         quickStatusController,
-    )
-
-    private val initialNavigationController = InitialNavigationController(
-        scopes.worker,
-        platformDeps,
-        navigator,
-        projectComponentResolver,
     )
 }

@@ -12,9 +12,16 @@ import java.util.Stack
 class AppNavigator(
     private val lastUri: StoredPrimitive<String>,
 ) {
-    private val _data = MutableStateFlow(lastUri.value?.let { URI.create(it) } ?: PROJECTS_URI)
+    private val _data = MutableStateFlow(PROJECTS_URI)
     val data: StateFlow<URI> = _data
     private val stack = Stack<URI>()
+
+
+    init {
+        lastUri.value?.let { URI.create(it) }?.let {
+            open(it)
+        }
+    }
 
     fun open(uri: URI) {
         val existing = _data.value
