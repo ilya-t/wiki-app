@@ -93,6 +93,7 @@ class StatusModel(
             val lastSeenCommitText = commitTextFlow.value
             if (lastSeenCommitText.isNotEmpty() && backendController.commit(lastSeenCommitText)) {
                 backendController.sync()
+                updateCommitText("")
             }
         }
     }
