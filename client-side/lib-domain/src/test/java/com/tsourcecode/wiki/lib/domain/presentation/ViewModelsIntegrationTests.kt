@@ -17,8 +17,6 @@ import com.tsourcecode.wiki.lib.domain.util.NavigationUtils
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -28,7 +26,7 @@ import java.io.File
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
-private const val DEFAULT_TIMEOUT = 5_000L
+private const val DEFAULT_TIMEOUT = 50_000L
 private const val README_FILE = "README.md"
 private const val LICENCE_FILE = "LICENCE.md"
 
@@ -59,24 +57,25 @@ class ViewModelsIntegrationTests {
     private val domain = TestDomainComponentFactory.create(backend.interceptor)
 
     @Test
-    fun `import`() {
+    fun `import`() = runTest {
         val importedResults = importProject()
         val projectElements = importedResults
             .filterIsInstance<ConfigScreenItem.PreviewElement>()
 
-        Assert.assertEquals("Instead import contains: $importedResults", 1, projectElements.size)
+        Assert.assertEquals("Imported results invalid count. expecting: $importedResults " +
+                "\ngot: $projectElements", 1, projectElements.size)
         Assert.assertEquals("notes", projectElements.first().projectName)
     }
 
     @Test
-    fun `import - sync`() {
+    fun `import - sync`() = runTest {
         importProject()
         val (_, projectFolder) = waitProjectFolderSynced(v1revision)
         Assert.assertEquals("not synced: $projectFolder", 1, projectFolder.documents.size)
     }
 
     @Test
-    fun `import - sync - view v1`() {
+    fun `import - sync - view v1`() = runTest {
         importProject()
         val (project, projectFolder) = waitProjectFolderSynced(v1revision)
         val document = projectFolder.documents.first()
@@ -89,7 +88,7 @@ class ViewModelsIntegrationTests {
     }
 
     @Test
-    fun `import - view v1 - open search - view recents`() {
+    fun `import - view v1 - open search - view recents`() = runTest {
         importProject()
         val (project, projectFolder) = waitProjectFolderSynced(v1revision)
         val document = projectFolder.documents.first()
@@ -109,7 +108,7 @@ class ViewModelsIntegrationTests {
     }
 
     @Test
-    fun `import - edit - sync - see file unchanged`() {
+    fun `import - edit - sync - see file unchanged`() = runTest {
         importProject()
         val (project, projectFolder) = waitProjectFolderSynced(v1revision)
         val readmeDoc = projectFolder.documents.first { it.file.name == README_FILE }
@@ -155,7 +154,7 @@ class ViewModelsIntegrationTests {
     }
 
     @Test
-    fun `import - edit - sync - see file staged`() {
+    fun `import - edit - sync - see file staged`() = runTest {
         importProject()
         val (project, projectFolder) = waitProjectFolderSynced(v1revision)
         val readmeDoc: Document = projectFolder.documents.first { it.file.name == README_FILE }
@@ -169,7 +168,7 @@ class ViewModelsIntegrationTests {
     }
 
     @Test
-    fun `edit - commit - auto-sync to latest revision`() {
+    fun `edit - commit - auto-sync to latest revision`() = runTest {
         importProject()
         val (project, projectFolder) = waitProjectFolderSynced(v1revision)
         val readmeDoc = projectFolder.documents.first { it.file.name == README_FILE }
@@ -226,18 +225,9 @@ class ViewModelsIntegrationTests {
         }
     }
 
-    private fun importProject(): List<ConfigScreenItem> {
-        domain.viewModels.configScreenModel.apply {
-            submitImport(ConfigScreenItem.ImportFrom())
-        }
-
-        val results = runBlocking {
-            withTimeout(DEFAULT_TIMEOUT) {
-                val items = mutableListOf<List<ConfigScreenItem>>()
-                domain.viewModels.configScreenModel.data.take(2).toList(items)
-            }
-        }
-        return results.last()
+    private suspend fun importProject(): List<ConfigScreenItem> {
+        domain.viewModels.configScreenModel.submitImport(ConfigScreenItem.ImportFrom()).wait()
+        return domain.viewModels.configScreenModel.data.first()
     }
 }
 

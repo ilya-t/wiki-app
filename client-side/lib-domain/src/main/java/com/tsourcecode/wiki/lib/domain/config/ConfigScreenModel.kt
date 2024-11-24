@@ -7,6 +7,8 @@ import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
 import com.tsourcecode.wiki.lib.domain.backend.ProjectBackendController
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
+import com.tsourcecode.wiki.lib.domain.util.Completion
+import com.tsourcecode.wiki.lib.domain.util.asCompletion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,8 +66,8 @@ class ConfigScreenModel(
         _data.value = currentList
     }
 
-    fun submitImport(item: ConfigScreenItem.ImportFrom) {
-        workerScope.launch {
+    fun submitImport(item: ConfigScreenItem.ImportFrom): Completion {
+        return workerScope.launch {
             val url = URI(item.projectUrl)
             val controller = ProjectBackendController(backendFactory, url.toURL())
             val importedProjects = try {
@@ -92,7 +94,7 @@ class ConfigScreenModel(
             projectsRepository.update(
                     existingProjects + newProjects
             )
-        }
+        }.asCompletion()
     }
 
     private suspend fun ConfigScreenItem.EditableElement.toProject() = Project(
@@ -175,7 +177,7 @@ sealed interface ConfigScreenItem {
     class PlusElement : ConfigScreenItem
 
     data class ImportFrom(
-            val projectUrl: String = "http://duke-nucem:8181",
+            val projectUrl: String = "http://192.168.1.50:8181",
     ) : ConfigScreenItem
 }
 
