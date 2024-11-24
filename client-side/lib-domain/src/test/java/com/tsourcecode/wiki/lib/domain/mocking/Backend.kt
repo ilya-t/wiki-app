@@ -12,6 +12,8 @@ import java.util.UUID
 const val NOTES_PROJECT_ROLLBACK_API = "/notes/api/1/rollback"
 const val NOTES_PROJECT_STAGE_API = "/notes/api/1/stage"
 const val NOTES_PROJECT_COMMIT_API = "/notes/api/1/commit"
+const val NOTES_NOT_STAGED_API = "/notes/api/1/show_not_staged"
+const val SYNC_API = "/api/1/revision/sync"
 
 class Backend {
     private val mapLocal = mutableMapOf<String, ResponseMaker>(
@@ -27,11 +29,6 @@ class Backend {
                     }
                 """.trimIndent()
         ),
-//        "/api/1/status" to ResponseMaker.JsonResponse(
-//            """
-//                    {"files":[]}
-//                """.trimIndent()
-//        ),
         NOTES_PROJECT_STAGE_API to ResponseMaker.ResponseOK,
         NOTES_PROJECT_ROLLBACK_API to ResponseMaker.ResponseOK,
         NOTES_PROJECT_COMMIT_API to ResponseMaker.ResponseOK,
@@ -60,7 +57,7 @@ class Backend {
                 )
             })
         mapLocal["/api/1/revision/latest"] = fileResponse
-        mapLocal["/api/1/revision/sync"] = fileResponse
+        mapLocal[SYNC_API] = fileResponse
 
         mapLocal["/notes/api/1/revision/show"] = ResponseMaker.JsonResponse(
             """
@@ -72,7 +69,7 @@ class Backend {
                 """.trimIndent()
         )
 
-        mapLocal["/notes/api/1/show_not_staged"] = ResponseMaker.JsonResponse(
+        mapLocal[NOTES_NOT_STAGED_API] = ResponseMaker.JsonResponse(
             """
                 {
                     "files":[ ${r.notStagedFiles.joinToString(prefix = "\"", postfix = "\"")}]

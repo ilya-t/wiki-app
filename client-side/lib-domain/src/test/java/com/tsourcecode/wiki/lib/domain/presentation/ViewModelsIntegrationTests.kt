@@ -8,13 +8,14 @@ import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
 import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.documents.Folder
 import com.tsourcecode.wiki.lib.domain.mocking.Backend
+import com.tsourcecode.wiki.lib.domain.mocking.NOTES_NOT_STAGED_API
 import com.tsourcecode.wiki.lib.domain.mocking.NOTES_PROJECT_ROLLBACK_API
 import com.tsourcecode.wiki.lib.domain.mocking.NOTES_PROJECT_STAGE_API
 import com.tsourcecode.wiki.lib.domain.mocking.ProjectRevision
+import com.tsourcecode.wiki.lib.domain.mocking.SYNC_API
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.search.DocumentSearchResult
 import com.tsourcecode.wiki.lib.domain.util.NavigationUtils
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.runBlocking
@@ -27,6 +28,8 @@ import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val DEFAULT_TIMEOUT = 50_000L
+private const val SRC_FILE = "main.go"
+private const val SRC_FILE_PATH = "src/$SRC_FILE"
 private const val README_FILE = "README.md"
 private const val LICENCE_FILE = "LICENCE.md"
 
@@ -37,7 +40,12 @@ class ViewModelsIntegrationTests {
         rootFileProvider = {
             buildDirectory(
                 README_FILE to "v1"
-            )
+            ).also {
+                buildDirectory(
+                    File(it, "src"),
+                    SRC_FILE to "//Here be a licence.",
+                )
+            }
         }
     )
     private val v2revision = ProjectRevision(
@@ -46,7 +54,12 @@ class ViewModelsIntegrationTests {
         rootFileProvider = {
             buildDirectory(
                 README_FILE to "v2"
-            )
+            ).also {
+                buildDirectory(
+                    File(it, "src"),
+                    SRC_FILE to "//Here be a licence.",
+                )
+            }
         }
     )
 
@@ -136,9 +149,7 @@ class ViewModelsIntegrationTests {
         statusModel.sync().waitWithTimeout()
 
         println("=> resolving file for rollback")
-        statusModel.notifyCommitScreenOpened()
-        val statusFlow: StateFlow<StatusViewModel> = statusModel.statusFlow
-        val changedFiles: StatusViewItem.FileViewItem = statusFlow
+        val changedFiles: StatusViewItem.FileViewItem = statusModel.statusFlow
             .mapNotNull { viewModel: StatusViewModel ->
                 viewModel.items.filterIsInstance<StatusViewItem.FileViewItem>().firstOrNull()
             }
@@ -154,6 +165,122 @@ class ViewModelsIntegrationTests {
     }
 
     @Test
+    fun `import - edit non-root - rollback`() = runTest(timeout = DEFAULT_TIMEOUT.milliseconds) {
+        println("=> import")
+        importProject()
+        val (project, projectFolder) = waitProjectFolderSynced(v1revision)
+
+        println("=> edit")
+        val srcDoc = projectFolder.find(SRC_FILE_PATH) as Document
+        backend.updateRevision(v2revision.includeToDiff(srcDoc))
+
+        println("=> sync again")
+        val statusModel = domain.projectComponents.get(project).statusModel
+        statusModel.sync().waitWithTimeout()
+
+        println("=> resolving file for rollback")
+        val changedFiles: StatusViewItem.FileViewItem = statusModel.statusFlow
+            .mapNotNull { viewModel: StatusViewModel ->
+                viewModel.items.filterIsInstance<StatusViewItem.FileViewItem>().firstOrNull()
+            }
+            .first()
+
+        println("=> rollback")
+        val v3 = v2revision.copy(revision = "v3")
+        backend.updateRevision(v3)
+        changedFiles.onRollbackClick()
+
+        statusModel.sync().waitWithTimeout()
+        backend.verifyRollbackCall(srcDoc)
+    }
+
+    @Test
+    fun `import - edit non-root - rollback - file in sync after rollback`() =
+        runTest(timeout = DEFAULT_TIMEOUT.milliseconds) {
+            println("=> import")
+            importProject()
+            val (project, projectFolder) = waitProjectFolderSynced(v1revision)
+
+            println("=> edit")
+            val srcDoc = projectFolder.find(SRC_FILE_PATH) as Document
+            backend.updateRevision(v2revision.includeToDiff(srcDoc))
+
+            println("=> sync again")
+            val statusModel = domain.projectComponents.get(project).statusModel
+            statusModel.sync().waitWithTimeout()
+
+            println("=> resolving file for rollback")
+            val changedFiles: StatusViewItem.FileViewItem = statusModel.statusFlow
+                .mapNotNull { viewModel: StatusViewModel ->
+                    viewModel.items.filterIsInstance<StatusViewItem.FileViewItem>().firstOrNull()
+                }
+                .first()
+
+            println("=> rollback")
+            val v3 = v2revision.copy(revision = "v3")
+            backend.updateRevision(v3)
+            changedFiles.onRollbackClick()
+
+            statusModel.sync().wait()
+
+            val requestsAfterRollback = backend.captureInterceptions().dropWhile { (req, _) ->
+                !req.url.toString().contains(NOTES_PROJECT_ROLLBACK_API)
+            }
+            val lastSyncApiBody = requestsAfterRollback
+                .last { (req, _) ->
+                    req.url.toString().endsWith(SYNC_API)
+                }
+                .first.body?.asString()
+            Assert.assertTrue(
+                "$SRC_FILE file should be synced with backend after revert! Instead got body: $lastSyncApiBody",
+                lastSyncApiBody?.contains(SRC_FILE) == true
+            )
+        }
+
+    @Test
+    fun `import - edit non-root - rollback - old version not staged during sync`() = runTest(timeout = DEFAULT_TIMEOUT.milliseconds) {
+        println("=> import")
+        importProject()
+        val (project, projectFolder) = waitProjectFolderSynced(v1revision)
+
+        println("=> edit")
+        val srcDoc = projectFolder.find(SRC_FILE_PATH) as Document
+        val locallyChanged = "<File edited locally>"
+        srcDoc.file.writeText(locallyChanged)
+        backend.updateRevision(v2revision.includeToDiff(srcDoc))
+
+        println("=> sync again")
+        val statusModel = domain.projectComponents.get(project).statusModel
+        statusModel.sync().waitWithTimeout()
+
+        println("=> resolving file for rollback")
+        val changedFiles: StatusViewItem.FileViewItem = statusModel.statusFlow
+            .mapNotNull { viewModel: StatusViewModel ->
+                viewModel.items.filterIsInstance<StatusViewItem.FileViewItem>().firstOrNull()
+            }
+            .first()
+
+        println("=> rollback")
+        val v3 = v2revision.copy(revision = "v3")
+        backend.updateRevision(v3)
+        changedFiles.onRollbackClick()
+
+        statusModel.sync().wait()
+
+        val requestsAfterRollback = backend.captureInterceptions().dropWhile { (req, _) ->
+            !req.url.toString().contains(NOTES_PROJECT_ROLLBACK_API)
+        }
+
+        val noStagedApiRequestBody = requestsAfterRollback.last { (req, _) ->
+            req.url.toString().contains(NOTES_NOT_STAGED_API)
+        }.first.body?.asString()!!
+
+
+        Assert.assertFalse("$SRC_FILE should not be considered for staging after rollback: $noStagedApiRequestBody!",
+            noStagedApiRequestBody.contains(SRC_FILE))
+    }
+
+    @Test
     fun `import - edit - sync - see file staged`() = runTest {
         importProject()
         val (project, projectFolder) = waitProjectFolderSynced(v1revision)
@@ -165,6 +292,20 @@ class ViewModelsIntegrationTests {
 
         domain.projectComponents.get(project).statusModel.sync().waitWithTimeout()
         backend.verifyStageCall(readmeDoc)
+    }
+
+    @Test
+    fun `import - edit non-root - sync - see file staged`() = runTest {
+        importProject()
+        val (project, projectFolder) = waitProjectFolderSynced(v1revision)
+        val srcDoc: Document = projectFolder.find(SRC_FILE_PATH) as Document
+
+        val locallyChanged = "<File edited locally>"
+        srcDoc.file.writeText(locallyChanged)
+        backend.updateRevision(v1revision.markUnstaged(srcDoc))
+
+        domain.projectComponents.get(project).statusModel.sync().waitWithTimeout()
+        backend.verifyStageCall(srcDoc)
     }
 
     @Test
@@ -203,6 +344,13 @@ class ViewModelsIntegrationTests {
 
     private fun buildDirectory(vararg nameAndContent: Pair<String, String>): File {
         val root = File("/tmp/${UUID.randomUUID()}")
+        return buildDirectory(root, *nameAndContent)
+    }
+
+    private fun buildDirectory(
+        root: File,
+        vararg nameAndContent: Pair<String, String>
+    ): File {
         root.mkdirs()
         nameAndContent.forEach { (name, content) ->
             File(root, name).writeText(content)
@@ -279,3 +427,10 @@ private data class RequestResponse(
     val url: String,
     val response: String,
 )
+
+private fun okhttp3.RequestBody.asString(): String {
+    val buffer = okio.Buffer()
+    this.writeTo(buffer)
+    return buffer.readUtf8()
+}
+
