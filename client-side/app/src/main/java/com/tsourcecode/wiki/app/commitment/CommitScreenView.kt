@@ -205,7 +205,7 @@ fun FileDiffItem(item: StatusViewItem.FileViewItem) {
 
 private fun colorizeDiff(diff: String) = buildAnnotatedString {
     fun String.startsWithRune(rune: Char) =
-        (this.length > 1 && this[0] == rune && this[1] != rune) || (this.length == 1 && this[0] == rune)
+        (this.length > 1 && this[0] == rune) || (this.length == 1 && this[0] == rune)
 
     diff.split("\n").forEach { line ->
         if (line.startsWith("diff --git")) {
