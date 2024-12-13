@@ -34,7 +34,8 @@ class DomainComponent<T : PlatformDeps>(
     )
 
     val quickStatusController = QuickStatusController()
-    private val logger = Logger { message ->
+    private val logger = Logger { m ->
+        val message = withTimePasssedBlock(m)
         DebugLogger.log(message)
         scopes.main.launch {
             if (DebugLogger.inMemoryLogs.size > 10_000) {
@@ -44,6 +45,34 @@ class DomainComponent<T : PlatformDeps>(
             DebugLogger.inMemoryLogs.add(message)
         }
     }
+
+    @Volatile
+    private var lastMessageTime: Long = 0
+    private val timePassedSize = 6
+
+    private fun withTimePasssedBlock(m: String): String {
+        val time = System.currentTimeMillis()
+        val timePassedSinceLastMessage = time - lastMessageTime
+        if (timePassedSinceLastMessage <= 0L) {
+            lastMessageTime = time
+            return m
+        }
+        lastMessageTime = time
+
+        var timePassed = if (timePassedSinceLastMessage > 1000 && false) {
+            "{" + timePassedSinceLastMessage / 1000 + "s}"
+        } else {
+            "${timePassedSinceLastMessage}ms ".padStart(3)
+        }
+
+        timePassed = if (timePassed.length < timePassedSize) {
+            timePassed.padStart(timePassedSize, ' ')
+        } else {
+            timePassed
+        }
+        return timePassed + m
+    }
+
     private val backendFactory = BackendFactory(
         logger,
         networkConfigurator)
