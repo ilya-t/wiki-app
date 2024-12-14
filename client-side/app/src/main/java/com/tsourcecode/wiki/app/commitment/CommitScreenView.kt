@@ -17,9 +17,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults.textFieldColors
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,7 +96,6 @@ private fun ComposeCommitScreen(viewModel: StatusViewModel) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = Dp(64f)) // Add padding to avoid overlap
         ) {
             items(listItems) { item ->
                 when (item) {
@@ -108,7 +111,6 @@ private fun ComposeCommitScreen(viewModel: StatusViewModel) {
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(Dp(8f))
             )
         }
     }
@@ -121,9 +123,10 @@ fun CommitItem(item: StatusViewItem.CommitViewItem, modifier: Modifier = Modifie
 
     Column(
         modifier = modifier
-            .padding(Dp(8f))
+            .padding(horizontal = Dp(8f))
+            .background(Color.DarkGray)
     ) {
-        TextField(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(
@@ -131,24 +134,40 @@ fun CommitItem(item: StatusViewItem.CommitViewItem, modifier: Modifier = Modifie
                     color = Color.Gray,
                     shape = RoundedCornerShape(CornerSize(Dp(4f))),
                 ),
-            value = textState.value,
-            onValueChange = {
-                textState.value = it
-                item.updateCommitText(it)
-            },
-            label = {
-                Text(
-                    text = "Commit message",
-                    color = Color.White,
-                    fontFamily = FontFamily.Monospace,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextField(
+                modifier = Modifier
+                    .weight(1f),
+                value = textState.value,
+                onValueChange = {
+                    textState.value = it
+                    item.updateCommitText(it)
+                },
+                label = {
+                    Text(
+                        text = "Commit message",
+                        color = Color.White,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                },
+                colors = textFieldColors(
+                    textColor = Color.White,
+                    cursorColor = Color.White,
+                    focusedIndicatorColor = Color.White,
+                ),
+            )
+            IconButton(
+                onClick = { item.commitAction?.invoke() },
+                enabled = item.commitAction != null,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Submit",
+                    tint = if (item.commitAction != null) okStatusColor else Color.Gray,
                 )
-            },
-            colors = textFieldColors(
-                textColor = Color.White,
-                cursorColor = Color.White,
-                focusedIndicatorColor = Color.White,
-            ),
-        )
+            }
+        }
         Text(
             text = item.itemsInfo,
             color = Color.White,
@@ -157,11 +176,13 @@ fun CommitItem(item: StatusViewItem.CommitViewItem, modifier: Modifier = Modifie
     }
 }
 
+private val okStatusColor = Color(0xFF00BFA5) // R.color.status_ok
+
 @Composable
 fun RevisionItem(item: StatusViewItem.RevisionViewItem) {
     Column(
         modifier = Modifier
-            .padding(Dp(8f))
+            .padding(horizontal = Dp(8f))
     ) {
         Text(
             text = "Current revision:\n${item.message}",
@@ -273,7 +294,12 @@ fun PreviewCommitScreen() {
         StatusViewModel(
             listOf(
                 StatusViewItem.RevisionViewItem("<revision message>"),
-                StatusViewItem.CommitViewItem("quick fix", "(info)") {},
+                StatusViewItem.CommitViewItem(
+                    commitMessage = "quick fix",
+                    itemsInfo = "Files changed: 1",
+                    commitAction = {},
+                    updateCommitText = {},
+                ),
                 StatusViewItem.FileViewItem(
                     FileStatus(
                         path = "README.md",

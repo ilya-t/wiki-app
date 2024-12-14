@@ -386,7 +386,7 @@ class BackendController(
         }
     }
 
-    fun commit(message: String): Boolean {
+    suspend fun commit(message: String): Boolean {
         quickStatusController.udpate(QuickStatus.COMMIT)
         val response = backendApi.commit(project.name,
                 WikiBackendAPIs.Commitment(message)

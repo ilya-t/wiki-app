@@ -9,6 +9,7 @@ sealed interface StatusViewItem {
             val commitMessage: String = "",
             val itemsInfo: String,
             val updateCommitText: (text: String) -> Unit,
+            val commitAction: (() -> Unit)?,
     ) : StatusViewItem
 
     class FileViewItem(

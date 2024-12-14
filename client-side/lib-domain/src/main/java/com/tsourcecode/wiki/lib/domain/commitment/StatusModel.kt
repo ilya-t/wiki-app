@@ -29,8 +29,14 @@ class StatusModel(
     private val messageStorage = StoredPrimitive.string("commit_message", projectStorage)
     private val commitTextFlow = MutableStateFlow("")
     private val _statusFlow = MutableStateFlow(StatusViewModel())
+    private val commitAction: () -> Unit = {
+        worker.launch {
+            val message = commitTextFlow.value
+            commitTextFlow.value = ""
+            backendController.commit(message)
+        }
+    }
     val statusFlow: StateFlow<StatusViewModel> = _statusFlow
-
 
     init {
         worker.launch {
@@ -54,10 +60,18 @@ class StatusModel(
     private fun toStatusViewModel(revision: RevisionInfo?, status: StatusResponse?, commitText: String): StatusViewModel {
         val items = mutableListOf<StatusViewItem>()
         if (status?.files?.isNotEmpty() == true) {
-            items.add(StatusViewItem.CommitViewItem(
-                commitText,
-                "Changed files: ${status.files.size}",
-            ) { updateCommitText(it) })
+            items.add(
+                StatusViewItem.CommitViewItem(
+                    commitMessage = commitText,
+                    itemsInfo = "Changed files: ${status.files.size}",
+                    commitAction = if (commitText.isNotBlank()) {
+                        commitAction
+                    } else {
+                        null
+                    },
+                    updateCommitText = { updateCommitText(it) },
+                )
+            )
         }
         status?.files?.forEach { fs: FileStatus ->
             items.add(
