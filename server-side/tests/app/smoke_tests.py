@@ -79,6 +79,12 @@ class AcceptanceTests(unittest.TestCase):
         _, files = self.api_user.latest_revision()
         self.assertEqual('# Sample Repo for Tests\n', files['README.md'], msg=json.dumps(files, indent=4))
 
+    def test_rollback_file_outside_index(self):
+        response =  self.api_user.rollback(path='some/file.md')
+        if response.status_code != 200:
+            self.fail(
+                "response returned non-200 code: " + str(response.status_code) + "\n response body:\n" + response.text)
+
     def test_commitment(self):
         self.api_user.stage(file='new_file.md', content='# sample content')
         expected_message = 'custom commit message!'

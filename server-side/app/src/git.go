@@ -88,7 +88,14 @@ func (g *Git) Rollback(f *FileRollback) error {
 	resetCmd := "git reset \"" + filePath + "\""
 	resetOut, err := g.execute(resetCmd)
 	if err != nil {
-		return err
+		if _, err := os.Stat(filePath); err == nil {
+			fmt.Printf("-> Git reset fails: '%v' Will try to remove!\n", err)
+			return os.Remove(filePath)
+		} else if os.IsNotExist(err) {
+			return nil
+		} else {
+			return err
+		}
 	}
 
 	fmt.Printf("-> Git Reset: '%v' -> '%v'\n", resetCmd, resetOut)

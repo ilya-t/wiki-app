@@ -1,4 +1,7 @@
 set -e
+echo "Checking compose availability"
+docker compose version
+
 repo_on_app=/tmp/server_side_test_volumes/repo-store
 config_dir=/tmp/server_side_test_volumes/config
 rm -rf $repo_on_app

@@ -1,4 +1,4 @@
 set -e
 cd app
-docker build --progress=plain --tag=server-side-app .
+docker build --tag=server-side-app .
 cd -
