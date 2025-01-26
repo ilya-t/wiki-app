@@ -105,7 +105,14 @@ func (g *Git) Rollback(f *FileRollback) error {
 	checkoutOut, err := g.execute(checkoutCmd)
 
 	if err != nil {
-		return err
+		if _, err := os.Stat(filePath); err == nil {
+			fmt.Printf("-> Git checkout fails: '%v' Will try to remove!\n", err)
+			return os.Remove(filePath)
+		} else if os.IsNotExist(err) {
+			return nil
+		} else {
+			return err
+		}
 	}
 	fmt.Printf("-> Git Checkout: '%v' -> '%v'\n", checkoutCmd, checkoutOut)
 	g.shell.PrintOutput("git status")
