@@ -82,39 +82,42 @@ func (g *Git) LastRevision() (string, error) {
 
 func (g *Git) Rollback(f *FileRollback) error {
 	filePath := strings.ReplaceAll(f.Path, "\"", "\\\"")
-	fmt.Printf("Rolling back '%v'", filePath)
+	absFilePath := g.repoDir + "/" + filePath
+	fmt.Printf("===> Rolling back '%v'", filePath)
 	g.shell.PrintOutput("git status")
 
 	resetCmd := "git reset \"" + filePath + "\""
 	resetOut, err := g.execute(resetCmd)
 	if err != nil {
-		if _, err := os.Stat(filePath); err == nil {
-			fmt.Printf("-> Git reset fails: '%v' Will try to remove!\n", err)
-			return os.Remove(filePath)
+		if _, err := os.Stat(absFilePath); err == nil {
+			fmt.Printf("-> Git reset fails: '%v' Will try to remove '%v'!\n", err, absFilePath)
+			return os.Remove(absFilePath)
 		} else if os.IsNotExist(err) {
+			fmt.Printf("-> Git reset fails: '%v' There is no file: '%v'!\n", err, absFilePath)
 			return nil
 		} else {
 			return err
 		}
 	}
 
-	fmt.Printf("-> Git Reset: '%v' -> '%v'\n", resetCmd, resetOut)
+	fmt.Printf("-> Successful Git Reset: '%v' -> '%v'\n", resetCmd, resetOut)
 	g.shell.PrintOutput("git status")
 
 	checkoutCmd := "git checkout \"" + filePath + "\""
 	checkoutOut, err := g.execute(checkoutCmd)
 
 	if err != nil {
-		if _, err := os.Stat(filePath); err == nil {
-			fmt.Printf("-> Git checkout fails: '%v' Will try to remove!\n", err)
-			return os.Remove(filePath)
+		if _, err := os.Stat(absFilePath); err == nil {
+			fmt.Printf("-> Git checkout fails: '%v' Will try to remove '%v'!\n", err, absFilePath)
+			return os.Remove(absFilePath)
 		} else if os.IsNotExist(err) {
+			fmt.Printf("-> Git checkout fails: '%v' There is no file: '%v'!\n", err, absFilePath)
 			return nil
 		} else {
 			return err
 		}
 	}
-	fmt.Printf("-> Git Checkout: '%v' -> '%v'\n", checkoutCmd, checkoutOut)
+	fmt.Printf("-> Successful Git Checkout: '%v' -> '%v'\n", checkoutCmd, checkoutOut)
 	g.shell.PrintOutput("git status")
 	return nil
 }
