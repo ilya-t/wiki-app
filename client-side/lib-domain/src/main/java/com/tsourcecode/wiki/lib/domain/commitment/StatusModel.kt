@@ -33,7 +33,9 @@ class StatusModel(
         worker.launch {
             val message = commitTextFlow.value
             commitTextFlow.value = ""
-            backendController.commit(message)
+            if (backendController.commit(message)) {
+                backendController.sync()
+            }
         }
     }
     val statusFlow: StateFlow<StatusViewModel> = _statusFlow
