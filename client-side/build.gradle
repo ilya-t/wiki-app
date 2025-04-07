@@ -5,19 +5,20 @@
 ext {
     // The following are only a few examples of the types of properties you can define.
     minSdkVersion = 24
-    targetSdkVersion = 34
-    buildToolsVersion = '33.0.1'
+    targetSdkVersion = 35
+    buildToolsVersion = '35.0.0'
 
-    androidxVersion = '1.0.2'
-    appCompatVersion = '1.6.1'
+    androidxVersion = '1.5.15'
+    appCompatVersion = '1.7.0'
     markwonVersion = '4.6.2'
-    kotlinx_version = '1.8.0'
-    composeVersion = "1.5.4"
+    composeVersion = "1.5.15"
+    androidxComposeMaterial = '1.7.8'
+    kotlinX = '1.8.1'
 }
 
 buildscript {
     ext {
-        kotlin_version = '1.8.0'
+        kotlin_version = '1.9.25'
     }
 
     repositories {
@@ -26,7 +27,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath 'com.android.tools.build:gradle:8.8.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlin_version"
         classpath("org.jetbrains.kotlin:kotlin-serialization:$kotlin_version")
