@@ -10,7 +10,7 @@ class QuickStatusController() {
         listener?.invoke(StatusInfo(status, error = null, comment = comment))
     }
 
-    fun error(e: Exception) {
+    fun error(e: Throwable) {
         listener?.invoke(StatusInfo(QuickStatus.ERROR, e))
     }
 
@@ -21,6 +21,6 @@ class QuickStatusController() {
 
 data class StatusInfo(
         val status: QuickStatus,
-        val error: java.lang.Exception? = null,
+        val error: Throwable? = null,
         val comment: String = "",
 )

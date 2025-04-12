@@ -12,12 +12,25 @@ class ProjectBackendController(
 ) {
     private val api = backedFactory.createProjectBackendAPIs(url)
 
-    @Throws(IOException::class)
-    fun getConfigs(): List<ProjectConfig> {
-        val response = api.getProjects().execute()
-        val body = response.body()?.string() ?: throw IOException("Empty body received!")
-        val result = Json.decodeFromString(Configs.serializer(), body)
-        return result.configs
+    fun getConfigs(): Result<List<ProjectConfig>> {
+        var result: Result<List<ProjectConfig>>? = null
+        repeat(3) {
+            val r = runCatching {
+                val response = api.getProjects().execute()
+                val body = response.body()?.string() ?: throw IOException("Empty body received!")
+                val result = Json.decodeFromString(Configs.serializer(), body)
+                return Result.success(result.configs)
+            }
+            result = r
+
+            if (r.isSuccess) {
+                return r
+            }
+        }
+
+        return result ?: Result.failure(
+            IOException("Failed to fetch project configs after 3 attempts")
+        )
     }
 }
 

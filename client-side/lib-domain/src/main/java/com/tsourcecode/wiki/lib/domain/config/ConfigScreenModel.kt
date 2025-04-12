@@ -13,7 +13,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.UUID
@@ -70,19 +69,21 @@ class ConfigScreenModel(
         return workerScope.launch {
             val url = URI(item.projectUrl)
             val controller = ProjectBackendController(backendFactory, url.toURL())
-            val importedProjects = try {
-                controller.getConfigs().map {
-                    Project(
-                        id = it.name,
-                        name = it.name,
-                        filesDir = platformDeps.filesDir(),
-                        serverUri = url,
-                        repoUri = it.repoUrl,
-                    )
-                }
-            } catch (e: IOException) {
-                quickStatusController.error(e)
+
+            val result = controller.getConfigs().onFailure {
+                quickStatusController.error(it)
+                submitImport(item)
                 return@launch
+            }
+
+            val importedProjects = result.getOrThrow().map {
+                Project(
+                    id = it.name,
+                    name = it.name,
+                    filesDir = platformDeps.filesDir(),
+                    serverUri = url,
+                    repoUri = it.repoUrl,
+                )
             }
             val existingProjects = projectsRepository.data.value
             val existingRepos = existingProjects

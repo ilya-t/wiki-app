@@ -6,6 +6,7 @@ import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
 import com.tsourcecode.wiki.lib.domain.backend.CurrentRevisionInfoController
+import com.tsourcecode.wiki.lib.domain.backend.ProjectAPIs
 import com.tsourcecode.wiki.lib.domain.backend.WikiBackendAPIs
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
@@ -60,6 +61,28 @@ class ProjectComponent(
         projectStorage,
     )
 
+    private val changedFiles = ChangedFilesController(
+        project,
+        scopes.worker,
+    )
+
+    private val projectAPIs = ProjectAPIs(
+        wikiBackendAPIs,
+        project,
+    )
+
+    private val stagedFiles = StagedFilesController(
+        scopes.worker,
+        projectStorage,
+        projectAPIs,
+    )
+
+    private val fileStatusProvider = FileStatusProvider(
+        scopes.worker,
+        changedFiles,
+        stagedFiles,
+    )
+
     val backendController = BackendController(
             platformDeps,
             quickStatusController,
@@ -71,26 +94,7 @@ class ProjectComponent(
             scopes,
             projectStorage,
             projectLogger,
-
-    )
-
-
-    private val changedFiles = ChangedFilesController(
-        project,
-        scopes.worker,
-    )
-
-    private val stagedFiles = StagedFilesController(
-        backendController,
-        scopes.worker,
-        projectStorage,
-    )
-
-    val fileStatusProvider = FileStatusProvider(
-            scopes.worker,
-            changedFiles,
-            stagedFiles,
-            backendController,
+        fileStatusProvider,
     )
 
     val statusModel = StatusModel(

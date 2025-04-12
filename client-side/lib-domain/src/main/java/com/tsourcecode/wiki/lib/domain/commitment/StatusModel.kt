@@ -115,7 +115,9 @@ class StatusModel(
     }
 
     fun notifyCommitScreenOpened() {
-        fileStatus.update()
+        worker.launch {
+            fileStatus.update()
+        }
     }
 
     private fun notifyItemClicked(fileStatus: FileStatus) {

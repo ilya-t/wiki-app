@@ -1,6 +1,6 @@
 package com.tsourcecode.wiki.lib.domain.documents.staging
 
-import com.tsourcecode.wiki.lib.domain.backend.BackendController
+import com.tsourcecode.wiki.lib.domain.backend.ProjectAPIs
 import com.tsourcecode.wiki.lib.domain.commitment.StatusResponse
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
@@ -9,12 +9,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.io.IOException
 
 class StagedFilesController(
-    private val backendController: BackendController,
     private val workerScope: CoroutineScope,
     private val projectStorage: KeyValueStorage,
+    private val projectAPIs: ProjectAPIs,
 ) {
     private val changesStorage = StoredPrimitive.string("staged_files", projectStorage)
 
@@ -32,16 +31,12 @@ class StagedFilesController(
         _stagedFiles.value = Json.decodeFromString(StatusResponse.serializer(), changesJson)
     }
 
-    fun update() {
-        workerScope.launch {
-            val status = try {
-                backendController.status()
-            } catch (e: IOException) {
-                e.printStackTrace()
-                return@launch
-            }
-            _stagedFiles.value = status
-            store(status)
+    suspend fun update() {
+        projectAPIs.fileStatus().onSuccess {
+            _stagedFiles.value = it
+            store(it)
+        }.onFailure {
+            //TODO: handle error
         }
     }
 

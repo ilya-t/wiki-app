@@ -16,7 +16,7 @@ class UnstagedResponse(
 )
 
 @Serializable
-class FileStatus(
+data class FileStatus(
         @SerialName("path")
         val path: String,
         @SerialName("status")

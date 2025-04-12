@@ -5,7 +5,6 @@ import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.api.SyncApiPayload
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
-import com.tsourcecode.wiki.lib.domain.commitment.StatusResponse
 import com.tsourcecode.wiki.lib.domain.commitment.UnstagedResponse
 import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.hashing.DirHash
@@ -45,8 +44,8 @@ class BackendController(
     private val scopes: CoroutineScopes,
     private val keyValueStorage: KeyValueStorage,
     private val logger: Logger,
+    private val fileStatusProvider: FileStatusProvider,
 ) {
-    internal var fileStatusProvider: FileStatusProvider? = null
     private val dirRevisionStorage = StoredPrimitive.string("dir_revision", keyValueStorage)
     private var projectObserver: ((String?, File) -> Unit)? = null
     private val _refreshFlow = MutableStateFlow(false)
@@ -190,7 +189,7 @@ class BackendController(
                                 }
                                 sync.log { "syncing file: ${localRevision.relativePath}: $resolution" }
                             }
-                        fileStatusProvider?.update()
+                        fileStatusProvider.update()
                     }
                     currentRevisionInfoController.bumpRevisionToLatest()
                     syncedFiles.deleteRecursively()
@@ -401,24 +400,6 @@ class BackendController(
             )
         }
         return success
-    }
-
-    @Throws(IOException::class)
-    fun status(): StatusResponse {
-        quickStatusController.udpate(QuickStatus.STATUS_UPDATE)
-        val response = backendApi.status(project.name).execute()
-        if (response.code() != 200) {
-            quickStatusController.error(
-                    QuickStatus.STATUS_UPDATE,
-                    RuntimeException("Status failed with ${response.errorBody()?.string()}")
-            )
-            return StatusResponse(emptyList())
-        }
-
-        val body = response.body()?.string() ?: throw IllegalStateException("Empty body received!")
-        val result = Json.decodeFromString(StatusResponse.serializer(), body)
-        quickStatusController.udpate(QuickStatus.STATUS_UPDATED)
-        return result
     }
 
     fun pullOrSync() {
