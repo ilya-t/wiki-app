@@ -13,14 +13,9 @@ import kotlin.system.measureTimeMillis
 class SyncJobTest {
     @Test
     fun smoke() {
-        val syncJob = SyncJob()
-
-
-        CoroutineScope(Dispatchers.IO).launch {
+        val syncJob = SyncJob(CoroutineScope(Dispatchers.IO).launch {
             delay(100)
-            syncJob.notifyCompleted()
-        }
-
+        })
         val duration = measureTimeMillis {
             syncJob.waitWithTimeout()
         }

@@ -1,17 +1,10 @@
 package com.tsourcecode.wiki.lib.domain.backend
 
 import com.tsourcecode.wiki.lib.domain.util.Completion
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Job
 
-class SyncJob : Completion {
-    private val result = MutableSharedFlow<Unit>()
-
-    suspend fun notifyCompleted() {
-        result.emit(Unit)
-    }
-
+class SyncJob(private val job: Job) : Completion {
     override suspend fun wait() {
-        result.first()
+        job.join()
     }
 }

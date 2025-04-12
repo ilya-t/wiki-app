@@ -2,6 +2,7 @@ package com.tsourcecode.wiki.lib.domain.presentation
 
 import com.tsourcecode.wiki.lib.domain.TestDomainComponentFactory
 import com.tsourcecode.wiki.lib.domain.backend.SyncJob
+import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewModel
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
@@ -327,7 +328,7 @@ class ViewModelsIntegrationTests {
             }
         )
         backend.updateRevision(next)
-        val statusModel = domain.projectComponents.get(project).statusModel
+        val statusModel: StatusModel = domain.projectComponents.get(project).statusModel
         statusModel.updateCommitText("upd")
         statusModel.commit()
         waitProjectFolderSynced(next)

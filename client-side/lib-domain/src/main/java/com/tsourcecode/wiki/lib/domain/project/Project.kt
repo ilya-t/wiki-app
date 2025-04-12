@@ -5,10 +5,10 @@ import java.io.File
 import java.net.URI
 
 @OpenInTest
-class Project(
+data class Project(
     val id: String,
     val name: String,
-    filesDir: File,
+    private val filesDir: File,
     val serverUri: URI,
     val repoUri: String
 ) {

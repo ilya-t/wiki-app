@@ -92,8 +92,8 @@ class BackendController(
 
     private fun doSync(syncContext: SyncContext): SyncJob {
         val sync = logger.fork("-sync: ")
-        val job = SyncJob()
-        scope.launch {
+        val job = SyncJob(scope.launch {
+            sync.log { "sync started" }
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
                 val localRevision: String? = currentRevisionInfoController.state.value?.revision
@@ -200,7 +200,7 @@ class BackendController(
                         projectObserver?.invoke(dirRevision, project.repo)
                         quickStatusController.udpate(QuickStatus.SYNCED, currentRevisionInfoController.state.value?.toComment() ?: "null")
                     }
-                    sync.log { "completed!" }
+                    sync.log { "sending notification on sync completion!" }
                     scope.launch {
                         elementHashProvider.notifyProjectFullySynced()
                     }
@@ -212,9 +212,9 @@ class BackendController(
                     quickStatusController.error(QuickStatus.SYNC, e)
                 }
             }
-            job.notifyCompleted()
+            sync.log { "completed!" }
             _refreshFlow.compareAndSet(expect = true, update = false)
-        }
+        })
 
         return job
     }
