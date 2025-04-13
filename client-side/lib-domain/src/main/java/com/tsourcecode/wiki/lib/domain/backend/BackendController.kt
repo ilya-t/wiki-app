@@ -17,10 +17,11 @@ import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.Logger
 import com.tsourcecode.wiki.lib.domain.util.Threading
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
@@ -92,7 +93,7 @@ class BackendController(
 
     private fun doSync(syncContext: SyncContext): SyncJob {
         val sync = logger.fork("-sync: ")
-        val job = SyncJob(scope.launch {
+        val job = SyncJob(scope.async {
             sync.log { "sync started" }
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
@@ -112,7 +113,8 @@ class BackendController(
                                 syncContext.rollbackSpecs.files.none { f -> f.path == relPath }
                             }
                         if (!tryStageChanges(localRevision, filesWithoutRollbacks, sync)) {
-                            return@launch
+                            return@async Result.failure(
+                                RuntimeException("Staging failed!"))
                         }
                     } else {
                         sync.log { "staging skipped! No revision provided" }
@@ -214,6 +216,7 @@ class BackendController(
             }
             sync.log { "completed!" }
             _refreshFlow.compareAndSet(expect = true, update = false)
+            Result.success(Unit)
         })
 
         return job
@@ -434,8 +437,8 @@ class BackendController(
         return true
     }
 
-    fun rollback(relativePath: String): Job {
-        return scope.launch {
+    suspend fun rollback(relativePath: String): Result<Unit> {
+        return withContext(scopes.threading.io) {
             val rollbackSpecs = RollbackSpecs(
                 files = listOf(
                     FileRollback(
@@ -447,17 +450,24 @@ class BackendController(
                 project.name, rollbackSpecs
             ).execute()
             if (!response.isSuccessful) {
+                val ioException = IOException(
+                    "error code(${response.code()}) with error: \n" +
+                            response.errorBody()?.string()
+                )
                 quickStatusController.error(
                     QuickStatus.STAGE,
-                    IOException(
-                        "error code(${response.code()}) with error: \n" +
-                                response.errorBody()?.string()
-                    )
+                    ioException
                 )
-                return@launch
+                return@withContext Result.failure(ioException)
             }
 
-            doSync(SyncContext(rollbackSpecs, fullSync = false))
+            val syncJob = doSync(SyncContext(rollbackSpecs, fullSync = false))
+            val exception = syncJob.waitResults().exceptionOrNull()
+            if (exception != null) {
+                return@withContext Result.failure(
+                    RuntimeException("Sync on rollback failed!", exception))
+            }
+            return@withContext Result.success(Unit)
         }
     }
 

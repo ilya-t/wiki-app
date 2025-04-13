@@ -10,6 +10,7 @@ import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.Completion
+import com.tsourcecode.wiki.lib.domain.util.ErrorReporter
 import com.tsourcecode.wiki.lib.domain.util.asCompletion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileNotFoundException
 import java.net.URI
 
 class StatusModel(
@@ -27,6 +29,8 @@ class StatusModel(
     private val navigator: AppNavigator,
     private val projectStorage: KeyValueStorage,
     private val currentRevisionInfoController: CurrentRevisionInfoController,
+    private val scope: CoroutineScope,
+    private val errorReporter: ErrorReporter,
 ) {
     private val messageStorage = StoredPrimitive.string("commit_message", projectStorage)
     private val commitTextFlow = MutableStateFlow("")
@@ -58,7 +62,18 @@ class StatusModel(
     }
 
     private fun rollback(fs: FileStatus): Completion {
-        return backendController.rollback(relativePath=fs.path).asCompletion()
+        return scope.launch {
+            val rollbackResult: Result<Unit> = backendController.rollback(relativePath=fs.path)
+            if (rollbackResult.isSuccess && fs.status == Status.NEW) {
+                val absFile = File(project.repo, fs.path)
+                if (!absFile.exists()) {
+                    errorReporter.report(FileNotFoundException(
+                        "Rollback file not found: ${absFile.absolutePath}"))
+                } else {
+                    absFile.delete()
+                }
+            }
+        }.asCompletion()
     }
 
     private fun toStatusViewModel(revision: RevisionInfo?, status: StatusResponse?, commitText: String): StatusViewModel {

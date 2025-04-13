@@ -22,6 +22,7 @@ import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.PersistentStorageProvider
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
+import com.tsourcecode.wiki.lib.domain.util.ErrorReporter
 import com.tsourcecode.wiki.lib.domain.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,7 @@ class ProjectComponent(
     scopes: CoroutineScopes,
     logger: Logger,
 ) {
+    private val errorReporter = ErrorReporter()
     private val threading = platformDeps.threading
     private val projectLogger: Logger = logger.fork("project: '${project.name}'")
 
@@ -105,6 +107,8 @@ class ProjectComponent(
             navigator,
             projectStorage,
             currentRevisionInfoController,
+            scopes.worker,
+            errorReporter,
     )
 
     val documentsController = DocumentsController(

@@ -2,8 +2,8 @@ package com.tsourcecode.wiki.lib.domain.backend
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert
@@ -13,8 +13,9 @@ import kotlin.system.measureTimeMillis
 class SyncJobTest {
     @Test
     fun smoke() {
-        val syncJob = SyncJob(CoroutineScope(Dispatchers.IO).launch {
+        val syncJob = SyncJob(CoroutineScope(Dispatchers.IO).async {
             delay(100)
+            Result.success(Unit)
         })
         val duration = measureTimeMillis {
             syncJob.waitWithTimeout()

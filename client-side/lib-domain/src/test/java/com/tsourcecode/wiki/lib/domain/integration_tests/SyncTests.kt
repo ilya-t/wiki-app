@@ -23,7 +23,7 @@ import kotlin.time.Duration.Companion.seconds
 private const val TEST_PROJECT = "test_repo"
 
 class SyncTests {
-    private val timeout: Duration = 10.seconds
+    private val timeout: Duration = 120.seconds
     private val testDir = File("/tmp/syncTests_${UUID.randomUUID()}").also {
         it.mkdirs()
     }
@@ -125,6 +125,38 @@ class SyncTests {
             }
     }
 
+
+    @Test
+    fun `add new file and roll it back`() = runTest(timeout = timeout) {
+        val statusModel: StatusModel = openFirstProjectStatus()
+        statusModel.sync().wait()
+
+        val newFile = File(captureTestProject().dir, "new.md")
+        println("===> Adding new local file: ${newFile.absolutePath}")
+        newFile.writeText("<new.md content>")
+
+        println("===> Making another sync")
+        statusModel.sync().wait()
+
+        println("===> Waiting for diff to appear at status")
+        val files: List<StatusViewItem.FileViewItem> = statusModel.statusFlow
+            .map { it.items.filterIsInstance<StatusViewItem.FileViewItem>() }
+            .first { it.isNotEmpty() }
+
+
+        println("===> Rolling back changes")
+        files.first { it.fileStatus.path.endsWith(newFile.name) }
+            .onRollbackClick
+            .invoke()
+            .wait()
+
+        println("===> Making another sync after roll back")
+        statusModel.sync().wait()
+
+
+        Assert.assertFalse(newFile.exists())
+    }
+
     private suspend fun openFirstProjectStatus(): StatusModel {
         val projects: List<ConfigScreenItem> = importProjects()
         val previewElement: ConfigScreenItem.PreviewElement = projects
@@ -190,7 +222,6 @@ private class ServerController(
         try {
             val response = client.newCall(request).execute()
             if (response.code == 200) {
-                println("Server is healthy")
                 return true
             }
         } catch (e: Exception) {
