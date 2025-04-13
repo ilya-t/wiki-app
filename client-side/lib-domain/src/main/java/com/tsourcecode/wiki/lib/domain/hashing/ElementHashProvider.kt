@@ -4,7 +4,6 @@ import com.tsourcecode.wiki.lib.domain.hashing.HashUtils.getCheckSumFromFile
 import com.tsourcecode.wiki.lib.domain.hashing.HashUtils.getCheckSumFromString
 import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
@@ -15,26 +14,14 @@ class ElementHashProvider(
         private val project: Project,
         private val workerScope: CoroutineScope,
 ) {
-    private var validCache: List<Hashable> = emptyList()
-
     fun notifyProjectFullySynced() {
-        workerScope.launch {
-            validCache = calculateHashes(createDigest())
-        }
     }
 
     private fun createDigest(): MessageDigest = MessageDigest.getInstance("SHA-1")
 
     suspend fun getHashes(): List<Hashable> {
         return withContext(workerScope.coroutineContext) {
-            val result = validCache
-
-            if (result.isNotEmpty()) {
-                return@withContext result
-            }
-            val hashes = calculateHashes(createDigest())
-            validCache = hashes
-            hashes
+            calculateHashes(createDigest())
         }
     }
 

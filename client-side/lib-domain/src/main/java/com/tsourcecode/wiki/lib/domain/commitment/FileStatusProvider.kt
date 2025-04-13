@@ -23,7 +23,10 @@ class FileStatusProvider(
     init {
         workerScope.launch {
             stagedFiles.update()
-            stagedFiles.data.combine(changedFiles.data) { staged, changed ->
+            combine(
+                stagedFiles.data,
+                changedFiles.data,
+            ) { staged, changed ->
                 staged.extendWith(changed)
             }.collect {
                 _statusFlow.value = it
