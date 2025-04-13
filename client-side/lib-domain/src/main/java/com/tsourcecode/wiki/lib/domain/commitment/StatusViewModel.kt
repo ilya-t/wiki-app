@@ -1,5 +1,7 @@
 package com.tsourcecode.wiki.lib.domain.commitment
 
+import com.tsourcecode.wiki.lib.domain.util.Completion
+
 class StatusViewModel(
     val items: List<StatusViewItem> = listOf(),
 )
@@ -15,7 +17,7 @@ sealed interface StatusViewItem {
     data class FileViewItem(
         val fileStatus: FileStatus,
         val onFileClick: () -> Unit,
-        val onRollbackClick: () -> Unit,
+        val onRollbackClick: () -> Completion,
     ) : StatusViewItem
 
     data class RevisionViewItem(

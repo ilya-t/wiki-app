@@ -17,6 +17,7 @@ import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.Logger
 import com.tsourcecode.wiki.lib.domain.util.Threading
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -404,7 +405,7 @@ class BackendController(
 
     fun pullOrSync() {
         scope.launch {
-            if (fileStatusProvider?.statusFlow?.value?.files?.isNotEmpty() == true) {
+            if (fileStatusProvider.statusFlow.value?.files?.isNotEmpty() == true) {
                 sync()
             } else {
                 if (pull()) {
@@ -433,8 +434,8 @@ class BackendController(
         return true
     }
 
-    fun rollback(relativePath: String) {
-        scope.launch {
+    fun rollback(relativePath: String): Job {
+        return scope.launch {
             val rollbackSpecs = RollbackSpecs(
                 files = listOf(
                     FileRollback(

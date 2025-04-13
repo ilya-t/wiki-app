@@ -19,12 +19,13 @@ docker build ./app --tag wiki_backend
 docker container rm --force wiki_backend_local
 
 docker run \
-    --detach \
+    $( [ "$2" == "--no-detach" ] || echo "--detach" ) \
     --publish $PORT:80 \
     --env APP_REPO_LINK=$REPO \
     --volume $host_ssh_keys:/root/.ssh \
     --volume $host_volumes/config:/app/config \
     --volume $host_volumes/repo-store:/app/repo-store \
+    --volume $host_volumes/remote-repos:/app/remote-repos \
     --restart unless-stopped \
     --name wiki_backend_local \
     wiki_backend:latest

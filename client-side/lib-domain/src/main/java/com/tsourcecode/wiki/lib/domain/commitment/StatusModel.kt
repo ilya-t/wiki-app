@@ -9,6 +9,8 @@ import com.tsourcecode.wiki.lib.domain.documents.Document
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
+import com.tsourcecode.wiki.lib.domain.util.Completion
+import com.tsourcecode.wiki.lib.domain.util.asCompletion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,8 +57,8 @@ class StatusModel(
         }
     }
 
-    private fun rollback(fs: FileStatus) {
-        backendController.rollback(relativePath=fs.path)
+    private fun rollback(fs: FileStatus): Completion {
+        return backendController.rollback(relativePath=fs.path).asCompletion()
     }
 
     private fun toStatusViewModel(revision: RevisionInfo?, status: StatusResponse?, commitText: String): StatusViewModel {
