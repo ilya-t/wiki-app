@@ -23,7 +23,7 @@ import kotlin.time.Duration.Companion.seconds
 private const val TEST_PROJECT = "test_repo"
 
 class SyncTests {
-    private val timeout: Duration = 120.seconds
+    private val timeout: Duration = 10.seconds
     private val testDir = File("/tmp/syncTests_${UUID.randomUUID()}").also {
         it.mkdirs()
     }
@@ -125,6 +125,47 @@ class SyncTests {
             }
     }
 
+    @Test
+    fun `pull changes from server`() = runTest(timeout = timeout) {
+        val statusModel: StatusModel = openFirstProjectStatus()
+        statusModel.sync().wait()
+
+        val repo = File(serverFiles, "test_repo")
+        val readme = File(repo, "README.md")
+        println("===> Updating local file: ${readme.absolutePath}")
+        val changes = "Another line"
+        readme.appendText(changes)
+
+        val commitMessage = "pull changes from server"
+        exec(
+            cmd = "git add README.md && git commit -m '$commitMessage' && git push origin master:master",
+            cwd = repo
+        )
+
+        println("===> Making another sync")
+        statusModel.sync().wait()
+
+        println("===> Waiting for diff to appear at status")
+        statusModel.statusFlow
+            .map { it.items.filterIsInstance<StatusViewItem.RevisionViewItem>() }
+            .first { items: List<StatusViewItem.RevisionViewItem> ->
+                items.any { it.message.contains(commitMessage) }
+            }
+
+        val files: List<StatusViewItem.FileViewItem> = statusModel
+            .statusFlow
+            .value
+            .items
+            .filterIsInstance<StatusViewItem.FileViewItem>()
+
+        Assert.assertEquals("Expecting no changed file. Instead got: ${files.map { it.fileStatus }}",
+            0, files.size)
+
+
+        val localReadMe = File(captureTestProject().dir, "README.md")
+        val body = localReadMe.readLines().joinToString("\n")
+        Assert.assertTrue("Body not contains '$changes'. instead got: '$body'", body.contains(changes))
+    }
 
     @Test
     fun `add new file and roll it back`() = runTest(timeout = timeout) {
@@ -180,6 +221,23 @@ class SyncTests {
     private suspend fun captureTestProject(): Project {
         val projects = domain.projectsRepository.data.first { it.isNotEmpty() }
         return projects.first { it.name == TEST_PROJECT }
+    }
+
+    private fun exec(cmd: String, cwd: File) {
+        val process = ProcessBuilder(
+            "sh", "-c",
+            cmd
+        )
+            .directory(cwd)
+            .start()
+        val retCode = process.waitFor()
+        val stdout = process.inputStream.bufferedReader().use { it.readText() }
+        val stderr = process.errorStream.bufferedReader().use { it.readText() }
+
+        println("Exit code: $retCode")
+        println("Standard Output:\n$stdout")
+        println("Standard Error:\n$stderr")
+        Assert.assertEquals(0, retCode)
     }
 }
 

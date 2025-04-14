@@ -50,6 +50,7 @@ import com.tsourcecode.wiki.lib.domain.commitment.Status
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewModel
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
+import com.tsourcecode.wiki.lib.domain.util.Completion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -322,7 +323,7 @@ fun PreviewCommitScreen() {
                         """.trimIndent(),
                     ),
                     onFileClick = {},
-                    onRollbackClick = {},
+                    onRollbackClick = { Completion.EMPTY },
                 ),
             )
         )
