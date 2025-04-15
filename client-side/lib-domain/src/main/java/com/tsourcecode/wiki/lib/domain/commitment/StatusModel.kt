@@ -152,6 +152,10 @@ class StatusModel(
     fun sync(): SyncJob {
         return backendController.sync()
     }
+
+    fun notifyCommitScreenResumed() {
+        sync()
+    }
 }
 
 private fun RevisionInfo?.toMessage(): String? {

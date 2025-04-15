@@ -42,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.AppNavigator
@@ -63,6 +65,7 @@ class CommitScreenView(
 ) : ScreenView {
     private val composeView = ComposeView(activity)
     private var scopeJob: Job? = null
+    private var lifecycleObserver: LifecycleEventObserver? = null
     override val view: View = composeView
 
     override fun handle(uri: URI): Boolean {
@@ -81,11 +84,24 @@ class CommitScreenView(
             }
         }
         statusModel.notifyCommitScreenOpened()
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    component.statusModel.notifyCommitScreenResumed()
+                }
+                else -> {}
+            }
+        }
+        activity.lifecycle.addObserver(observer)
+        lifecycleObserver = observer
         return true
     }
 
     override fun close() {
         scopeJob?.cancel()
+        lifecycleObserver?.let {
+            activity.lifecycle.removeObserver(it)
+        }
     }
 }
 
