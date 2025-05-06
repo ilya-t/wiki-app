@@ -14,7 +14,7 @@ class QuickStatusController() {
         listener?.invoke(StatusInfo(QuickStatus.ERROR, e))
     }
 
-    fun error(status: QuickStatus, e: Exception) {
+    fun error(status: QuickStatus, e: Throwable) {
         listener?.invoke(StatusInfo(status, e))
     }
 }

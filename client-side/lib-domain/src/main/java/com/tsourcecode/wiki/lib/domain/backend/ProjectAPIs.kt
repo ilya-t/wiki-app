@@ -9,7 +9,11 @@ class ProjectAPIs(
     private val project: Project,
 ) {
     suspend fun fileStatus(): Result<StatusResponse> {
-        val response = backendApi.status(project.name).execute()
+        val response = runCatching {
+            backendApi.status(project.name).execute()
+        }.getOrElse {
+            return Result.failure(it)
+        }
         if (response.code() != 200) {
             return Result.failure(
                 RuntimeException("Status failed with ${response.errorBody()?.string()}")

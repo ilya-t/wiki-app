@@ -122,7 +122,13 @@ class BackendController(
                 }
 
                 quickStatusController.udpate(QuickStatus.SYNC, "syncing with backend")
-                requestLastRevisionSnapshot(files)?.let { snapshot ->
+                val lastRevisionSnapshot: RevisionSnapshot? = runCatching {
+                    requestLastRevisionSnapshot(files)
+                }.getOrElse {
+                    quickStatusController.error(QuickStatus.SYNC, it)
+                    return@async Result.failure(it)
+                }
+                lastRevisionSnapshot?.let { snapshot ->
                     val serverRevision = snapshot.revision
                     sync.log { "received server revision: '$serverRevision'" }
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
@@ -315,6 +321,7 @@ class BackendController(
     /**
      * Heavy way of sync useful as "first-time-sync".
      */
+    @Throws(IOException::class)
     private suspend fun requestLastRevisionSnapshot(files: List<Hashable>): RevisionSnapshot? {
         try {
             val response = if (files.isEmpty()) {
