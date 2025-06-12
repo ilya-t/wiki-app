@@ -27,7 +27,7 @@ jobs:
 
     - name: tests artifacts
       if: ${{ always() }}
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: server-side tests artifacts
         path: server-side/build_artifacts
@@ -46,7 +46,7 @@ jobs:
 
     - name: tests artifacts
       if: ${{ always() }}
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: client-side tests artifacts
         path: client-side/ci/build_artifacts
