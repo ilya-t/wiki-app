@@ -21,6 +21,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -48,6 +49,7 @@ class BackendController(
     private val logger: Logger,
     private val fileStatusProvider: FileStatusProvider,
 ) {
+    private val mutex = Mutex(locked = false)
     private val dirRevisionStorage = StoredPrimitive.string("dir_revision", keyValueStorage)
     private var projectObserver: ((String?, File) -> Unit)? = null
     private val _refreshFlow = MutableStateFlow(false)
@@ -86,15 +88,17 @@ class BackendController(
         return false
     }
 
-    private class SyncContext(
+    private data class SyncContext(
         val rollbackSpecs: RollbackSpecs,
         val fullSync: Boolean,
     )
 
     private fun doSync(syncContext: SyncContext): SyncJob {
-        val sync = logger.fork("-sync: ")
+        val sync = logger.fork("-sync(#${Any().hashCode()}): ")
         val job = SyncJob(scope.async {
-            sync.log { "sync started" }
+            sync.log { "sync started. Context: $syncContext" }
+            sync.log { "waiting for previous sync to complete" }
+            mutex.lock()
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
                 val localRevision: String? = currentRevisionInfoController.state.value?.revision
@@ -222,6 +226,7 @@ class BackendController(
             }
             sync.log { "completed!" }
             _refreshFlow.compareAndSet(expect = true, update = false)
+            mutex.unlock()
             Result.success(Unit)
         })
 
