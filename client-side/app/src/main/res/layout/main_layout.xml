@@ -12,35 +12,42 @@
         />
 
     <LinearLayout
-        android:id="@+id/control_bar"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/control_bar_height"
+        android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:orientation="horizontal">
+        android:orientation="vertical">
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_status"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/status_height"
+            android:background="@android:color/holo_blue_light"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="12dp" />
 
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btn_home"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="home"
-            android:layout_weight="1"/>
+        <LinearLayout
+            android:id="@+id/control_bar"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/control_bar_height"
+            android:layout_gravity="bottom"
+            android:orientation="horizontal">
 
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btn_pull"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="sync"
-            tools:visibility="visible"
-            android:layout_weight="1"/>
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_home"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="home"
+                android:layout_weight="1"/>
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_pull"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="sync"
+                tools:visibility="visible"
+                android:layout_weight="1"/>
+        </LinearLayout>
     </LinearLayout>
 
 
-    <androidx.appcompat.widget.AppCompatTextView
-        android:id="@+id/tv_status"
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/status_height"
-        android:background="@android:color/holo_blue_light"
-        android:gravity="center"
-        android:textColor="@android:color/white"
-        android:textSize="12dp" />
 </FrameLayout>

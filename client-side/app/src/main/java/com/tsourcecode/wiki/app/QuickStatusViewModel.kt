@@ -6,7 +6,8 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.util.Log
-import android.widget.FrameLayout
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatTextView
@@ -30,15 +31,15 @@ class QuickStatusViewModel(
         }
 
         tvStatus.setOnClickListener {
-            if (tvStatus.layoutParams.height == FrameLayout.LayoutParams.WRAP_CONTENT) {
-                tvStatus.layoutParams = FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
+            if (tvStatus.layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
+                tvStatus.layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
                         activity.resources.getDimensionPixelSize(R.dimen.status_height),
                 )
             } else {
-                tvStatus.layoutParams = FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                tvStatus.layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
                 )
                 val clipboardManager =
                     activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
