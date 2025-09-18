@@ -2,17 +2,22 @@ package com.tsourcecode.wiki.lib.domain.commitment
 
 import com.tsourcecode.wiki.lib.domain.documents.staging.ChangedFilesController
 import com.tsourcecode.wiki.lib.domain.documents.staging.StagedFilesController
+import com.tsourcecode.wiki.lib.domain.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class FileStatusProvider(
     private val workerScope: CoroutineScope,
     private val changedFiles: ChangedFilesController,
     private val stagedFiles: StagedFilesController,
+    logger: Logger,
 ) {
+    private val logger: Logger = logger.fork("-FileStatusProvider: ")
 
     private val _statusFlow = MutableStateFlow<StatusResponse?>(
             null
@@ -21,14 +26,21 @@ class FileStatusProvider(
     val statusFlow: StateFlow<StatusResponse?> = _statusFlow
 
     init {
+
         workerScope.launch {
             stagedFiles.update()
             combine(
                 stagedFiles.data,
                 changedFiles.data,
-            ) { staged, changed ->
+            ) { staged: StatusResponse, changed: StatusResponse ->
+                logger.log {
+                    "Changes detected! Staged: ${staged.files} Changed: ${changed.files}"
+                }
                 staged.extendWith(changed)
             }.collect {
+                logger.log {
+                    "Stages/Changes combined to: $it"
+                }
                 _statusFlow.value = it
             }
         }
@@ -36,6 +48,10 @@ class FileStatusProvider(
 
     suspend fun update() {
         stagedFiles.update()
+    }
+
+    suspend fun haveLocalChanges(): Boolean {
+        return statusFlow.filterNotNull().first().files.isNotEmpty()
     }
 }
 

@@ -8,6 +8,7 @@ import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -16,15 +17,19 @@ class ChangedFilesController(
     worker: CoroutineScope,
 ) {
     private val changedFilesDir = File(project.dir, "changed_files")
-    private val _changedFiles = MutableStateFlow(StatusResponse(emptyList()))
+    private val _changedFiles = MutableStateFlow<StatusResponse?>(null)
 
-    val data: Flow<StatusResponse> = _changedFiles
+    val data: Flow<StatusResponse> = _changedFiles.filterNotNull()
 
     init {
         worker.launch {
             changedFilesDir.mkdirs()
-            _changedFiles.value = scanChangedFiles()
+            changeFiles(scanChangedFiles())
         }
+    }
+
+    private fun changeFiles(response: StatusResponse) {
+        _changedFiles.value = response
     }
 
     private fun scanChangedFiles(): StatusResponse {
@@ -58,23 +63,23 @@ class ChangedFilesController(
         }
         changedFile.writeText(modifiedContent)
 
-        val changedFilesList = _changedFiles.value.files
+        val changedFilesList = _changedFiles.value?.files.orEmpty()
         if (changedFilesList.find { it.path == d.relativePath } != null) {
             return
         }
 
-        _changedFiles.value = StatusResponse(changedFilesList + changedFile.toFileStatus())
+        changeFiles(StatusResponse(changedFilesList + changedFile.toFileStatus()))
     }
 
     fun notifyFileSynced(d: Document) {
         d.toChangedFile().delete()
-        val changedFilesList = _changedFiles.value.files
+        val changedFilesList = _changedFiles.value?.files.orEmpty()
         val updatedFilesList = changedFilesList.filter { it.path == d.relativePath }
         if (updatedFilesList.size == changedFilesList.size) {
             return
         }
 
-        _changedFiles.value = StatusResponse(updatedFilesList)
+        changeFiles(StatusResponse(updatedFilesList))
     }
 
     fun isChanged(d: Document): Boolean {

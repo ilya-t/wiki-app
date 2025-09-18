@@ -76,6 +76,7 @@ class BackendController(
         return doSync(SyncContext(
             rollbackSpecs = RollbackSpecs(emptyList()),
             fullSync = needFullSync(),
+            skipStaging = false,
         ))
         // rebuild hashes
         // receive what needs to be uploaded
@@ -91,6 +92,7 @@ class BackendController(
     private data class SyncContext(
         val rollbackSpecs: RollbackSpecs,
         val fullSync: Boolean,
+        val skipStaging: Boolean,
     )
 
     private fun doSync(syncContext: SyncContext): SyncJob {
@@ -109,7 +111,9 @@ class BackendController(
                 quickStatusController.udpate(QuickStatus.SYNC, "calculating hashes")
                 val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
                 if (!fullSync) {
-                    if (localRevision != null) {
+                    if (syncContext.skipStaging) {
+                        sync.log { "staging skipped by sync context!" }
+                    } else if (localRevision != null) {
                         sync.log { "Staging" }
                         val filesWithoutRollbacks: List<FileHash> = files
                             .flatFilesList()
@@ -423,11 +427,18 @@ class BackendController(
 
     fun pullOrSync() {
         scope.launch {
-            if (fileStatusProvider.statusFlow.value?.files?.isNotEmpty() == true) {
+            if (fileStatusProvider.haveLocalChanges()) {
                 sync()
             } else {
-                if (pull()) {
-                    sync()
+                pull().onSuccess {
+                    logger.fork("Got successful pull to: ${it}! Ready to sync and throw away local changes!")
+                    doSync(
+                        SyncContext(
+                            rollbackSpecs = RollbackSpecs(emptyList()),
+                            fullSync = false,
+                            skipStaging = true,
+                        )
+                    )
                 }
             }
 
@@ -435,21 +446,33 @@ class BackendController(
 
     }
 
-    private fun pull(): Boolean {
+    private fun pull(): Result<RevisionInfo> {
+        val pulling = logger.fork("-pull(#${Any().hashCode()}): ")
+        pulling.log { "no changes detected. Moving server's HEAD towards." }
         quickStatusController.udpate(QuickStatus.STATUS_UPDATE, "pulling")
+
         val response = backendApi.pull(project.name).execute()
         if (!response.isSuccessful) {
+            val e = IOException(
+                "error code(${response.code()}) with error: \n" +
+                        response.errorBody()?.string()
+            )
+            pulling.log { "Pull failed: ${e.message}" }
             quickStatusController.error(
                 QuickStatus.SYNC,
-                IOException("error code(${response.code()}) with error: \n" +
-                        response.errorBody()?.string()))
-            return false
+                e
+            )
+            return Result.failure(e)
         }
         //TODO: maybe use revision from body?
-        val body = response.body()?.string() ?: return false
+        val body = response.body()?.string() ?: run {
+            pulling.log { "Pull failed: Body is empty!" }
+            return Result.failure(IllegalStateException("Body is empty"))
+        }
         val revision = Json.decodeFromString(RevisionInfo.serializer(), body)
         quickStatusController.udpate(QuickStatus.STATUS_UPDATE, "Pulled to: ${revision.revision}")
-        return true
+        pulling.log { "Pull completed: server's head now ${revision}!" }
+        return Result.success(revision)
     }
 
     suspend fun rollback(relativePath: String): Result<Unit> {
@@ -476,7 +499,7 @@ class BackendController(
                 return@withContext Result.failure(ioException)
             }
 
-            val syncJob = doSync(SyncContext(rollbackSpecs, fullSync = false))
+            val syncJob = doSync(SyncContext(rollbackSpecs, fullSync = false, skipStaging = false))
             val exception = syncJob.waitResults().exceptionOrNull()
             if (exception != null) {
                 return@withContext Result.failure(

@@ -7,6 +7,7 @@ import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
@@ -17,8 +18,8 @@ class StagedFilesController(
 ) {
     private val changesStorage = StoredPrimitive.string("staged_files", projectStorage)
 
-    private val _stagedFiles = MutableStateFlow(StatusResponse(emptyList()))
-    val data: Flow<StatusResponse> = _stagedFiles
+    private val _stagedFiles = MutableStateFlow<StatusResponse?>(null)
+    val data: Flow<StatusResponse> = _stagedFiles.filterNotNull()
 
     init {
         workerScope.launch {
@@ -32,9 +33,9 @@ class StagedFilesController(
     }
 
     suspend fun update() {
-        projectAPIs.fileStatus().onSuccess {
-            _stagedFiles.value = it
-            store(it)
+        projectAPIs.fileStatus().onSuccess { response: StatusResponse ->
+            _stagedFiles.value = response
+            store(response)
         }.onFailure {
             //TODO: handle error
         }

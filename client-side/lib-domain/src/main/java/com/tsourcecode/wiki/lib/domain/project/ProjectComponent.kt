@@ -83,6 +83,7 @@ class ProjectComponent(
         scopes.worker,
         changedFiles,
         stagedFiles,
+        logger,
     )
 
     val backendController = BackendController(
