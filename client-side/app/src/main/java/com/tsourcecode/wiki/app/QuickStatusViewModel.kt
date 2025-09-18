@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatTextView
+import com.tsourcecode.wiki.app.util.Sharing
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.StatusInfo
@@ -54,13 +55,17 @@ class QuickStatusViewModel(
                     )
                     Toast.makeText(activity, "Stack at clipboard!", Toast.LENGTH_SHORT).show()
                 } else {
+                    val logsBody: String = DebugLogger.inMemoryLogs.joinToString("\n")
                     clipboardManager.setPrimaryClip(
                         ClipData(
                             ClipDescription("logs", arrayOf("")),
-                            ClipData.Item(DebugLogger.inMemoryLogs.joinToString("\n"))
+                            ClipData.Item(logsBody)
                         )
                     )
                     Toast.makeText(activity, "Logs at clipboard!", Toast.LENGTH_SHORT).show()
+                    Sharing.shareTextAsFile(activity, logsBody).onSuccess {
+                        activity.startActivity(it)
+                    }
                 }
             }
         }
