@@ -23,7 +23,7 @@ class BackendFactory(
     }
 
     private val loggingInterceptor = HttpLoggingInterceptor {
-        requestsLogger.log(it)
+        requestsLogger.log { it }
     }.apply {
         setLevel(HttpLoggingInterceptor.Level.BASIC)
     }

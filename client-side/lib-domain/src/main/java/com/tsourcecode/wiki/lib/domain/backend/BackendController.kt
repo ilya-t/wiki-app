@@ -110,6 +110,7 @@ class BackendController(
                 val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
                 if (!fullSync) {
                     if (localRevision != null) {
+                        sync.log { "Staging" }
                         val filesWithoutRollbacks: List<FileHash> = files
                             .flatFilesList()
                             .filter {
@@ -220,7 +221,7 @@ class BackendController(
                     }
                 }
             } catch (e: Exception) {
-                sync.log("ERROR: $e")
+                sync.log { "ERROR: $e" }
                 e.printStackTrace()
                 scope.launch(threading.main) {
                     quickStatusController.error(QuickStatus.SYNC, e)
@@ -253,13 +254,13 @@ class BackendController(
             backendApi.showNotStaged(project.name, localStatus).execute()
         } catch (e: IOException) {
             e.printStackTrace()
-            logger.log("Changes request failed: ${e.message}")
+            logger.log { "Changes request failed: ${e.message}" }
             quickStatusController.error(QuickStatus.STAGE, e)
             return false
         }
 
         if (response.code() != 200) {
-            logger.log("Changes request failed with code: ${response.code()}")
+            logger.log { "Changes request failed with code: ${response.code()}" }
             quickStatusController.error(QuickStatus.STAGE,
                 RuntimeException("Staging failed with ${response.errorBody()?.string()}")
             )
@@ -267,8 +268,8 @@ class BackendController(
         }
 
         val body = response.body()?.string() ?: throw IllegalStateException("Empty body received!")
-        logger.log("Detecting non staged. request: $localStatus")
-        logger.log("Detecting non staged. response: $body")
+        logger.log { "Detecting non staged. request: $localStatus" }
+        logger.log { "Detecting non staged. response: $body" }
         val notStaged = Json.decodeFromString(UnstagedResponse.serializer(), body)
 
         notStaged.files.forEach {
@@ -279,17 +280,17 @@ class BackendController(
 
             if (!file.exists()) {
                 val error = RuntimeException("File for staging did disappeared: $file")
-                logger.log("ERROR: ${error.message}")
+                logger.log { "ERROR: ${error.message}" }
                 quickStatusController.error(error)
                 return@forEach
             }
             val d = Document(project.dir, origin = file)
 
-            logger.log("Staging: $it (resolved to: $d)")
+            logger.log { "Staging: $it (resolved to: $d)" }
             if (!stage(d)) {
-                logger.log("Staging '$it' failed!")
+                logger.log { "Staging '$it' failed!" }
             } else {
-                logger.log("Staged successfully: $it")
+                logger.log { "Staged successfully: $it" }
             }
         }
 
