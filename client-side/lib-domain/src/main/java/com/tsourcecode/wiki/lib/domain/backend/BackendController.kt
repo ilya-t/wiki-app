@@ -133,8 +133,10 @@ class BackendController(
                     return@async Result.failure(it)
                 }
                 lastRevisionSnapshot?.let { snapshot ->
-                    val serverRevision = snapshot.revision
+                    val serverRevision: String = snapshot.revision
                     sync.log { "received server revision: '$serverRevision'" }
+                    val serverRevisionInfo: RevisionInfo = currentRevisionInfoController
+                        .getRevisionInfo(serverRevision)
                     quickStatusController.udpate(QuickStatus.DECOMPRESS)
                     val syncOutput = File(platformDeps.internalFiles, project.id + "/sync")
                     val syncedFiles = if (fullSync) File(syncOutput, REVISION_ZIP_REPOSITORY_DIR) else syncOutput
@@ -204,7 +206,7 @@ class BackendController(
                             }
                         fileStatusProvider.update()
                     }
-                    currentRevisionInfoController.bumpRevisionToLatest()
+                    currentRevisionInfoController.bumpRevisionTo(serverRevisionInfo)
                     syncedFiles.deleteRecursively()
 
                     dirRevision = snapshot.zipFile.nameWithoutExtension

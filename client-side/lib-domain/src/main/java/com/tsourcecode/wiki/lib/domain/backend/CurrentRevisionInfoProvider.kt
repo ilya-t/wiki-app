@@ -25,14 +25,13 @@ class CurrentRevisionInfoController(
         return null
     }
 
-    fun bumpRevisionToLatest() {
-        val info = getRevisionInfo("HEAD~0")
+    fun bumpRevisionTo(info: RevisionInfo) {
         _state.value = info
         keyValueStorage[KEY] = Json.encodeToString(RevisionInfo.serializer(), info)
     }
 
     @Throws(IOException::class)
-    private fun getRevisionInfo(revision: String): RevisionInfo {
+    fun getRevisionInfo(revision: String): RevisionInfo {
         val response = wikiBackendAPIs.showRevision(project.name, RevisionSpec(revision)).execute()
         val body = response.body()?.string() ?: throw IOException("Empty body received!")
         return Json.decodeFromString(RevisionInfo.serializer(), body)
