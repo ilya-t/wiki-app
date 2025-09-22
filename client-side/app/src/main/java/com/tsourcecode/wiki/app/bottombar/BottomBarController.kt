@@ -36,7 +36,7 @@ class BottomBarController(
 
     private fun bindSyncButton(component: ProjectComponent?) {
         btnPullOrSync.setOnClickListener {
-            component?.backendController?.pullOrSync()
+            component?.backendController?.pullOrSync("sync-button")
         }
     }
 }

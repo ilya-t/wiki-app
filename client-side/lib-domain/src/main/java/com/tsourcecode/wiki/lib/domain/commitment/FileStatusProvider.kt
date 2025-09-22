@@ -15,9 +15,9 @@ class FileStatusProvider(
     private val workerScope: CoroutineScope,
     private val changedFiles: ChangedFilesController,
     private val stagedFiles: StagedFilesController,
-    logger: Logger,
+    l: Logger,
 ) {
-    private val logger: Logger = logger.fork("-FileStatusProvider: ")
+    private val logger: Logger = l.fork("-FileStatusProvider: ")
 
     private val _statusFlow = MutableStateFlow<StatusResponse?>(
             null
@@ -26,7 +26,6 @@ class FileStatusProvider(
     val statusFlow: StateFlow<StatusResponse?> = _statusFlow
 
     init {
-
         workerScope.launch {
             stagedFiles.update()
             combine(
@@ -50,8 +49,8 @@ class FileStatusProvider(
         stagedFiles.update()
     }
 
-    suspend fun haveLocalChanges(): Boolean {
-        return statusFlow.filterNotNull().first().files.isNotEmpty()
+    suspend fun getLocalChanges(): List<FileStatus> {
+        return statusFlow.filterNotNull().first().files
     }
 }
 

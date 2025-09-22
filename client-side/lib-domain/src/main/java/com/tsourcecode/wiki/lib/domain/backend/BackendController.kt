@@ -70,7 +70,7 @@ class BackendController(
     }
 
     init {
-        pullOrSync()
+        pullOrSync("project init")
     }
 
     private fun needFullSync(): Boolean {
@@ -428,9 +428,14 @@ class BackendController(
         return success
     }
 
-    fun pullOrSync(): SyncJob {
+    fun pullOrSync(reason: String): SyncJob {
         val result: Deferred<Result<Unit>> = scope.async {
-            return@async if (fileStatusProvider.haveLocalChanges()) {
+            val logger = logger.fork("-pullOrSync('$reason')")
+            logger.log { "Gathering local changes" }
+            val localChanges = fileStatusProvider.getLocalChanges()
+            val haveLocalChanges = localChanges.isNotEmpty()
+            logger.log { "initiated! Got local changes: $haveLocalChanges Files: ${localChanges}" }
+            return@async if (haveLocalChanges) {
                 doSync(
                     SyncContext(
                         rollbackSpecs = RollbackSpecs(emptyList()),

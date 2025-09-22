@@ -20,7 +20,6 @@ import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URI
@@ -94,7 +93,7 @@ class FileManagerView(
 
     private fun setupPullToRefresh(component: ProjectComponent) {
         swipeRefreshLayout.setOnRefreshListener {
-            component.backendController.sync()
+            component.backendController.pullOrSync("pull-to-refresh")
         }
         scope.launch {
             component.backendController.refreshFlow.collect { refreshing ->
