@@ -17,6 +17,7 @@ import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.Logger
 import com.tsourcecode.wiki.lib.domain.util.Threading
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,17 +70,7 @@ class BackendController(
     }
 
     init {
-        sync()
-    }
-
-    fun sync(): SyncJob {
-        return doSync(SyncContext(
-            rollbackSpecs = RollbackSpecs(emptyList()),
-            fullSync = needFullSync(),
-            skipStaging = false,
-        ))
-        // rebuild hashes
-        // receive what needs to be uploaded
+        pullOrSync()
     }
 
     private fun needFullSync(): Boolean {
@@ -409,41 +400,63 @@ class BackendController(
     }
 
     suspend fun commit(message: String): Boolean {
+        val commit = logger.fork("commit")
+        commit.log {
+            val r: RevisionInfo? = currentRevisionInfoController.state.value
+            "message: '$message' current revision: '${r}'"
+        }
         quickStatusController.udpate(QuickStatus.COMMIT)
-        val response = backendApi.commit(project.name,
+        val response: Response<ResponseBody> = backendApi.commit(
+            project.name,
                 WikiBackendAPIs.Commitment(message)
         ).execute()
+
+        commit.log {
+            "response code: ${response.code()}"
+        }
         val success = response.code() == 200
         if (success) {
             quickStatusController.udpate(QuickStatus.COMMITED)
         } else {
+            val failureMessage = "Commit failed with ${response.errorBody()?.string()}"
+            commit.log { failureMessage }
             quickStatusController.error(
                 QuickStatus.COMMITED,
-                RuntimeException("Commit failed with ${response.errorBody()?.string()}")
+                RuntimeException(failureMessage)
             )
         }
         return success
     }
 
-    fun pullOrSync() {
-        scope.launch {
-            if (fileStatusProvider.haveLocalChanges()) {
-                sync()
-            } else {
-                pull().onSuccess {
-                    logger.fork("Got successful pull to: ${it}! Ready to sync and throw away local changes!")
-                    doSync(
-                        SyncContext(
-                            rollbackSpecs = RollbackSpecs(emptyList()),
-                            fullSync = false,
-                            skipStaging = true,
-                        )
+    fun pullOrSync(): SyncJob {
+        val result: Deferred<Result<Unit>> = scope.async {
+            return@async if (fileStatusProvider.haveLocalChanges()) {
+                doSync(
+                    SyncContext(
+                        rollbackSpecs = RollbackSpecs(emptyList()),
+                        fullSync = needFullSync(),
+                        skipStaging = false,
                     )
+                ).waitResults()
+            } else {
+                val revision: RevisionInfo = pull()
+                    .getOrElse { error ->
+                        val message = "Pull failure: $error"
+                        logger.log { message }
+                        return@async Result.failure(RuntimeException(message))
                 }
+                logger.log { "Got successful pull to: ${revision}! Ready to sync and throw away local changes!" }
+                doSync(
+                    SyncContext(
+                        rollbackSpecs = RollbackSpecs(emptyList()),
+                        fullSync = false,
+                        skipStaging = true,
+                    )
+                ).waitResults()
             }
-
         }
 
+        return SyncJob(result)
     }
 
     private fun pull(): Result<RevisionInfo> {

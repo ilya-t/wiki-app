@@ -40,7 +40,7 @@ class StatusModel(
             val message = commitTextFlow.value
             commitTextFlow.value = ""
             if (backendController.commit(message)) {
-                backendController.sync()
+                backendController.pullOrSync()
             }
         }
     }
@@ -125,7 +125,7 @@ class StatusModel(
         worker.launch {
             val lastSeenCommitText = commitTextFlow.value
             if (lastSeenCommitText.isNotEmpty() && backendController.commit(lastSeenCommitText)) {
-                backendController.sync()
+                backendController.pullOrSync()
                 updateCommitText("")
             }
         }
@@ -150,7 +150,7 @@ class StatusModel(
     }
 
     fun sync(): SyncJob {
-        return backendController.sync()
+        return backendController.pullOrSync()
     }
 
     fun notifyCommitScreenResumed() {
