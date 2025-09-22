@@ -49,6 +49,12 @@ class FileStatusProvider(
     }
 
     suspend fun hasChangedFiles(): Boolean = changedFiles.haveChanges()
+
+    suspend fun notifyCommitHappened() {
+        stagedFiles.clean()
+        stagedFiles.update()
+        changedFiles.assumeCurrentFilesAreSynchronized()
+    }
 }
 
 private fun StatusResponse.extendWith(extra: StatusResponse): StatusResponse {

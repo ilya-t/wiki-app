@@ -44,4 +44,9 @@ class StagedFilesController(
     private fun store(changes: StatusResponse) {
         changesStorage.value = Json.encodeToString(StatusResponse.serializer(), changes)
     }
+
+    fun clean() {
+        _stagedFiles.value = null
+        changesStorage.value = null
+    }
 }

@@ -60,8 +60,6 @@ class ChangedFilesController(
             val hasChanges = savedHash != currentHash
             if (hasChanges) {
                 logger.log { "local changes detected since last sync at: '${it.file}'" }
-            } else {
-                logger.log { "no local changes detected for: '${it.file}', file content: '${it.file.readText()}'" }
             }
             hasChanges
         }.also {

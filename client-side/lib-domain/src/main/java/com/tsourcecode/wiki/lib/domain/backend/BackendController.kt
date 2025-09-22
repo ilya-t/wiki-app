@@ -69,8 +69,6 @@ class BackendController(
         }
     }
 
-    private val lastSync = MutableStateFlow<String?>(null)
-
     init {
         pullOrSync("project init")
     }
@@ -419,6 +417,7 @@ class BackendController(
         val success = response.code() == 200
         if (success) {
             quickStatusController.udpate(QuickStatus.COMMITED)
+            fileStatusProvider.notifyCommitHappened()
         } else {
             val failureMessage = "Commit failed with ${response.errorBody()?.string()}"
             commit.log { failureMessage }
