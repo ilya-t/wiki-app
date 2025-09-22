@@ -14,6 +14,9 @@ import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 import com.tsourcecode.wiki.lib.domain.util.Logger
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class DomainComponent<T : PlatformDeps>(
     val platformDeps: T,
@@ -34,8 +37,10 @@ class DomainComponent<T : PlatformDeps>(
     )
 
     val quickStatusController = QuickStatusController()
+    private val dateFormat: DateFormat = SimpleDateFormat("dd.MM HH:mm:ss", Locale.US)
+
     private val logger = Logger { m ->
-        val message = withTimePasssedBlock(m)
+        val message = dateFormat.format(System.currentTimeMillis()) + ": " + withTimePasssedBlock(m)
         DebugLogger.log(message)
         scopes.main.launch {
             if (DebugLogger.inMemoryLogs.size > 10_000) {

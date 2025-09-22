@@ -4,13 +4,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-class StatusResponse(
+data class StatusResponse(
         @SerialName("files")
         val files: List<FileStatus>,
 )
 
 @Serializable
-class UnstagedResponse(
+data class UnstagedResponse(
         @SerialName("files")
         val files: List<String>,
 )
