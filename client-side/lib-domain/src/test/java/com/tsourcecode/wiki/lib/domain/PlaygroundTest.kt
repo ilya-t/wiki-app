@@ -20,8 +20,8 @@ class PlaygroundTest {
         val statusScreenModel = underTest.viewModels
             .statusScreenModel("notes")!!
         runBlocking {
-            statusScreenModel.sync().wait()
-            statusScreenModel.sync().wait()
+            statusScreenModel.sync("testing").wait()
+            statusScreenModel.sync("testing").wait()
         }
     }
 }

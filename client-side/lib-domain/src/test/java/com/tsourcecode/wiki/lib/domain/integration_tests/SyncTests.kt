@@ -56,7 +56,7 @@ class SyncTests {
     @Test
     fun `initial sync with repo from server`() = runTest(timeout = timeout) {
         val statusModel: StatusModel = openFirstProjectStatus()
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         val initialFile = File(captureTestProject().dir, "README.md")
         Assert.assertTrue(initialFile.exists())
@@ -65,14 +65,14 @@ class SyncTests {
     @Test
     fun `once file edited it is shown at status`() = runTest(timeout = timeout) {
         val statusModel: StatusModel = openFirstProjectStatus()
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         println("--> Updating local file")
         val initialFile = File(captureTestProject().dir, "README.md")
         initialFile.writeText("<README.md updated content>")
 
         println("--> Making another sync")
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         val files: List<StatusViewItem.FileViewItem> = statusModel.statusFlow
             .map { it.items.filterIsInstance<StatusViewItem.FileViewItem>() }
@@ -88,7 +88,7 @@ class SyncTests {
     @Test
     fun `no changes after first sync`() = runTest(timeout = timeout) {
         val statusModel: StatusModel = openFirstProjectStatus()
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         val items: List<StatusViewItem> = statusModel.statusFlow.first {
             it.items.isNotEmpty()
@@ -103,14 +103,14 @@ class SyncTests {
     @Test
     fun `add new file`() = runTest(timeout = timeout) {
         val statusModel: StatusModel = openFirstProjectStatus()
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         val newFile = File(captureTestProject().dir, "new.md")
         println("===> Adding new local file: ${newFile.absolutePath}")
         newFile.writeText("<new.md content>")
 
         println("===> Making another sync")
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         println("===> Waiting for diff to appear at status")
         val files: List<StatusViewItem.FileViewItem> = statusModel.statusFlow
@@ -128,7 +128,7 @@ class SyncTests {
     @Test
     fun `pull changes from server`() = runTest(timeout = timeout) {
         val statusModel: StatusModel = openFirstProjectStatus()
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         val repo = File(serverFiles, "test_repo")
         val readme = File(repo, "README.md")
@@ -143,7 +143,7 @@ class SyncTests {
         )
 
         println("===> Making another sync")
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         println("===> Waiting for diff to appear at status")
         statusModel.statusFlow
@@ -170,14 +170,14 @@ class SyncTests {
     @Test
     fun `add new file and roll it back`() = runTest(timeout = timeout) {
         val statusModel: StatusModel = openFirstProjectStatus()
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         val newFile = File(captureTestProject().dir, "new.md")
         println("===> Adding new local file: ${newFile.absolutePath}")
         newFile.writeText("<new.md content>")
 
         println("===> Making another sync")
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         println("===> Waiting for diff to appear at status")
         val files: List<StatusViewItem.FileViewItem> = statusModel.statusFlow
@@ -192,7 +192,7 @@ class SyncTests {
             .wait()
 
         println("===> Making another sync after roll back")
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
 
         Assert.assertFalse(newFile.exists())

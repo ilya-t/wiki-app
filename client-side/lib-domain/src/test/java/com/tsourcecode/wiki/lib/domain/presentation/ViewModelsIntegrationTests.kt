@@ -98,7 +98,7 @@ class ViewModelsIntegrationTests {
             NavigationUtils.openDocument(project, document)
         )
         Assert.assertEquals("v1", viewModel!!.getContent())
-        domain.projectComponents.get(project).backendController.sync()
+        domain.projectComponents.get(project).backendController.pullOrSync("testing")
     }
 
     @Test
@@ -129,7 +129,7 @@ class ViewModelsIntegrationTests {
 
         val locallyChanged = "<File edited locally>"
         readmeDoc.file.writeText(locallyChanged)
-        domain.projectComponents.get(project).statusModel.sync()
+        domain.projectComponents.get(project).statusModel.sync("testing")
         waitProjectFolderSynced(v1revision)
 
         Assert.assertEquals(locallyChanged, readmeDoc.file.readText())
@@ -147,7 +147,7 @@ class ViewModelsIntegrationTests {
 
         println("=> sync again")
         val statusModel = domain.projectComponents.get(project).statusModel
-        statusModel.sync().waitWithTimeout()
+        statusModel.sync("testing").waitWithTimeout()
 
         println("=> resolving file for rollback")
         val changedFiles: StatusViewItem.FileViewItem = statusModel.statusFlow
@@ -161,7 +161,7 @@ class ViewModelsIntegrationTests {
         backend.updateRevision(v3)
         changedFiles.onRollbackClick()
 
-        statusModel.sync().waitWithTimeout()
+        statusModel.sync("testing").waitWithTimeout()
         backend.verifyRollbackCall(readmeDoc)
     }
 
@@ -177,7 +177,7 @@ class ViewModelsIntegrationTests {
 
         println("=> sync again")
         val statusModel = domain.projectComponents.get(project).statusModel
-        statusModel.sync().waitWithTimeout()
+        statusModel.sync("testing").waitWithTimeout()
 
         println("=> resolving file for rollback")
         val changedFiles: StatusViewItem.FileViewItem = statusModel.statusFlow
@@ -191,7 +191,7 @@ class ViewModelsIntegrationTests {
         backend.updateRevision(v3)
         changedFiles.onRollbackClick()
 
-        statusModel.sync().waitWithTimeout()
+        statusModel.sync("testing").waitWithTimeout()
         backend.verifyRollbackCall(srcDoc)
     }
 
@@ -208,7 +208,7 @@ class ViewModelsIntegrationTests {
 
             println("=> sync again")
             val statusModel = domain.projectComponents.get(project).statusModel
-            statusModel.sync().waitWithTimeout()
+            statusModel.sync("testing").waitWithTimeout()
 
             println("=> resolving file for rollback")
             val changedFiles: StatusViewItem.FileViewItem = statusModel.statusFlow
@@ -222,7 +222,7 @@ class ViewModelsIntegrationTests {
             backend.updateRevision(v3)
             changedFiles.onRollbackClick()
 
-            statusModel.sync().wait()
+            statusModel.sync("testing").wait()
 
             val requestsAfterRollback = backend.captureInterceptions().dropWhile { (req, _) ->
                 !req.url.toString().contains(NOTES_PROJECT_ROLLBACK_API)
@@ -252,7 +252,7 @@ class ViewModelsIntegrationTests {
 
         println("=> sync again")
         val statusModel = domain.projectComponents.get(project).statusModel
-        statusModel.sync().waitWithTimeout()
+        statusModel.sync("testing").waitWithTimeout()
 
         println("=> resolving file for rollback")
         val changedFiles: StatusViewItem.FileViewItem = statusModel.statusFlow
@@ -266,7 +266,7 @@ class ViewModelsIntegrationTests {
         backend.updateRevision(v3)
         changedFiles.onRollbackClick()
 
-        statusModel.sync().wait()
+        statusModel.sync("testing").wait()
 
         val requestsAfterRollback = backend.captureInterceptions().dropWhile { (req, _) ->
             !req.url.toString().contains(NOTES_PROJECT_ROLLBACK_API)
@@ -291,7 +291,7 @@ class ViewModelsIntegrationTests {
         readmeDoc.file.writeText(locallyChanged)
         backend.updateRevision(v1revision.markUnstaged(readmeDoc))
 
-        domain.projectComponents.get(project).statusModel.sync().waitWithTimeout()
+        domain.projectComponents.get(project).statusModel.sync("testing").waitWithTimeout()
         backend.verifyStageCall(readmeDoc)
     }
 
@@ -305,7 +305,7 @@ class ViewModelsIntegrationTests {
         srcDoc.file.writeText(locallyChanged)
         backend.updateRevision(v1revision.markUnstaged(srcDoc))
 
-        domain.projectComponents.get(project).statusModel.sync().waitWithTimeout()
+        domain.projectComponents.get(project).statusModel.sync("testing").waitWithTimeout()
         backend.verifyStageCall(srcDoc)
     }
 
