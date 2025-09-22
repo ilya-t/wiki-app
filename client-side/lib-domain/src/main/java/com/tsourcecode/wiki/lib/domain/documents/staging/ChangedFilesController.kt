@@ -50,7 +50,8 @@ class ChangedFilesController(
         val snapshot: ChangedFilesSnapshot = Json.decodeFromString<ChangedFilesSnapshot>(snapshotString)
         val savedHashes = snapshot.files.associate { it.path to it.hash }
 
-        return elementHashProvider.getHashes().any {
+        val hashes = elementHashProvider.getHashes()
+        return hashes.any {
             val savedHash = savedHashes[it.file.absolutePath] ?: run {
                 logger.log { "local changes detected since last sync at: '${it.file}' (new file)" }
                 return true
@@ -59,6 +60,8 @@ class ChangedFilesController(
             val hasChanges = savedHash != currentHash
             if (hasChanges) {
                 logger.log { "local changes detected since last sync at: '${it.file}'" }
+            } else {
+                logger.log { "no local changes detected for: '${it.file}', file content: '${it.file.readText()}'" }
             }
             hasChanges
         }.also {

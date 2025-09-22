@@ -1,6 +1,7 @@
 set -e
 PORT=8181
 host_volumes=$1
+ALIAS=$3
 
 if [ "$host_volumes" == "" ]; then
     echo "Specify path to volumes as first arg: ./localrun.sh /some/path "
@@ -15,13 +16,14 @@ host_ssh_keys=~/.ssh
 mkdir -p $host_volumes/config
 mkdir -p $host_volumes/repo-store
 
-docker build ./app --tag wiki_backend
 docker container rm --force wiki_backend_local
+docker build ./app --tag wiki_backend
 
 docker run \
     $( [ "$2" == "--no-detach" ] || echo "--detach" ) \
     --publish $PORT:80 \
     --env APP_REPO_LINK=$REPO \
+    --env ALIAS="$ALIAS" \
     --volume $host_ssh_keys:/root/.ssh \
     --volume $host_volumes/config:/app/config \
     --volume $host_volumes/repo-store:/app/repo-store \
@@ -33,4 +35,3 @@ docker run \
 
 echo "server-side is running locally. Check url:"
 echo "      http://localhost:$PORT/api/health"
-echo "(to forward port to emulator use: adb root && adb forward tcp:$PORT tcp:80)"

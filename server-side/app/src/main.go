@@ -3,14 +3,19 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 )
 
-func getHealth(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "OK!")
-}
-
 func main() {
-	http.HandleFunc("/api/health", getHealth)
+	alias := os.Getenv("ALIAS")
+	if alias == "" {
+		 alias = "undefined"
+	}
+
+	healthApi := &HealthHttpApi{
+		Alias: alias,
+	}
+	http.HandleFunc("/api/health", healthApi.getHealth)
 
 	configs, e := loadConfigurations()
 	if e != nil {
@@ -33,4 +38,12 @@ func main() {
 
 	fmt.Println("Starting server...")
 	http.ListenAndServe(":80", nil)
+}
+
+type HealthHttpApi struct {
+	Alias        string
+}
+
+func (h *HealthHttpApi) getHealth(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(w, "{ \"alias\": \"%s\", \"status\": \"OK!\" }", h.Alias)
 }

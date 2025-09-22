@@ -1,5 +1,6 @@
 set -e
 PROJECT_DIR=$1
+ALIAS=$2
 CWD=$(pwd)
 
 if [ "$PROJECT_DIR" == "" ]; then
@@ -41,4 +42,4 @@ prepare_repo > $PROJECT_DIR/server.log 2>&1
 
 echo "--> Launching server"
 cd $CWD
-./localrun.sh $PROJECT_DIR --no-detach >> $PROJECT_DIR/server.log 2>&1
+./localrun.sh $PROJECT_DIR --no-detach "$ALIAS" >> $PROJECT_DIR/server.log 2>&1

@@ -10,10 +10,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.junit.After
 import org.junit.Assert
+import org.junit.Before
+import org.junit.Rule
+import org.junit.rules.TestName
 import java.io.File
 import java.util.UUID
 import kotlin.test.Test
@@ -22,6 +27,9 @@ import kotlin.time.Duration.Companion.seconds
 
 private const val TEST_PROJECT = "test_repo"
 
+/**
+ * Heavy integrational test that will boot local server container against which sync will be checked.
+ */
 class SyncTests {
     private val timeout: Duration = 10.seconds
     private val testDir = File("/tmp/syncTests_${UUID.randomUUID()}").also {
@@ -31,13 +39,23 @@ class SyncTests {
     private val domain = TestDomainComponentFactory.create(filesRoot = clientFiles)
     private val serverFiles = File(testDir, "server-side")
 
-    private val serverController = ServerController(serverFiles).also {
-        it.start()
-        it.waitHeartbeats()
-    }
+    @get:Rule val rule = TestName()
+
+    private lateinit var serverController: ServerController
 
     init {
-        println("Test artifacts could be found at: '$testDir'")
+        println("Test artifacts are available at: '$testDir'")
+    }
+
+    @Before
+    fun setUp() {
+        serverController = ServerController(
+            serverFiles = serverFiles,
+            alias = rule.methodName
+        ).also {
+            it.start()
+            it.waitHeartbeats()
+        }
     }
 
     @After
@@ -139,7 +157,7 @@ class SyncTests {
         val repo = File(serverFiles, "test_repo")
         val readme = File(repo, "README.md")
         println("===> Updating local file: ${readme.absolutePath}")
-        val changes = "Another line"
+        val changes = "Nearly-commited line"
         readme.appendText(changes)
 
         val commitMessage = "pull changes from server"
@@ -149,11 +167,16 @@ class SyncTests {
         )
 
         println("===> Making another sync")
-        statusModel.sync("testing").wait()
+        statusModel.sync("testing").waitResults().exceptionOrNull()?.let {
+            throw AssertionError(it)
+        }
 
         println("===> Waiting for diff to appear at status")
         statusModel.statusFlow
-            .map { it.items.filterIsInstance<StatusViewItem.RevisionViewItem>() }
+            .map {
+                println("Status: $it")
+                it.items.filterIsInstance<StatusViewItem.RevisionViewItem>()
+            }
             .first { items: List<StatusViewItem.RevisionViewItem> ->
                 items.any { it.message.contains(commitMessage) }
             }
@@ -249,6 +272,7 @@ class SyncTests {
 
 private class ServerController(
     private val serverFiles: File,
+    private val alias: String,
 ) {
     val serverUrl = "http://127.0.0.1:8181"
     private val serverProcess: Process
@@ -256,7 +280,7 @@ private class ServerController(
     init {
         serverFiles.mkdirs()
 
-        val cmd = "./localrun_for_tests.sh $serverFiles"
+        val cmd = "./localrun_for_tests.sh $serverFiles '$alias'"
         serverProcess = ProcessBuilder(
             "sh", "-c",
             cmd
@@ -286,9 +310,14 @@ private class ServerController(
         try {
             val response = client.newCall(request).execute()
             if (response.code == 200) {
-                return true
+                val body = response.body?.charStream()?.readText() ?: return false
+                val status = Json.decodeFromString(Heartbeat.serializer(), body)
+                println("heartbeat response body: '$body'")
+                return status.alias == alias
             }
         } catch (e: Exception) {
+            println("heartbeat failed: '$e'")
+
             // Ignore exceptions and retry
         }
         return false
@@ -313,3 +342,9 @@ private class ServerController(
         waitHeartbeatsStop()
     }
 }
+
+@Serializable
+private data class Heartbeat(
+    val alias: String,
+    val status: String,
+)
