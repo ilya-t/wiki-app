@@ -23,7 +23,11 @@ data class FileStatus(
         val status: Status,
         @SerialName("diff")
         val diff: String,
-)
+) {
+    override fun toString(): String {
+        return "FileStatus(path='$path', status=$status) diff:\n```diff\n$diff\n```\n"
+    }
+}
 
 @Serializable
 enum class Status(private val stringValue: String) {

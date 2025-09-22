@@ -10,7 +10,7 @@ import java.io.IOException
 object Sharing {
     private const val AUTHORITY = "com.tsourcecode.wiki.files"
 
-    fun shareTextAsFile(c: Context, text: String, fileName: String = "debug.log"): Result<Intent> {
+    fun shareTextAsFile(c: Context, text: String, fileName: String = "debug_log.md"): Result<Intent> {
         val file = File(c.filesDir, fileName)
         try {
             file.writeText(text)
