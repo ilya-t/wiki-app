@@ -1,109 +1,76 @@
 package com.tsourcecode.wiki.lib.domain.documents.staging
 
-import com.tsourcecode.wiki.lib.domain.commitment.FileStatus
-import com.tsourcecode.wiki.lib.domain.commitment.Status
-import com.tsourcecode.wiki.lib.domain.commitment.StatusResponse
-import com.tsourcecode.wiki.lib.domain.documents.Document
-import com.tsourcecode.wiki.lib.domain.project.Project
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.launch
-import java.io.File
+import com.tsourcecode.wiki.lib.domain.hashing.DirHash
+import com.tsourcecode.wiki.lib.domain.hashing.ElementHashProvider
+import com.tsourcecode.wiki.lib.domain.hashing.FileHash
+import com.tsourcecode.wiki.lib.domain.hashing.Hashable
+import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
+import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
+import com.tsourcecode.wiki.lib.domain.util.Logger
+import kotlinx.serialization.json.Json
 
 class ChangedFilesController(
-    project: Project,
-    worker: CoroutineScope,
+    private val projectStorage: KeyValueStorage,
+    private val elementHashProvider: ElementHashProvider,
+    logger: Logger,
 ) {
-    private val changedFilesDir = File(project.dir, "changed_files")
-    private val _changedFiles = MutableStateFlow<StatusResponse?>(null)
+    private val changesStorage = StoredPrimitive.string("changed_files", projectStorage)
+    private val logger = logger.fork("changed-files-controller:")
 
-    val data: Flow<StatusResponse> = _changedFiles.filterNotNull()
-
-    init {
-        worker.launch {
-            changedFilesDir.mkdirs()
-            changeFiles(scanChangedFiles())
-        }
-    }
-
-    private fun changeFiles(response: StatusResponse) {
-        _changedFiles.value = response
-    }
-
-    private fun scanChangedFiles(): StatusResponse {
-        if (!changedFilesDir.isDirectory) {
-            throw RuntimeException("Changed dir($changedFilesDir) is file!")
-        }
-        val files = mutableListOf<File>()
-        scanFolder(changedFilesDir, files)
-        return StatusResponse(files.map { it.toFileStatus() })
-    }
-
-    private fun scanFolder(dir: File, results: MutableList<File>) {
-        dir.safeListFiles().forEach { file ->
-            if (file.isDirectory) {
-                scanFolder(file, results)
-            } else {
-                results.add(file)
+    private fun toPersistentHashes(h: Hashable): List<PersistentFileHash> {
+        return when (h) {
+            is DirHash -> {
+                val results = mutableListOf<PersistentFileHash>()
+                results.add(h.asFileHash())
+                h.fileHashes.forEach {
+                    results.addAll(toPersistentHashes(it))
+                }
+                results
             }
+            is FileHash -> listOf(h.asFileHash())
         }
     }
 
-    private fun File.safeListFiles(): Array<File> {
-        return this.listFiles() ?: emptyArray()
-    }
-
-    fun markChanged(d: Document, modifiedContent: String) {
-        val changedFile = d.toChangedFile()
-        changedFile.parentFile.mkdirs()
-        if (!changedFile.parentFile.exists()) {
-            throw RuntimeException("Unable to generate file directories structure: ${changedFile.parentFile}")
-        }
-        changedFile.writeText(modifiedContent)
-
-        val changedFilesList = _changedFiles.value?.files.orEmpty()
-        if (changedFilesList.find { it.path == d.relativePath } != null) {
-            return
+    suspend fun assumeCurrentFilesAreSynchronized() {
+        val hashes: List<PersistentFileHash> = elementHashProvider.getHashes().flatMap { h: Hashable ->
+            toPersistentHashes(h)
         }
 
-        changeFiles(StatusResponse(changedFilesList + changedFile.toFileStatus()))
+        val encoded = Json.encodeToString(ChangedFilesSnapshot.serializer(),
+            ChangedFilesSnapshot(hashes))
+        logger.log { "synched files snapshot updated: $encoded" }
+        changesStorage.value = encoded
     }
 
-    fun notifyFileSynced(d: Document) {
-        d.toChangedFile().delete()
-        val changedFilesList = _changedFiles.value?.files.orEmpty()
-        val updatedFilesList = changedFilesList.filter { it.path == d.relativePath }
-        if (updatedFilesList.size == changedFilesList.size) {
-            return
+    suspend fun haveChanges(): Boolean {
+        val snapshotString: String = changesStorage.value ?: run {
+            logger.log { "assume local changes since last sync cause no changes snapshot exists!" }
+            return true
         }
+        val snapshot: ChangedFilesSnapshot = Json.decodeFromString<ChangedFilesSnapshot>(snapshotString)
+        val savedHashes = snapshot.files.associate { it.path to it.hash }
 
-        changeFiles(StatusResponse(updatedFilesList))
-    }
+        return elementHashProvider.getHashes().any {
+            val savedHash = savedHashes[it.file.absolutePath] ?: run {
+                logger.log { "local changes detected since last sync at: '${it.file}' (new file)" }
+                return true
+            }
+            val currentHash = it.hash
+            val hasChanges = savedHash != currentHash
+            if (hasChanges) {
+                logger.log { "local changes detected since last sync at: '${it.file}'" }
+            }
+            hasChanges
+        }.also {
+            if (!it) {
+                logger.log { "no local changes detected since last sync" }
+            }
 
-    fun isChanged(d: Document): Boolean {
-        return d.toChangedFile().exists()
-    }
-
-    fun getChangedFile(d: Document): File? {
-        val candidate = d.toChangedFile()
-        if (candidate.exists()) {
-            return candidate
         }
-
-        return null
-    }
-
-    private fun Document.toChangedFile(): File {
-        return File(changedFilesDir, this.relativePath)
-    }
-
-    private fun File.toFileStatus(): FileStatus {
-        return FileStatus(
-            path = toRelativeString(changedFilesDir),
-            status = Status.MODIFIED,
-            diff = "<sync with backend to see diff>"
-        )
     }
 }
+
+private fun Hashable.asFileHash() = PersistentFileHash(
+    path = this.file.absolutePath,
+    hash = this.hash,
+)

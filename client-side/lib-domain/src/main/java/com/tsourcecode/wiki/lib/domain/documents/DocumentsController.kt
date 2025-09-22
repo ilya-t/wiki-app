@@ -94,15 +94,15 @@ class DocumentsController(
     //TODO: save doc not here but also on sync
     fun save(d: Document, content: String) {
         scopes.worker.launch {
-            changedFilesController.markChanged(d, content)
+            //changedFilesController.markChanged(d, content)
 
             //TODO: appcompat this
 
             val b64 = com.tsourcecode.wiki.lib.domain.util.Base64.getEncoder().encodeToString(content.toByteArray())
 
-            if (backendController.stage(d.relativePath, b64)) {
-                changedFilesController.notifyFileSynced(d)
-            }
+//            if (backendController.stage(d.relativePath, b64)) {
+//                changedFilesController.notifyFileSynced(d)
+//            }
         }
     }
 }

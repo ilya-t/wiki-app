@@ -64,8 +64,9 @@ class ProjectComponent(
     )
 
     private val changedFiles = ChangedFilesController(
-        project,
-        scopes.worker,
+        projectStorage,
+        elementHashProvider,
+        logger,
     )
 
     private val projectAPIs = ProjectAPIs(

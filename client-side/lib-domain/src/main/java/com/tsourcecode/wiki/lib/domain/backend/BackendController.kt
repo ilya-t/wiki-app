@@ -69,6 +69,8 @@ class BackendController(
         }
     }
 
+    private val lastSync = MutableStateFlow<String?>(null)
+
     init {
         pullOrSync("project init")
     }
@@ -84,6 +86,7 @@ class BackendController(
         val rollbackSpecs: RollbackSpecs,
         val fullSync: Boolean,
         val skipStaging: Boolean,
+        val reason: String,
     )
 
     private fun doSync(syncContext: SyncContext): SyncJob {
@@ -91,7 +94,6 @@ class BackendController(
         val job = SyncJob(scope.async {
             sync.log { "sync started. Context: $syncContext" }
             sync.log { "waiting for previous sync to complete" }
-            mutex.lock()
             _refreshFlow.compareAndSet(expect = false, update = true)
             try {
                 val localRevision: String? = currentRevisionInfoController.state.value?.revision
@@ -156,7 +158,7 @@ class BackendController(
                         }
                     } else {
                         if (localRevision == serverRevision) {
-                            sync.log { "staging non-synced files!" }
+                            sync.log { "staging non-synced files: $syncedFiles" }
 //                            syncedFiles
 //                                .walkTopDown()
 //                                .asSequence()
@@ -203,6 +205,7 @@ class BackendController(
                         fileStatusProvider.update()
                     }
                     currentRevisionInfoController.bumpRevisionTo(serverRevisionInfo)
+                    fileStatusProvider.assumeCurrentProjectStateSynchronized()
                     syncedFiles.deleteRecursively()
 
                     dirRevision = snapshot.zipFile.nameWithoutExtension
@@ -224,7 +227,6 @@ class BackendController(
             }
             sync.log { "completed!" }
             _refreshFlow.compareAndSet(expect = true, update = false)
-            mutex.unlock()
             Result.success(Unit)
         })
 
@@ -430,38 +432,47 @@ class BackendController(
 
     fun pullOrSync(reason: String): SyncJob {
         val result: Deferred<Result<Unit>> = scope.async {
-            val logger = logger.fork("-pullOrSync('$reason')")
-            logger.log { "Gathering local changes" }
-            val localChanges = fileStatusProvider.getLocalChanges()
-            val haveLocalChanges = localChanges.isNotEmpty()
-            logger.log { "initiated! Got local changes: $haveLocalChanges Files: ${localChanges}" }
-            return@async if (haveLocalChanges) {
-                doSync(
-                    SyncContext(
-                        rollbackSpecs = RollbackSpecs(emptyList()),
-                        fullSync = needFullSync(),
-                        skipStaging = false,
-                    )
-                ).waitResults()
-            } else {
-                val revision: RevisionInfo = pull()
-                    .getOrElse { error ->
-                        val message = "Pull failure: $error"
-                        logger.log { message }
-                        return@async Result.failure(RuntimeException(message))
-                }
-                logger.log { "Got successful pull to: ${revision}! Ready to sync and throw away local changes!" }
-                doSync(
-                    SyncContext(
-                        rollbackSpecs = RollbackSpecs(emptyList()),
-                        fullSync = false,
-                        skipStaging = true,
-                    )
-                ).waitResults()
-            }
+            mutex.lock()
+            val result = pullOrSyncInternal(reason)
+            mutex.unlock()
+            result
         }
 
         return SyncJob(result)
+    }
+
+    private suspend fun pullOrSyncInternal(reason: String): Result<Unit> {
+        val logger = logger.fork("-pullOrSync('$reason')")
+        logger.log { "Gathering local changes" }
+        val stagedChanges = fileStatusProvider.getStagedFiles()
+        val haveLocalChanges = stagedChanges.isNotEmpty() || fileStatusProvider.hasChangedFiles()
+        logger.log { "initiated! Got local changes: $haveLocalChanges Staged files: ${stagedChanges}" }
+        return if (haveLocalChanges) {
+            doSync(
+                SyncContext(
+                    rollbackSpecs = RollbackSpecs(emptyList()),
+                    fullSync = needFullSync(),
+                    skipStaging = false,
+                    reason = reason,
+                )
+            ).waitResults()
+        } else {
+            val revision: RevisionInfo = pull()
+                .getOrElse { error ->
+                    val message = "Pull failure: $error"
+                    logger.log { message }
+                    return Result.failure(RuntimeException(message))
+                }
+            logger.log { "Got successful pull to: ${revision}! Ready to sync and throw away local changes!" }
+            doSync(
+                SyncContext(
+                    rollbackSpecs = RollbackSpecs(emptyList()),
+                    fullSync = false,
+                    skipStaging = true,
+                    reason = reason,
+                )
+            ).waitResults()
+        }
     }
 
     private fun pull(): Result<RevisionInfo> {
@@ -517,7 +528,7 @@ class BackendController(
                 return@withContext Result.failure(ioException)
             }
 
-            val syncJob = doSync(SyncContext(rollbackSpecs, fullSync = false, skipStaging = false))
+            val syncJob = doSync(SyncContext(rollbackSpecs, fullSync = false, skipStaging = false, reason = "rollback of '$relativePath'"))
             val exception = syncJob.waitResults().exceptionOrNull()
             if (exception != null) {
                 return@withContext Result.failure(

@@ -40,7 +40,7 @@ class DomainComponent<T : PlatformDeps>(
     private val dateFormat: DateFormat = SimpleDateFormat("dd.MM HH:mm:ss", Locale.US)
 
     private val logger = Logger { m ->
-        val message = dateFormat.format(System.currentTimeMillis()) + ": " + withTimePasssedBlock(m)
+        val message = dateFormat.format(System.currentTimeMillis()) + ": " + m
         DebugLogger.log(message)
         scopes.main.launch {
             if (DebugLogger.inMemoryLogs.size > 10_000) {

@@ -36,6 +36,10 @@ class SyncTests {
         it.waitHeartbeats()
     }
 
+    init {
+        println("Test artifacts could be found at: '$testDir'")
+    }
+
     @After
     fun tearDown() {
         serverController.stop()
@@ -65,15 +69,17 @@ class SyncTests {
     @Test
     fun `once file edited it is shown at status`() = runTest(timeout = timeout) {
         val statusModel: StatusModel = openFirstProjectStatus()
-        statusModel.sync("testing").wait()
+        println("--> Waiting for sync")
+        statusModel.sync("waiting initial sync completes").wait()
 
         println("--> Updating local file")
         val initialFile = File(captureTestProject().dir, "README.md")
         initialFile.writeText("<README.md updated content>")
 
         println("--> Making another sync")
-        statusModel.sync("testing").wait()
+        statusModel.sync("sync after local changes").wait()
 
+        println("--> Waiting to see changed files")
         val files: List<StatusViewItem.FileViewItem> = statusModel.statusFlow
             .map { it.items.filterIsInstance<StatusViewItem.FileViewItem>() }
             .first { it.isNotEmpty() }
@@ -255,7 +261,7 @@ private class ServerController(
             "sh", "-c",
             cmd
         )
-            .directory(File("/Users/oneday/workspace/wiki-app/server-side"))
+            .directory(File("../../server-side"))
             .start()
     }
     fun start() {

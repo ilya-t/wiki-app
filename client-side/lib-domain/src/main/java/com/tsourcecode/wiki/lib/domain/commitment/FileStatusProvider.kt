@@ -6,7 +6,6 @@ import com.tsourcecode.wiki.lib.domain.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -28,17 +27,9 @@ class FileStatusProvider(
     init {
         workerScope.launch {
             stagedFiles.update()
-            combine(
-                stagedFiles.data,
-                changedFiles.data,
-            ) { staged: StatusResponse, changed: StatusResponse ->
+            stagedFiles.data.collect {
                 logger.log {
-                    "Changes detected! Staged: ${staged.files} Changed: ${changed.files}"
-                }
-                staged.extendWith(changed)
-            }.collect {
-                logger.log {
-                    "Stages/Changes combined to: $it"
+                    "Staged files: $it"
                 }
                 _statusFlow.value = it
             }
@@ -49,9 +40,15 @@ class FileStatusProvider(
         stagedFiles.update()
     }
 
-    suspend fun getLocalChanges(): List<FileStatus> {
+    suspend fun getStagedFiles(): List<FileStatus> {
         return statusFlow.filterNotNull().first().files
     }
+
+    suspend fun assumeCurrentProjectStateSynchronized() {
+        changedFiles.assumeCurrentFilesAreSynchronized()
+    }
+
+    suspend fun hasChangedFiles(): Boolean = changedFiles.haveChanges()
 }
 
 private fun StatusResponse.extendWith(extra: StatusResponse): StatusResponse {
