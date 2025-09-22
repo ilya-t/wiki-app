@@ -204,11 +204,18 @@ func (g *Git) Pull() error {
 	if hadChanges {
 		return errors.New("got changes, pull declined")
 	}
+	
+	_, fetchErr := g.execute("git fetch " + g.remote + " " + g.branch)
 
-	_, pullErr := g.execute("git pull --rebase " + g.remote + " " + g.branch)
+	if fetchErr != nil {
+		return fetchErr
+	}
 
-	if pullErr != nil {
-		return errors.New("Pull failed! " + pullErr.Error())
+	_, rebaseErr := g.execute("git rebase " + g.remote + "/" + g.branch)
+
+	if rebaseErr != nil {
+		out, _ := g.shell.Execute("git status")
+		return errors.New("Pull failed! " + rebaseErr.Error() + "\nCurrent status:\n" + out)
 	}
 
 	return nil
