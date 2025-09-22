@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -137,6 +138,7 @@ private fun ComposeCommitScreen(viewModel: StatusViewModel) {
 @Composable
 fun CommitItem(item: StatusViewItem.CommitViewItem, modifier: Modifier = Modifier) {
     val textState = remember { mutableStateOf(item.commitMessage) }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
         modifier = modifier
@@ -175,7 +177,10 @@ fun CommitItem(item: StatusViewItem.CommitViewItem, modifier: Modifier = Modifie
                 ),
             )
             IconButton(
-                onClick = { item.commitAction?.invoke() },
+                onClick = {
+                    item.commitAction?.invoke()
+                    keyboardController?.hide()
+                },
                 enabled = item.commitAction != null,
             ) {
                 Icon(
