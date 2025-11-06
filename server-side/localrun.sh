@@ -1,6 +1,7 @@
 set -e
 PORT=8181
 host_volumes=$1
+DETACH_ARG=$2
 ALIAS=$3
 
 if [ "$host_volumes" == "" ]; then
@@ -20,7 +21,7 @@ docker container rm --force wiki_backend_local
 docker build ./app --tag wiki_backend
 
 docker run \
-    $( [ "$2" == "--no-detach" ] || echo "--detach" ) \
+    $( [ "$DETACH_ARG" == "--no-detach" ] || echo "--detach" ) \
     --publish $PORT:80 \
     --env APP_REPO_LINK=$REPO \
     --env ALIAS="$ALIAS" \
