@@ -14,6 +14,7 @@ import com.tsourcecode.wiki.lib.domain.hashing.Hashable
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
+import com.tsourcecode.wiki.lib.domain.util.Base64
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.Logger
 import com.tsourcecode.wiki.lib.domain.util.Threading
@@ -87,76 +88,96 @@ class BackendController(
         val reason: String,
     )
 
-    private fun doSync(syncContext: SyncContext): SyncJob {
-        val sync = logger.fork("-sync(#${Any().hashCode()}): ")
+    private fun scheduleSync(syncContext: SyncContext): SyncJob {
+        val sync: Logger = logger.fork("-sync(#${Any().hashCode()}): ")
         val job = SyncJob(scope.async {
             sync.log { "sync started. Context: $syncContext" }
             sync.log { "waiting for previous sync to complete" }
-            _refreshFlow.compareAndSet(expect = false, update = true)
-            try {
-                val localRevision: String? = currentRevisionInfoController.state.value?.revision
-                    ?.trimEnd('\n') // TODO: fix server-side
-                val fullSync = syncContext.fullSync
-                sync.log { "start! (fullSync: $fullSync local-rev: '$localRevision')" }
+            mutex.lock()
+            sync.log { "sync lock acquired" }
+            val result: Result<Unit> = try {
+                doSync(syncContext, sync)
+            } catch (e: Exception) {
+                Result.failure(RuntimeException("sync got unexpected failure!", e))
+            }
+            sync.log { "sync lock released" }
+            mutex.unlock()
+            result
+        })
 
-                quickStatusController.udpate(QuickStatus.SYNC, "calculating hashes")
-                val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
-                if (!fullSync) {
-                    if (syncContext.skipStaging) {
-                        sync.log { "staging skipped by sync context!" }
-                    } else if (localRevision != null) {
-                        sync.log { "Staging" }
-                        val filesWithoutRollbacks: List<FileHash> = files
-                            .flatFilesList()
-                            .filter {
-                                val relPath: String = it.relativePath
-                                syncContext.rollbackSpecs.files.none { f -> f.path == relPath }
-                            }
-                        if (!tryStageChanges(localRevision, filesWithoutRollbacks, sync)) {
-                            return@async Result.failure(
-                                RuntimeException("Staging failed!"))
+        return job
+    }
+
+    private suspend fun doSync(syncContext: SyncContext, sync: Logger): Result<Unit> {
+        _refreshFlow.compareAndSet(expect = false, update = true)
+        quickStatusController.udpate(QuickStatus.SYNC, "waiting for previous sync to complete")
+        try {
+            val localRevision: String? = currentRevisionInfoController.state.value?.revision
+                ?.trimEnd('\n') // TODO: fix server-side
+            val fullSync = syncContext.fullSync
+            sync.log { "start! (fullSync: $fullSync local-rev: '$localRevision')" }
+
+            quickStatusController.udpate(QuickStatus.SYNC, "calculating hashes")
+            val files = if (fullSync) emptyList() else elementHashProvider.getHashes()
+            if (!fullSync) {
+                if (syncContext.skipStaging) {
+                    sync.log { "staging skipped by sync context!" }
+                } else if (localRevision != null) {
+                    sync.log { "Staging" }
+                    val filesWithoutRollbacks: List<FileHash> = files
+                        .flatFilesList()
+                        .filter {
+                            val relPath: String = it.relativePath
+                            syncContext.rollbackSpecs.files.none { f -> f.path == relPath }
                         }
-                    } else {
-                        sync.log { "staging skipped! No revision provided" }
+                    if (!tryStageChanges(localRevision, filesWithoutRollbacks, sync)) {
+                        return Result.failure(
+                            RuntimeException("Staging failed!")
+                        )
                     }
+                } else {
+                    sync.log { "staging skipped! No revision provided" }
                 }
+            }
 
-                quickStatusController.udpate(QuickStatus.SYNC, "syncing with backend")
-                val lastRevisionSnapshot: RevisionSnapshot? = runCatching {
-                    requestLastRevisionSnapshot(files)
-                }.getOrElse {
-                    quickStatusController.error(QuickStatus.SYNC, it)
-                    return@async Result.failure(it)
-                }
-                lastRevisionSnapshot?.let { snapshot ->
-                    val serverRevision: String = snapshot.revision
-                    sync.log { "received server revision: '$serverRevision'" }
-                    val serverRevisionInfo: RevisionInfo = currentRevisionInfoController
-                        .getRevisionInfo(serverRevision)
-                    quickStatusController.udpate(QuickStatus.DECOMPRESS)
-                    val syncOutput = File(platformDeps.internalFiles, project.id + "/sync")
-                    val syncedFiles = if (fullSync) File(syncOutput, REVISION_ZIP_REPOSITORY_DIR) else syncOutput
-                    Decompressor.decompress(
-                        zipFile = snapshot.zipFile.absolutePath,
-                        outputDir = syncOutput.absolutePath,
-                        logger = { m: String ->
-                            sync.log { "decompress: '$m'" }
-                            quickStatusController.udpate(QuickStatus.DECOMPRESS, m)
-                        })
-                    quickStatusController.udpate(QuickStatus.SYNC)
-                    if (fullSync) {
-                        project.repo.deleteRecursively()
-                        val result = syncedFiles.copyRecursively(project.repo, overwrite = true)
-                        syncedFiles.deleteRecursively()
-                        if (!result) {
-                            quickStatusController.error(
-                                RuntimeException("Move failed ($syncedFiles -> ${project.repo})"))
-                        } else {
-                            sync.log { "Move completed ($syncedFiles -> ${project.repo})" }
-                        }
+            quickStatusController.udpate(QuickStatus.SYNC, "syncing with backend")
+            val lastRevisionSnapshot: RevisionSnapshot? = runCatching {
+                requestLastRevisionSnapshot(files)
+            }.getOrElse {
+                quickStatusController.error(QuickStatus.SYNC, it)
+                return Result.failure(it)
+            }
+            lastRevisionSnapshot?.let { snapshot ->
+                val serverRevision: String = snapshot.revision
+                sync.log { "received server revision: '$serverRevision'" }
+                val serverRevisionInfo: RevisionInfo = currentRevisionInfoController
+                    .getRevisionInfo(serverRevision)
+                quickStatusController.udpate(QuickStatus.DECOMPRESS)
+                val syncOutput = File(platformDeps.internalFiles, project.id + "/sync")
+                val syncedFiles =
+                    if (fullSync) File(syncOutput, REVISION_ZIP_REPOSITORY_DIR) else syncOutput
+                Decompressor.decompress(
+                    zipFile = snapshot.zipFile.absolutePath,
+                    outputDir = syncOutput.absolutePath,
+                    logger = { m: String ->
+                        sync.log { "decompress: '$m'" }
+                        quickStatusController.udpate(QuickStatus.DECOMPRESS, m)
+                    })
+                quickStatusController.udpate(QuickStatus.SYNC)
+                if (fullSync) {
+                    project.repo.deleteRecursively()
+                    val result = syncedFiles.copyRecursively(project.repo, overwrite = true)
+                    syncedFiles.deleteRecursively()
+                    if (!result) {
+                        quickStatusController.error(
+                            RuntimeException("Move failed ($syncedFiles -> ${project.repo})")
+                        )
                     } else {
-                        if (localRevision == serverRevision) {
-                            sync.log { "staging non-synced files: $syncedFiles" }
+                        sync.log { "Move completed ($syncedFiles -> ${project.repo})" }
+                    }
+                } else {
+                    if (localRevision == serverRevision) {
+                        sync.log { "staging non-synced files: $syncedFiles" }
 //                            syncedFiles
 //                                .walkTopDown()
 //                                .asSequence()
@@ -170,65 +191,65 @@ class BackendController(
 //                                    stage(it)
 //                                }
 //                            fileStatusProvider?.update()
-                        } else {
-                            sync.log { "sync to new revision '$localRevision' -> '$serverRevision'" }
+                    } else {
+                        sync.log { "sync to new revision '$localRevision' -> '$serverRevision'" }
+                    }
+
+                    val syncRelativePath = File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
+                    syncRelativePath
+                        .walkTopDown()
+                        .asSequence()
+                        .mapNotNull { syncedFile ->
+                            val d = resolveDocument(syncedFile, syncRelativePath) ?: run {
+                                if (syncedFile.isFile) {
+                                    sync.log { "no document found for $syncedFile" }
+                                }
+                                return@mapNotNull null
+                            }
+                            syncedFile to d
                         }
-
-                        val syncRelativePath = File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
-                        syncRelativePath
-                            .walkTopDown()
-                            .asSequence()
-                            .mapNotNull { syncedFile ->
-                                val d = resolveDocument(syncedFile, syncRelativePath) ?: run {
-                                    if (syncedFile.isFile) {
-                                        sync.log { "no document found for $syncedFile" }
-                                    }
-                                    return@mapNotNull null
-                                }
-                                syncedFile to d
+                        .toList()
+                        .forEach { (backendRevision: File, localRevision: Document) ->
+                            var resolution: String? = null
+                            if (true || canUpdateWithBackendRevision(syncContext, localRevision)) {
+                                localRevision.file.parentFile.mkdirs()
+                                backendRevision.copyTo(localRevision.file, overwrite = true)
+                                resolution = "accepted from backend"
+                            } else {
+                                resolution = "declined from backend, staged"
+                                stage(localRevision)
                             }
-                            .toList()
-                            .forEach { (backendRevision: File, localRevision: Document) ->
-                                var resolution: String? = null
-                                if (true || canUpdateWithBackendRevision(syncContext, localRevision)) {
-                                    localRevision.file.parentFile.mkdirs()
-                                    backendRevision.copyTo(localRevision.file, overwrite = true)
-                                    resolution = "accepted from backend"
-                                } else {
-                                    resolution = "declined from backend, staged"
-                                    stage(localRevision)
-                                }
-                                sync.log { "syncing file: ${localRevision.relativePath}: $resolution" }
-                            }
-                        fileStatusProvider.update()
-                    }
-                    currentRevisionInfoController.bumpRevisionTo(serverRevisionInfo)
-                    fileStatusProvider.assumeCurrentProjectStateSynchronized()
-                    syncedFiles.deleteRecursively()
-
-                    dirRevision = snapshot.zipFile.nameWithoutExtension
-                    scope.launch(threading.main) {
-                        projectObserver?.invoke(dirRevision, project.repo)
-                        quickStatusController.udpate(QuickStatus.SYNCED, currentRevisionInfoController.state.value?.toComment() ?: "null")
-                    }
-                    sync.log { "sending notification on sync completion!" }
-                    scope.launch {
-                        elementHashProvider.notifyProjectFullySynced()
-                    }
+                            sync.log { "syncing file: ${localRevision.relativePath}: $resolution" }
+                        }
+                    fileStatusProvider.update()
                 }
-            } catch (e: Exception) {
-                sync.log { "ERROR: $e" }
-                e.printStackTrace()
+                currentRevisionInfoController.bumpRevisionTo(serverRevisionInfo)
+                fileStatusProvider.assumeCurrentProjectStateSynchronized()
+                syncedFiles.deleteRecursively()
+
+                dirRevision = snapshot.zipFile.nameWithoutExtension
                 scope.launch(threading.main) {
-                    quickStatusController.error(QuickStatus.SYNC, e)
+                    projectObserver?.invoke(dirRevision, project.repo)
+                    quickStatusController.udpate(
+                        QuickStatus.SYNCED,
+                        currentRevisionInfoController.state.value?.toComment() ?: "null"
+                    )
+                }
+                sync.log { "sending notification on sync completion!" }
+                scope.launch {
+                    elementHashProvider.notifyProjectFullySynced()
                 }
             }
-            sync.log { "completed!" }
-            _refreshFlow.compareAndSet(expect = true, update = false)
-            Result.success(Unit)
-        })
-
-        return job
+        } catch (e: Exception) {
+            sync.log { "ERROR: $e" }
+            e.printStackTrace()
+            scope.launch(threading.main) {
+                quickStatusController.error(QuickStatus.SYNC, e)
+            }
+        }
+        sync.log { "completed!" }
+        _refreshFlow.compareAndSet(expect = true, update = false)
+        return Result.success(Unit)
     }
 
     private suspend fun tryStageChanges(
@@ -371,7 +392,7 @@ class BackendController(
     }
 
     private fun stage(d: Document): Boolean {
-        val b64 = com.tsourcecode.wiki.lib.domain.util.Base64.getEncoder().encodeToString(d.file.readBytes())
+        val b64 = Base64.getEncoder().encodeToString(d.file.readBytes())
         return stage(d.relativePath, b64)
     }
 
@@ -431,10 +452,7 @@ class BackendController(
 
     fun pullOrSync(reason: String): SyncJob {
         val result: Deferred<Result<Unit>> = scope.async {
-            mutex.lock()
-            val result = pullOrSyncInternal(reason)
-            mutex.unlock()
-            result
+            pullOrSyncInternal(reason)
         }
 
         return SyncJob(result)
@@ -447,7 +465,7 @@ class BackendController(
         val haveLocalChanges = stagedChanges.isNotEmpty() || fileStatusProvider.hasChangedFiles()
         logger.log { "initiated! Got local changes: $haveLocalChanges Staged files: ${stagedChanges}" }
         return if (haveLocalChanges) {
-            doSync(
+            scheduleSync(
                 SyncContext(
                     rollbackSpecs = RollbackSpecs(emptyList()),
                     fullSync = needFullSync(),
@@ -463,7 +481,7 @@ class BackendController(
                     return Result.failure(RuntimeException(message))
                 }
             logger.log { "Got successful pull to: ${revision}! Ready to sync and throw away local changes!" }
-            doSync(
+            scheduleSync(
                 SyncContext(
                     rollbackSpecs = RollbackSpecs(emptyList()),
                     fullSync = false,
@@ -527,7 +545,14 @@ class BackendController(
                 return@withContext Result.failure(ioException)
             }
 
-            val syncJob = doSync(SyncContext(rollbackSpecs, fullSync = false, skipStaging = false, reason = "rollback of '$relativePath'"))
+            val syncJob = scheduleSync(
+                SyncContext(
+                    rollbackSpecs,
+                    fullSync = false,
+                    skipStaging = false,
+                    reason = "rollback of '$relativePath'"
+                )
+            )
             val exception = syncJob.waitResults().exceptionOrNull()
             if (exception != null) {
                 return@withContext Result.failure(
