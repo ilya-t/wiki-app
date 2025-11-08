@@ -32,16 +32,18 @@ class QuickStatusViewModel(
         }
 
         tvStatus.setOnClickListener {
+            if (tvStatus.layoutParams == null) {
+                tvStatus.layoutParams = ViewGroup.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                )
+            }
             if (tvStatus.layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
-                tvStatus.layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        activity.resources.getDimensionPixelSize(R.dimen.status_height),
-                )
+                tvStatus.layoutParams.height = activity.resources.getDimensionPixelSize(R.dimen.status_height)
+                tvStatus.requestLayout()
             } else {
-                tvStatus.layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                )
+                tvStatus.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                tvStatus.requestLayout()
                 val clipboardManager =
                     activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val error = lastStatus?.error

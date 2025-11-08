@@ -78,6 +78,18 @@ class StatusModel(
 
     private fun toStatusViewModel(revision: RevisionInfo?, status: StatusResponse?, commitText: String): StatusViewModel {
         val items = mutableListOf<StatusViewItem>()
+        revision?.toMessage()?.let {
+            items.add(StatusViewItem.RevisionViewItem(it))
+        }
+        status?.files?.forEach { fs: FileStatus ->
+            items.add(
+                StatusViewItem.FileViewItem(
+                    fileStatus = fs,
+                    onFileClick = { notifyItemClicked(fs) },
+                    onRollbackClick = { rollback(fs) },
+                )
+            )
+        }
         if (status?.files?.isNotEmpty() == true) {
             items.add(
                 StatusViewItem.CommitViewItem(
@@ -92,19 +104,6 @@ class StatusModel(
                 )
             )
         }
-        status?.files?.forEach { fs: FileStatus ->
-            items.add(
-                StatusViewItem.FileViewItem(
-                    fileStatus = fs,
-                    onFileClick = { notifyItemClicked(fs) },
-                    onRollbackClick = { rollback(fs) },
-                )
-            )
-        }
-        revision?.toMessage()?.let {
-            items.add(StatusViewItem.RevisionViewItem(it))
-        }
-
         return StatusViewModel(
             items,
         )

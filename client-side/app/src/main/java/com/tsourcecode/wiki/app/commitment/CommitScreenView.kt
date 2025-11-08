@@ -227,6 +227,23 @@ fun FileDiffItem(item: StatusViewItem.FileViewItem) {
                 shape = RoundedCornerShape(CornerSize(Dp(4f))),
             ),
     ) {
+        SelectionContainer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.DarkGray)
+                .padding(Dp(8f))
+                .clickable { item.onFileClick() }
+        ) {
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                text = colorizeDiff(fileStatus.diff),
+                style = TextStyle(
+                    color = Color.Gray,
+                ),
+                fontFamily = FontFamily.Monospace,
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -249,19 +266,6 @@ fun FileDiffItem(item: StatusViewItem.FileViewItem) {
                     image = ImageVector.vectorResource(id = R.drawable.ic_rollback)
                 ),
                 contentDescription = ""
-            )
-        }
-        SelectionContainer {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.DarkGray),
-                text = colorizeDiff(fileStatus.diff),
-                style = TextStyle(
-                    color = Color.Gray,
-                ),
-
-                fontFamily = FontFamily.Monospace,
             )
         }
     }

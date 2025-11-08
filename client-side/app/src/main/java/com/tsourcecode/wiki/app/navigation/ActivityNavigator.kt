@@ -1,5 +1,6 @@
 package com.tsourcecode.wiki.app.navigation
 
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -42,7 +43,11 @@ class ActivityNavigator(
                         screenFactory.create(navigationScreen)
                 )
 
-                contentContainer.addView(newScreen.screenView.view)
+                contentContainer.addView(
+                    newScreen.screenView.view,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
                 if (!newScreen.screenView.handle(uri)) {
                     appNavigator.goBack()
                 }
