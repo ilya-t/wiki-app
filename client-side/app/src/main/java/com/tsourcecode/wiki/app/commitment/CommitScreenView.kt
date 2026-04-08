@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -110,10 +111,11 @@ class CommitScreenView(
 private fun ComposeCommitScreen(viewModel: StatusViewModel) {
     val commitItem = viewModel.items.filterIsInstance<StatusViewItem.CommitViewItem>().firstOrNull()
     val listItems: List<StatusViewItem> = (viewModel.items - commitItem).filterNotNull()
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .weight(1f)
         ) {
             items(listItems) { item ->
                 when (item) {
@@ -127,7 +129,6 @@ private fun ComposeCommitScreen(viewModel: StatusViewModel) {
             CommitItem(
                 item = commitItem,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
             )
         }
