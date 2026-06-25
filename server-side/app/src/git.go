@@ -295,10 +295,25 @@ func (g *Git) hasUncommitedChanges() (bool, error) {
 	return len(out) != 0, nil
 }
 
+func (g *Git) isValidGitRepo() bool {
+	if _, err := os.Stat(g.repoDir); os.IsNotExist(err) {
+		return false
+	}
+	_, err := g.shell.Execute("git rev-parse --git-dir")
+	return err == nil
+}
+
 func (g *Git) TryClone() {
-	if _, err := os.Stat(g.repoDir + "/.git"); err == nil {
+	if g.isValidGitRepo() {
 		fmt.Println("Repo already cloned: '" + g.repoDir + "'")
 		return
+	}
+
+	if _, err := os.Stat(g.repoDir); err == nil {
+		fmt.Printf("Removing invalid repo directory: '%s'\n", g.repoDir)
+		if e := os.RemoveAll(g.repoDir); e != nil {
+			panic(e)
+		}
 	}
 
 	if e := os.MkdirAll(g.repoDir, 0755); e != nil {

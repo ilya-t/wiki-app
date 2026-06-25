@@ -383,3 +383,36 @@ func initRepo() error {
 
 	return nil
 }
+
+func TestTryCloneRecoversFromInvalidGitDir(t *testing.T) {
+	bareRepo := "/tmp/test_bare_try_clone.git"
+	targetDir := "/tmp/test_try_clone_target"
+	initDir := "/tmp/test_try_clone_init"
+
+	defer os.RemoveAll(bareRepo)
+	defer os.RemoveAll(targetDir)
+	defer os.RemoveAll(initDir)
+
+	initShell := &Shell{"/tmp"}
+	initShell.StrictExecute("rm -rf " + initDir + " " + bareRepo + " " + targetDir)
+	initShell.StrictExecute("mkdir -p " + initDir)
+	initShell = &Shell{initDir}
+	initShell.StrictExecute("git init")
+	initShell.StrictExecute("git config user.email \"test@mail.com\"")
+	initShell.StrictExecute("git config user.name \"Tester\"")
+	initShell.StrictExecute("echo '# test' > README.md")
+	initShell.StrictExecute("git add README.md")
+	initShell.StrictExecute("git commit -m \"Initial Commit\"")
+	initShell.StrictExecute("git clone --bare .git " + bareRepo)
+
+	if e := os.MkdirAll(targetDir+"/.git", 0755); e != nil {
+		t.Fatal(e)
+	}
+
+	g := NewGit(targetDir, bareRepo)
+	g.TryClone()
+
+	if _, err := g.shell.Execute("git rev-parse --git-dir"); err != nil {
+		t.Fatalf("expected valid repo after TryClone, got: %v", err)
+	}
+}
