@@ -320,6 +320,7 @@ func (p *ProjectHttpApi) getLastRevision(w http.ResponseWriter, req *http.Reques
 
 func writeError(w http.ResponseWriter, stage string, err error) {
 	e := fmt.Sprintf("{\"error\": \"\nStage: %s\n%v\" }", stage, err)
+	fmt.Printf("API error [%s]: %v\n", stage, err)
 	http.Error(w, e, 500)
 }
 

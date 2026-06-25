@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -34,11 +35,10 @@ func TestGitUntrackedFileStatusWithSpaces(t *testing.T) {
 	}
 }
 
-func TestGitQuotedFileWithSpacesStatus(t *testing.T) {
-	fileName := "\"quoted file\""
+func TestGitNewFileStatusWithCyrillicName(t *testing.T) {
+	fileName := "Без названия 1.canvas"
 	fileStatus, e := checkStatus(func(g *Git) error {
-		editFile(fileName, "content")
-		return stageFile(g, fileName, "stage")
+		return stageFile(g, fileName, "canvas content")
 	})
 
 	if e != nil {
@@ -46,8 +46,121 @@ func TestGitQuotedFileWithSpacesStatus(t *testing.T) {
 		return
 	}
 
-	if fileStatus.Path != "\\\"quoted file\\\"" { // not sure if this is correct, but okay for now
-		t.Errorf("Expecting '"+fileName+"' file. Got: '%s' (%+v)", fileStatus.Path, fileStatus)
+	if fileStatus.Path != fileName {
+		t.Errorf("Expecting '%s' file. Got: %+v", fileName, fileStatus)
+		return
+	}
+
+	if fileStatus.Status != StatusNew {
+		t.Errorf("Expecting new file. Got: %+v", fileStatus)
+		return
+	}
+}
+
+func TestGitRollbackCyrillicNewFile(t *testing.T) {
+	fileName := "Без названия.canvas"
+	e := initRepo()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	g := NewGit(testRepoDir, "")
+	if e := stageFile(g, fileName, "canvas content"); e != nil {
+		t.Fatal(e)
+	}
+
+	if e := g.Rollback(&FileRollback{Path: fileName}); e != nil {
+		t.Fatal(e)
+	}
+
+	s, e := g.Status()
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(s.Files) != 0 {
+		t.Errorf("Expected clean status after rollback. Got: %+v", s.Files)
+	}
+
+	if _, statErr := os.Stat(filepath.Join(testRepoDir, fileName)); !os.IsNotExist(statErr) {
+		t.Errorf("Expected file to be removed after rollback. stat err: %v", statErr)
+	}
+}
+
+func TestGitRollbackOctalEscapedPath(t *testing.T) {
+	fileName := "Без названия 1.canvas"
+	escapedPath := `\320\221\320\265\320\267 \320\275\320\260\320\267\320\262\320\260\320\275\320\270\321\217 1.canvas`
+	e := initRepo()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	g := NewGit(testRepoDir, "")
+	if e := stageFile(g, fileName, "canvas content"); e != nil {
+		t.Fatal(e)
+	}
+
+	if e := g.Rollback(&FileRollback{Path: escapedPath}); e != nil {
+		t.Fatal(e)
+	}
+
+	s, e := g.Status()
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(s.Files) != 0 {
+		t.Errorf("Expected clean status after rollback of escaped path. Got: %+v", s.Files)
+	}
+}
+
+func TestUnquoteGitPath(t *testing.T) {
+	input := `\320\221\320\265\320\267 \320\275\320\260\320\267\320\262\320\260\320\275\320\270\321\217 1.canvas`
+	expected := "Без названия 1.canvas"
+	if got := unquoteGitPath(input); got != expected {
+		t.Errorf("unquoteGitPath() = %q, want %q", got, expected)
+	}
+}
+
+func TestGitStageGitignoredFile(t *testing.T) {
+	e := initRepo()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	s := &Shell{testRepoDir}
+	s.StrictExecute("echo '.obsidian/' >> .gitignore")
+	s.StrictExecute("git add .gitignore")
+	s.StrictExecute("git commit -m 'ignore obsidian'")
+
+	g := NewGit(testRepoDir, "")
+	if e := stageFile(g, ".obsidian/app.json", "{\"version\":1}"); e != nil {
+		t.Fatalf("staging gitignored file failed: %v", e)
+	}
+
+	status, e := g.Status()
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(status.Files) != 1 {
+		t.Fatalf("expected 1 staged file, got: %+v", status.Files)
+	}
+	if status.Files[0].Path != ".obsidian/app.json" {
+		t.Fatalf("expected .obsidian/app.json, got: %+v", status.Files[0])
+	}
+}
+
+func TestGitQuotedFileWithSpacesStatus(t *testing.T) {
+	fileName := "\"quoted file\""
+	fileStatus, e := checkStatus(func(g *Git) error {
+		return stageFile(g, fileName, "content")
+	})
+
+	if e != nil {
+		t.Error(e)
+		return
+	}
+
+	if fileStatus.Path != "quoted file" {
+		t.Errorf("Expecting quoted file name. Got: '%s' (%+v)", fileStatus.Path, fileStatus)
 		return
 	}
 }

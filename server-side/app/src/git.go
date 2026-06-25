@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -81,64 +82,54 @@ func (g *Git) LastRevision() (string, error) {
 }
 
 func (g *Git) Rollback(f *FileRollback) error {
-	filePath := strings.ReplaceAll(f.Path, "\"", "\\\"")
-	absFilePath := g.repoDir + "/" + filePath
-	fmt.Printf("===> Rolling back '%v'", filePath)
+	relPath := normalizeGitPath(f.Path)
+	absFilePath := filepath.Join(g.repoDir, relPath)
+	quotedPath := quoteShellPath(relPath)
+	fmt.Printf("===> Rolling back '%v'\n", relPath)
 	g.shell.PrintOutput("git status")
 
-	resetCmd := "git reset \"" + filePath + "\""
-	resetOut, err := g.execute(resetCmd)
-	if err != nil {
-		if _, err := os.Stat(absFilePath); err == nil {
-			fmt.Printf("-> Git reset fails: '%v' Will try to remove '%v'!\n", err, absFilePath)
-			return os.Remove(absFilePath)
-		} else if os.IsNotExist(err) {
-			fmt.Printf("-> Git reset fails: '%v' There is no file: '%v'!\n", err, absFilePath)
-			return nil
-		} else {
-			return err
-		}
+	resetCmd := "git reset HEAD -- " + quotedPath
+	resetOut, resetErr := g.execute(resetCmd)
+	if resetErr != nil {
+		fmt.Printf("-> Git reset fails: '%v'\n", resetErr)
+	} else {
+		fmt.Printf("-> Successful Git Reset: '%v' -> '%v'\n", resetCmd, resetOut)
 	}
 
-	fmt.Printf("-> Successful Git Reset: '%v' -> '%v'\n", resetCmd, resetOut)
-	g.shell.PrintOutput("git status")
-
-	checkoutCmd := "git checkout \"" + filePath + "\""
-	checkoutOut, err := g.execute(checkoutCmd)
-
-	if err != nil {
-		if _, err := os.Stat(absFilePath); err == nil {
-			fmt.Printf("-> Git checkout fails: '%v' Will try to remove '%v'!\n", err, absFilePath)
-			return os.Remove(absFilePath)
-		} else if os.IsNotExist(err) {
-			fmt.Printf("-> Git checkout fails: '%v' There is no file: '%v'!\n", err, absFilePath)
-			return nil
-		} else {
-			return err
-		}
+	checkoutCmd := "git checkout HEAD -- " + quotedPath
+	checkoutOut, checkoutErr := g.execute(checkoutCmd)
+	if checkoutErr == nil {
+		fmt.Printf("-> Successful Git Checkout: '%v' -> '%v'\n", checkoutCmd, checkoutOut)
+		g.shell.PrintOutput("git status")
+		return nil
 	}
-	fmt.Printf("-> Successful Git Checkout: '%v' -> '%v'\n", checkoutCmd, checkoutOut)
-	g.shell.PrintOutput("git status")
-	return nil
+
+	fmt.Printf("-> Git checkout fails: '%v'\n", checkoutErr)
+	_, statErr := os.Stat(absFilePath)
+	if statErr == nil {
+		fmt.Printf("-> Removing untracked file '%v'\n", absFilePath)
+		return os.Remove(absFilePath)
+	}
+	if os.IsNotExist(statErr) {
+		fmt.Printf("-> File already absent: '%v'\n", absFilePath)
+		return nil
+	}
+	return statErr
 }
 
 func (g *Git) Stage(f *FileContent) error {
 	decoded, _ := base64.StdEncoding.DecodeString(f.Content)
-	filePath := g.repoDir + "/" + f.Path
-	e := ioutil.WriteFile(filePath, []byte(decoded), os.ModePerm)
-
-	if e != nil {
+	relPath := normalizeGitPath(f.Path)
+	absFilePath := filepath.Join(g.repoDir, relPath)
+	if e := os.MkdirAll(filepath.Dir(absFilePath), 0755); e != nil {
+		return e
+	}
+	if e := ioutil.WriteFile(absFilePath, []byte(decoded), os.ModePerm); e != nil {
 		return e
 	}
 
-	filePath = strings.ReplaceAll(filePath, "\"", "\\\"")
-	_, err := g.execute("git add \"" + filePath + "\"")
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err := g.execute("git add -f -- " + quoteShellPath(relPath))
+	return err
 }
 
 func (g *Git) ShowRevision(revision string) (*RevisionInfo, error) {
@@ -319,69 +310,148 @@ func (g *Git) TryClone() {
 }
 
 func (g *Git) Status() (*Status, error) {
-	output, e := g.execute("git status --short")
+	output, e := g.execute("git status -z --porcelain")
+	if e != nil {
+		return nil, e
+	}
+
+	entries, e := parsePorcelain(output)
 	if e != nil {
 		return nil, e
 	}
 
 	files := make([]*FileStatus, 0)
-	for _, line := range strings.Split(output, "\n") {
-		trimmed := strings.Trim(line, " ")
-		if len(trimmed) == 0 {
-			continue
-		}
-
-		status, fileName, e := toStatusAndFile(trimmed)
-
+	for _, entry := range entries {
+		status, e := porcelainXYToStatus(entry.xy)
 		if e != nil {
 			return nil, e
 		}
 
 		diff := ""
 		if status == StatusModified {
-			d, e := g.execute("git diff --staged \"" + fileName + "\"")
-
+			diffCmd := "git diff --staged -- "
+			if entry.xy[0] == ' ' {
+				diffCmd = "git diff -- "
+			}
+			d, e := g.execute(diffCmd + quoteShellPath(entry.path))
 			if e != nil {
 				return nil, e
 			}
-
 			diff = d
 		}
 
 		files = append(files, &FileStatus{
-			Path:   fileName,
+			Path:   entry.path,
 			Status: status,
 			Diff:   diff,
 		})
-
 	}
 	return &Status{
 		Files: files,
 	}, nil
 }
 
-func toStatusAndFile(line string) (string, string, error) {
-	trimFile := func(fileName string) string {
-		fileName = strings.Trim(fileName, " ")
-		if fileName[0] == '"' && fileName[len(fileName)-1] == '"' {
-			fileName = fileName[1 : len(fileName)-1]
+type porcelainEntry struct {
+	xy   string
+	path string
+}
+
+func parsePorcelain(output string) ([]porcelainEntry, error) {
+	if len(output) == 0 {
+		return nil, nil
+	}
+
+	data := []byte(output)
+	entries := make([]porcelainEntry, 0)
+	i := 0
+	for i < len(data) {
+		if i+3 > len(data) {
+			return nil, fmt.Errorf("invalid git status -z output at byte %d", i)
+		}
+		if data[i+2] != ' ' {
+			return nil, fmt.Errorf("expected space after status at byte %d", i)
 		}
 
-		return fileName
-	}
-	if line[0] == 'A' && line[1] == ' ' {
-		return StatusNew, trimFile(line[2:]), nil
-	}
+		xy := string(data[i : i+2])
+		pathStart := i + 3
+		pathEnd := pathStart
+		for pathEnd < len(data) && data[pathEnd] != 0 {
+			pathEnd++
+		}
+		if pathEnd >= len(data) {
+			return nil, fmt.Errorf("unterminated path at byte %d", pathStart)
+		}
 
-	if line[0] == 'M' && line[1] == ' ' {
-		return StatusModified, trimFile(line[2:]), nil
-	}
+		path := string(data[pathStart:pathEnd])
+		i = pathEnd + 1
 
-	if line[:2] == "??" && line[2] == ' ' {
-		return StatusUntracked, trimFile(line[3:]), nil
-	}
+		if len(xy) > 0 && (xy[0] == 'R' || xy[0] == 'C') {
+			path2Start := i
+			path2End := path2Start
+			for path2End < len(data) && data[path2End] != 0 {
+				path2End++
+			}
+			if path2End >= len(data) {
+				return nil, fmt.Errorf("unterminated rename path at byte %d", path2Start)
+			}
+			path = string(data[path2Start:path2End])
+			i = path2End + 1
+		}
 
-	return "", "", errors.New("Failed to parse git file status from '" + line + "'")
+		entries = append(entries, porcelainEntry{xy: xy, path: path})
+	}
+	return entries, nil
+}
+
+func porcelainXYToStatus(xy string) (string, error) {
+	if xy == "??" {
+		return StatusUntracked, nil
+	}
+	if len(xy) < 2 {
+		return "", errors.New("invalid git status code '" + xy + "'")
+	}
+	if xy[0] == 'A' && xy[1] == ' ' {
+		return StatusNew, nil
+	}
+	if xy[0] == 'M' && xy[1] == ' ' {
+		return StatusModified, nil
+	}
+	if xy[0] == ' ' && xy[1] == 'M' {
+		return StatusModified, nil
+	}
+	return "", errors.New("unsupported git status code '" + xy + "'")
+}
+
+func normalizeGitPath(path string) string {
+	path = strings.TrimSpace(path)
+	if len(path) >= 2 && path[0] == '"' && path[len(path)-1] == '"' {
+		path = path[1 : len(path)-1]
+	}
+	if strings.Contains(path, `\`) {
+		return unquoteGitPath(path)
+	}
+	return path
+}
+
+func unquoteGitPath(path string) string {
+	var result []byte
+	for i := 0; i < len(path); i++ {
+		if path[i] == '\\' && i+3 < len(path) &&
+			path[i+1] >= '0' && path[i+1] <= '7' &&
+			path[i+2] >= '0' && path[i+2] <= '7' &&
+			path[i+3] >= '0' && path[i+3] <= '7' {
+			val := (path[i+1]-'0')<<6 | (path[i+2]-'0')<<3 | (path[i+3] - '0')
+			result = append(result, val)
+			i += 3
+			continue
+		}
+		result = append(result, path[i])
+	}
+	return string(result)
+}
+
+func quoteShellPath(path string) string {
+	return "\"" + strings.ReplaceAll(path, "\"", "\\\"") + "\""
 }
 
 type FileStatus struct {

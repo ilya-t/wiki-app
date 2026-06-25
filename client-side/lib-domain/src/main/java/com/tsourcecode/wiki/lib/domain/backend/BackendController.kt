@@ -304,7 +304,7 @@ class BackendController(
 
             logger.log { "Staging: $it (resolved to: $d)" }
             if (!stage(d)) {
-                logger.log { "Staging '$it' failed!" }
+                logger.log { "Staging '$it' failed (see error above)" }
             } else {
                 logger.log { "Staged successfully: $it" }
             }
@@ -410,8 +410,10 @@ class BackendController(
         }
 
         if (response.code() != 200) {
+            val errorBody = response.errorBody()?.string() ?: "empty error body"
+            logger.log { "Staging '$relativePath' failed (${response.code()}): $errorBody" }
             quickStatusController.error(QuickStatus.STAGE,
-                    RuntimeException("Staging failed with ${response.errorBody()?.string()}")
+                    RuntimeException("Staging failed with $errorBody")
             )
             return false
         } else {
