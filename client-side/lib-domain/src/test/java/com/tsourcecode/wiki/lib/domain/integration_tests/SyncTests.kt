@@ -9,7 +9,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -23,7 +23,7 @@ import java.io.File
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Duration.Companion.minutes
 
 private const val TEST_PROJECT = "test_repo"
 
@@ -31,7 +31,13 @@ private const val TEST_PROJECT = "test_repo"
  * Heavy integrational test that will boot local server container against which sync will be checked.
  */
 class SyncTests {
-    private val timeout: Duration = 10.seconds
+    private val timeout: Duration = 1.minutes
+
+    private fun integrationTest(block: suspend () -> Unit) = runBlocking {
+        withTimeout(timeout) {
+            block()
+        }
+    }
     private val testDir = File("/tmp/syncTests_${UUID.randomUUID()}").also {
         it.mkdirs()
     }
@@ -49,7 +55,9 @@ class SyncTests {
 
     @Before
     fun setUp() {
+        ServerController.ensureStopped(locateServerSideDir())
         serverController = ServerController(
+            serverSideDir = locateServerSideDir(),
             serverFiles = serverFiles,
             alias = rule.methodName
         ).also {
@@ -60,12 +68,14 @@ class SyncTests {
 
     @After
     fun tearDown() {
-        serverController.stop()
+        if (::serverController.isInitialized) {
+            serverController.stop()
+        }
         println("Test artifacts are available at: $testDir")
     }
 
     @Test
-    fun `server has test repo`() = runTest(timeout = timeout) {
+    fun `server has test repo`() = integrationTest {
         val projects: List<ConfigScreenItem> = importProjects()
         val previewElement: ConfigScreenItem.PreviewElement = projects
             .filterIsInstance<ConfigScreenItem.PreviewElement>()
@@ -76,7 +86,7 @@ class SyncTests {
     }
 
     @Test
-    fun `initial sync with repo from server`() = runTest(timeout = timeout) {
+    fun `initial sync with repo from server`() = integrationTest {
         val statusModel: StatusModel = openFirstProjectStatus()
         statusModel.sync("testing").wait()
 
@@ -85,7 +95,7 @@ class SyncTests {
     }
 
     @Test
-    fun `once file edited it is shown at status`() = runTest(timeout = timeout) {
+    fun `once file edited it is shown at status`() = integrationTest {
         val statusModel: StatusModel = openFirstProjectStatus()
         println("--> Waiting for sync")
         statusModel.sync("waiting initial sync completes").wait()
@@ -110,7 +120,7 @@ class SyncTests {
     }
 
     @Test
-    fun `no changes after first sync`() = runTest(timeout = timeout) {
+    fun `no changes after first sync`() = integrationTest {
         val statusModel: StatusModel = openFirstProjectStatus()
         statusModel.sync("testing").wait()
 
@@ -125,7 +135,7 @@ class SyncTests {
     }
 
     @Test
-    fun `add new file`() = runTest(timeout = timeout) {
+    fun `add new file`() = integrationTest {
         val statusModel: StatusModel = openFirstProjectStatus()
         statusModel.sync("testing").wait()
 
@@ -150,7 +160,7 @@ class SyncTests {
     }
 
     @Test
-    fun `pull changes from server`() = runTest(timeout = timeout) {
+    fun `pull changes from server`() = integrationTest {
         val statusModel: StatusModel = openFirstProjectStatus()
         statusModel.sync("testing").wait()
 
@@ -197,7 +207,7 @@ class SyncTests {
     }
 
     @Test
-    fun `add new file and roll it back`() = runTest(timeout = timeout) {
+    fun `add new file and roll it back`() = integrationTest {
         val statusModel: StatusModel = openFirstProjectStatus()
         statusModel.sync("testing").wait()
 
@@ -232,8 +242,13 @@ class SyncTests {
         val previewElement: ConfigScreenItem.PreviewElement = projects
             .filterIsInstance<ConfigScreenItem.PreviewElement>()
             .first()
-        return domain.viewModels.statusScreenModel(previewElement.projectName)
+        val statusModel = domain.viewModels.statusScreenModel(previewElement.projectName)
             ?: throw IllegalStateException("Status screen not found for ${previewElement.projectName} ")
+        // BackendController init schedules pullOrSync("project init") asynchronously.
+        // Drain the queue so later edits are not overwritten by a stale full sync.
+        statusModel.sync("drain project init").wait()
+        statusModel.sync("drain project init").wait()
+        return statusModel
     }
 
     private suspend fun importProjects(): List<ConfigScreenItem> {
@@ -268,14 +283,53 @@ class SyncTests {
         println("Standard Error:\n$stderr")
         Assert.assertEquals(0, retCode)
     }
+
+    private fun locateServerSideDir(): File {
+        var dir: File? = File(System.getProperty("user.dir"))
+        while (dir != null) {
+            val script = File(dir, "server-side/localrun_for_tests.sh")
+            if (script.exists()) {
+                return script.parentFile
+            }
+            dir = dir.parentFile
+        }
+        error(
+            "Could not locate server-side directory from user.dir=" +
+                System.getProperty("user.dir")
+        )
+    }
 }
 
 private class ServerController(
+    private val serverSideDir: File,
     private val serverFiles: File,
     private val alias: String,
 ) {
     val serverUrl = "http://127.0.0.1:8181"
     private val serverProcess: Process
+
+    companion object {
+        private const val HEARTBEAT_TIMEOUT_MS = 120_000L
+
+        fun ensureStopped(serverSideDir: File) {
+            runScript(serverSideDir, "./localstop.sh")
+        }
+
+        private fun runScript(serverSideDir: File, script: String) {
+            val process = ProcessBuilder("sh", "-c", script)
+                .directory(serverSideDir)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            val retCode = process.waitFor()
+            if (output.isNotBlank()) {
+                println(output.trim())
+            }
+            if (retCode != 0) {
+                println("$script exited with code $retCode")
+            }
+        }
+    }
 
     init {
         serverFiles.mkdirs()
@@ -285,7 +339,7 @@ private class ServerController(
             "sh", "-c",
             cmd
         )
-            .directory(File("../../server-side"))
+            .directory(serverSideDir)
             .start()
     }
     fun start() {
@@ -293,12 +347,14 @@ private class ServerController(
     }
 
     fun waitHeartbeats() = runBlocking {
-        val timeout = System.currentTimeMillis() + 5000 // 5 seconds timeout
+        val timeout = System.currentTimeMillis() + HEARTBEAT_TIMEOUT_MS
         while (System.currentTimeMillis() < timeout) {
             if (checkHeartbeat()) return@runBlocking
             delay(50)
         }
-        throw IllegalStateException("Server did not respond with 200 within 5 seconds")
+        throw IllegalStateException(
+            "Server did not respond with 200 within ${HEARTBEAT_TIMEOUT_MS / 1000} seconds"
+        )
     }
 
     private fun checkHeartbeat(): Boolean {
@@ -332,13 +388,15 @@ private class ServerController(
     }
 
     fun stop() {
-        if (!serverProcess.isAlive) {
+        ensureStopped(serverSideDir)
+        if (serverProcess.isAlive) {
+            serverProcess.destroy()
+        } else {
             println("Server already finished with exit code: ${serverProcess.exitValue()}")
             serverProcess.errorStream.bufferedReader().use { reader ->
                 println("Server stderr: ${reader.readText()}")
             }
         }
-        serverProcess.destroy()
         waitHeartbeatsStop()
     }
 }

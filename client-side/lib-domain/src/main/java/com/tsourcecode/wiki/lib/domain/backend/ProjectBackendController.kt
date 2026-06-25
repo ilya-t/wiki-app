@@ -17,11 +17,19 @@ class ProjectBackendController(
         repeat(3) {
             val r = try {
                 val response = api.getProjects().execute()
+                if (!response.isSuccessful) {
+                    throw IOException(
+                        "getProjects failed with ${response.code()}: " +
+                            response.errorBody()?.string()
+                    )
+                }
                 val body = response.body()?.string() ?: throw IOException("Empty body received!")
                 val configs = Json.decodeFromString(Configs.serializer(), body)
                 Result.success(configs.configs)
             } catch (e: IOException) {
                 Result.failure(e)
+            } catch (e: Exception) {
+                Result.failure(IOException(e))
             }
             result = r
 

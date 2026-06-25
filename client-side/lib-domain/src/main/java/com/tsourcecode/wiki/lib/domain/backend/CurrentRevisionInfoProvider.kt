@@ -36,6 +36,14 @@ class CurrentRevisionInfoController(
         } catch (e: IOException) {
             return Result.failure(e)
         }
+        if (!response.isSuccessful) {
+            return Result.failure(
+                IOException(
+                    "showRevision failed with ${response.code()}: " +
+                        response.errorBody()?.string()
+                )
+            )
+        }
         val body = response.body()?.string()
             ?: return Result.failure(IOException("Empty body received!"))
         return runCatching {
