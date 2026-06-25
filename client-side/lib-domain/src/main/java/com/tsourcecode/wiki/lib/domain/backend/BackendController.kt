@@ -152,6 +152,10 @@ class BackendController(
                 sync.log { "received server revision: '$serverRevision'" }
                 val serverRevisionInfo: RevisionInfo = currentRevisionInfoController
                     .getRevisionInfo(serverRevision)
+                    .getOrElse { error ->
+                        quickStatusController.error(QuickStatus.SYNC, error)
+                        return Result.failure(error)
+                    }
                 quickStatusController.udpate(QuickStatus.DECOMPRESS)
                 val syncOutput = File(platformDeps.internalFiles, project.id + "/sync")
                 val syncedFiles =
@@ -429,10 +433,16 @@ class BackendController(
             "message: '$message' current revision: '${r}'"
         }
         quickStatusController.udpate(QuickStatus.COMMIT)
-        val response: Response<ResponseBody> = backendApi.commit(
-            project.name,
+        val response: Response<ResponseBody> = try {
+            backendApi.commit(
+                project.name,
                 WikiBackendAPIs.Commitment(message)
-        ).execute()
+            ).execute()
+        } catch (e: IOException) {
+            commit.log { "Commit failed: ${e.message}" }
+            quickStatusController.error(QuickStatus.COMMIT, e)
+            return false
+        }
 
         commit.log {
             "response code: ${response.code()}"
@@ -499,7 +509,14 @@ class BackendController(
         pulling.log { "no changes detected. Moving server's HEAD towards." }
         quickStatusController.udpate(QuickStatus.STATUS_UPDATE, "pulling")
 
-        val response = backendApi.pull(project.name).execute()
+        val response = try {
+            backendApi.pull(project.name).execute()
+        } catch (e: IOException) {
+            pulling.log { "Pull failed: ${e.message}" }
+            quickStatusController.error(QuickStatus.SYNC, e)
+            return Result.failure(e)
+        }
+
         if (!response.isSuccessful) {
             val e = IOException(
                 "error code(${response.code()}) with error: \n" +
@@ -532,9 +549,14 @@ class BackendController(
                     )
                 )
             )
-            val response = backendApi.rollback(
-                project.name, rollbackSpecs
-            ).execute()
+            val response = try {
+                backendApi.rollback(
+                    project.name, rollbackSpecs
+                ).execute()
+            } catch (e: IOException) {
+                quickStatusController.error(QuickStatus.STAGE, e)
+                return@withContext Result.failure(e)
+            }
             if (!response.isSuccessful) {
                 val ioException = IOException(
                     "error code(${response.code()}) with error: \n" +

@@ -15,11 +15,13 @@ class ProjectBackendController(
     fun getConfigs(): Result<List<ProjectConfig>> {
         var result: Result<List<ProjectConfig>>? = null
         repeat(3) {
-            val r = runCatching {
+            val r = try {
                 val response = api.getProjects().execute()
                 val body = response.body()?.string() ?: throw IOException("Empty body received!")
-                val result = Json.decodeFromString(Configs.serializer(), body)
-                return Result.success(result.configs)
+                val configs = Json.decodeFromString(Configs.serializer(), body)
+                Result.success(configs.configs)
+            } catch (e: IOException) {
+                Result.failure(e)
             }
             result = r
 

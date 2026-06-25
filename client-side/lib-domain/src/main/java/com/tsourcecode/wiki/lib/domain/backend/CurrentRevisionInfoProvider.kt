@@ -30,10 +30,16 @@ class CurrentRevisionInfoController(
         keyValueStorage[KEY] = Json.encodeToString(RevisionInfo.serializer(), info)
     }
 
-    @Throws(IOException::class)
-    fun getRevisionInfo(revision: String): RevisionInfo {
-        val response = wikiBackendAPIs.showRevision(project.name, RevisionSpec(revision)).execute()
-        val body = response.body()?.string() ?: throw IOException("Empty body received!")
-        return Json.decodeFromString(RevisionInfo.serializer(), body)
+    fun getRevisionInfo(revision: String): Result<RevisionInfo> {
+        val response = try {
+            wikiBackendAPIs.showRevision(project.name, RevisionSpec(revision)).execute()
+        } catch (e: IOException) {
+            return Result.failure(e)
+        }
+        val body = response.body()?.string()
+            ?: return Result.failure(IOException("Empty body received!"))
+        return runCatching {
+            Json.decodeFromString(RevisionInfo.serializer(), body)
+        }
     }
 }
