@@ -9,6 +9,7 @@ class AppComponent(private val appContext: Context) {
         AndroidPlatformDeps(appContext),
     )
     val quickStatusController = domain.quickStatusController
+    val androidTaskScheduler = domain.platformDeps.taskScheduler
 
     init {
         if (BuildConfig.DEBUG) {

@@ -120,16 +120,6 @@ class StatusModel(
         messageStorage.value = commitText
     }
 
-    fun commit() {
-        worker.launch {
-            val lastSeenCommitText = commitTextFlow.value
-            if (lastSeenCommitText.isNotEmpty() && backendController.commit(lastSeenCommitText)) {
-                backendController.pullOrSync("after commit#2")
-                updateCommitText("")
-            }
-        }
-    }
-
     fun notifyCommitScreenOpened() {
         worker.launch {
             fileStatus.update()

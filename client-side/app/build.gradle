@@ -59,6 +59,7 @@ dependencies {
 
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinX"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinX"
+    implementation "androidx.work:work-runtime-ktx:2.9.1"
 
     // jetpack-compose section
     implementation("androidx.compose.ui:ui:$composeVersion")

@@ -9,6 +9,8 @@ interface PlatformDeps {
     val persistentStorageProvider: PersistentStorageProvider
     val threading: Threading
     val externalStorageAccess: ExternalStorageAccessHandler
+    val notificationService: NotificationService
+    val taskScheduler: TaskScheduler
     suspend fun filesDir(): File
     val internalFiles: File
 }

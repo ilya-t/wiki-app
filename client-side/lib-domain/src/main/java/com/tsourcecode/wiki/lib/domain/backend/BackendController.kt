@@ -15,6 +15,7 @@ import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
 import com.tsourcecode.wiki.lib.domain.util.Base64
+import com.tsourcecode.wiki.lib.domain.util.CompositeLogger
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.Logger
 import com.tsourcecode.wiki.lib.domain.util.Threading
@@ -48,7 +49,7 @@ class BackendController(
     private val threading: Threading,
     private val scopes: CoroutineScopes,
     private val keyValueStorage: KeyValueStorage,
-    private val logger: Logger,
+    private val defaultLogger: Logger,
     private val fileStatusProvider: FileStatusProvider,
 ) {
     private val mutex = Mutex(locked = false)
@@ -88,7 +89,15 @@ class BackendController(
         val reason: String,
     )
 
-    private fun scheduleSync(syncContext: SyncContext): SyncJob {
+    private fun loggerForSync(external: Logger? = null): Logger {
+        return if (external != null) {
+            CompositeLogger(defaultLogger, external)
+        } else {
+            defaultLogger
+        }
+    }
+
+    private fun scheduleSync(syncContext: SyncContext, logger: Logger): SyncJob {
         val sync: Logger = logger.fork("-sync(#${Any().hashCode()}): ")
         val job = SyncJob(scope.async {
             sync.log { "sync started. Context: $syncContext" }
@@ -202,7 +211,6 @@ class BackendController(
                     val syncRelativePath = File(syncedFiles, REVISION_ZIP_REPOSITORY_DIR)
                     syncRelativePath
                         .walkTopDown()
-                        .asSequence()
                         .mapNotNull { syncedFile ->
                             val d = resolveDocument(syncedFile, syncRelativePath) ?: run {
                                 if (syncedFile.isFile) {
@@ -221,7 +229,7 @@ class BackendController(
                                 resolution = "accepted from backend"
                             } else {
                                 resolution = "declined from backend, staged"
-                                stage(localRevision)
+                                stage(localRevision, sync)
                             }
                             sync.log { "syncing file: ${localRevision.relativePath}: $resolution" }
                         }
@@ -307,7 +315,7 @@ class BackendController(
             val d = Document(project.dir, origin = file)
 
             logger.log { "Staging: $it (resolved to: $d)" }
-            if (!stage(d)) {
+            if (!stage(d, logger)) {
                 logger.log { "Staging '$it' failed (see error above)" }
             } else {
                 logger.log { "Staged successfully: $it" }
@@ -395,12 +403,9 @@ class BackendController(
         }
     }
 
-    private fun stage(d: Document): Boolean {
+    private fun stage(d: Document, logger: Logger): Boolean {
         val b64 = Base64.getEncoder().encodeToString(d.file.readBytes())
-        return stage(d.relativePath, b64)
-    }
-
-    fun stage(relativePath: String, b64: String): Boolean {
+        val relativePath = d.relativePath
         quickStatusController.udpate(QuickStatus.STAGE)
 
         val response = try {
@@ -427,7 +432,7 @@ class BackendController(
     }
 
     suspend fun commit(message: String): Boolean {
-        val commit = logger.fork("commit")
+        val commit = defaultLogger.fork("commit")
         commit.log {
             val r: RevisionInfo? = currentRevisionInfoController.state.value
             "message: '$message' current revision: '${r}'"
@@ -462,16 +467,19 @@ class BackendController(
         return success
     }
 
-    fun pullOrSync(reason: String): SyncJob {
+    fun pullOrSync(reason: String, extraLogger: Logger? = null): SyncJob {
         val result: Deferred<Result<Unit>> = scope.async {
-            pullOrSyncInternal(reason)
+            pullOrSyncInternal(reason, if (extraLogger != null) {
+                CompositeLogger(defaultLogger, extraLogger)
+            } else {
+                defaultLogger
+            })
         }
 
         return SyncJob(result)
     }
 
-    private suspend fun pullOrSyncInternal(reason: String): Result<Unit> {
-        val logger = logger.fork("-pullOrSync('$reason')")
+    private suspend fun pullOrSyncInternal(reason: String, logger: Logger): Result<Unit> {
         logger.log { "Gathering local changes" }
         val stagedChanges = fileStatusProvider.getStagedFiles()
         val haveLocalChanges = stagedChanges.isNotEmpty() || fileStatusProvider.hasChangedFiles()
@@ -483,10 +491,11 @@ class BackendController(
                     fullSync = needFullSync(),
                     skipStaging = false,
                     reason = reason,
-                )
+                ),
+                logger,
             ).waitResults()
         } else {
-            val revision: RevisionInfo = pull()
+            val revision: RevisionInfo = pull(logger)
                 .getOrElse { error ->
                     val message = "Pull failure: $error"
                     logger.log { message }
@@ -499,13 +508,14 @@ class BackendController(
                     fullSync = false,
                     skipStaging = true,
                     reason = reason,
-                )
+                ),
+                logger,
             ).waitResults()
         }
     }
 
-    private fun pull(): Result<RevisionInfo> {
-        val pulling = logger.fork("-pull(#${Any().hashCode()}): ")
+    private fun pull(logger: Logger): Result<RevisionInfo> {
+        val pulling = loggerForSync(logger).fork("-pull(#${Any().hashCode()}): ")
         pulling.log { "no changes detected. Moving server's HEAD towards." }
         quickStatusController.udpate(QuickStatus.STATUS_UPDATE, "pulling")
 
@@ -575,7 +585,8 @@ class BackendController(
                     fullSync = false,
                     skipStaging = false,
                     reason = "rollback of '$relativePath'"
-                )
+                ),
+                defaultLogger,
             )
             val exception = syncJob.waitResults().exceptionOrNull()
             if (exception != null) {

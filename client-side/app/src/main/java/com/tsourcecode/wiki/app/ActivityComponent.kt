@@ -1,6 +1,11 @@
 package com.tsourcecode.wiki.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.tsourcecode.wiki.app.bottombar.BottomBarController
@@ -43,6 +48,11 @@ class ActivityComponent(
     }
 
     init {
+        requestStoragePermissions()
+        requestNotificationPermissionIfNeeded()
+    }
+
+    private fun requestStoragePermissions() {
         val externalStorageAccess = appComponent.domain.platformDeps.externalStorageAccess
         externalStorageAccess.bind(activity)
         activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
@@ -51,7 +61,21 @@ class ActivityComponent(
                 externalStorageAccess.bind(null)
             }
         })
+    }
 
-
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    activity,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    NOTIFICATION_PERMISSION_REQUEST,
+                )
+            }
+        }
     }
 }
+
+private const val NOTIFICATION_PERMISSION_REQUEST = 1

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Wiki App</string>
+    <string name="sync_notification_channel">Repository sync</string>
 </resources>

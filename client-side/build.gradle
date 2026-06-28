@@ -4,7 +4,7 @@
 // modules in the project.
 ext {
     // The following are only a few examples of the types of properties you can define.
-    minSdkVersion = 24
+    minSdkVersion = 26
     targetSdkVersion = 35
     buildToolsVersion = '35.0.0'
 
