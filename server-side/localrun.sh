@@ -44,12 +44,11 @@ mkdir -p $host_volumes/repo-store
 
 wait_for_previous_container
 
-if [ "$SKIP_DOCKER_BUILD" != "1" ]; then
-    docker build ./app --tag wiki_backend
+if [ "$SKIP_BUILD_IMAGE" != "1" ]; then
+    ./build_image.sh
 fi
 
 RESTART_POLICY="${RESTART_POLICY:-unless-stopped}"
-./build_image.sh
 docker run \
     $( [ "$DETACH_ARG" == "--no-detach" ] || echo "--detach" ) \
     --publish $PORT:80 \
@@ -61,7 +60,7 @@ docker run \
     --volume $host_volumes/remote-repos:/app/remote-repos \
     --restart "$RESTART_POLICY" \
     --name "$CONTAINER_NAME" \
-    wiki_backend:latest
+    server-side-app:latest
 
 
 echo "server-side is running locally. Check url:"

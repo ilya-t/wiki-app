@@ -21,7 +21,9 @@ prepare_repo() {
     cd $REPO_DIR
     echo "# Sample Repo for Tests" > $REPO_DIR/README.md
 
-    git init --initial-branch=master
+    # git init --initial-branch is unavailable on Git in the client-side CI image (Ubuntu 20.04).
+    git init
+    git checkout -b master
     git config --local user.name "tester"
     git config --local user.email "test@mail.com"
 
@@ -42,4 +44,4 @@ prepare_repo > $PROJECT_DIR/server.log 2>&1
 
 echo "--> Launching server"
 cd $CWD
-./localrun.sh $PROJECT_DIR --no-detach "$ALIAS" >> $PROJECT_DIR/server.log 2>&1
+./localrun.sh $PROJECT_DIR --detach "$ALIAS" >> $PROJECT_DIR/server.log 2>&1

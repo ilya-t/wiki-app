@@ -38,7 +38,11 @@ class SyncTests {
             block()
         }
     }
-    private val testDir = File("/tmp/syncTests_${UUID.randomUUID()}").also {
+    // CI_TEST_ENV_DIR: host-visible path for nested Docker volume mounts in CI (see testrun.sh).
+    private val testDir = (
+        System.getenv("CI_TEST_ENV_DIR")?.let { File(it, "syncTests_${UUID.randomUUID()}") }
+            ?: File("/tmp/syncTests_${UUID.randomUUID()}")
+        ).also {
         it.mkdirs()
     }
     private val clientFiles = File(testDir, "client-side")
@@ -285,6 +289,13 @@ class SyncTests {
     }
 
     private fun locateServerSideDir(): File {
+        val fixedCandidates = listOf(File("/server-side")) // mounted in client-side CI container
+        for (candidate in fixedCandidates) {
+            if (File(candidate, "localrun_for_tests.sh").exists()) {
+                return candidate
+            }
+        }
+
         var dir: File? = File(System.getProperty("user.dir"))
         while (dir != null) {
             val script = File(dir, "server-side/localrun_for_tests.sh")
@@ -353,7 +364,7 @@ private class ServerController(
             delay(50)
         }
         throw IllegalStateException(
-            "Server did not respond with 200 within ${HEARTBEAT_TIMEOUT_MS / 1000} seconds"
+            "Server did not respond with 200 within ${HEARTBEAT_TIMEOUT_MS / 1000} seconds. "
         )
     }
 
