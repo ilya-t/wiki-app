@@ -42,7 +42,4 @@ prepare_repo > $PROJECT_DIR/server.log 2>&1
 
 echo "--> Launching server"
 cd $CWD
-if ! docker image inspect wiki_backend:latest >/dev/null 2>&1; then
-    docker build ./app --tag wiki_backend
-fi
-SKIP_DOCKER_BUILD=1 ./localrun.sh $PROJECT_DIR --no-detach "$ALIAS" >> $PROJECT_DIR/server.log 2>&1
+./localrun.sh $PROJECT_DIR --no-detach "$ALIAS" >> $PROJECT_DIR/server.log 2>&1

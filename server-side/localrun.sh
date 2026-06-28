@@ -49,7 +49,7 @@ if [ "$SKIP_DOCKER_BUILD" != "1" ]; then
 fi
 
 RESTART_POLICY="${RESTART_POLICY:-unless-stopped}"
-
+./build_image.sh
 docker run \
     $( [ "$DETACH_ARG" == "--no-detach" ] || echo "--detach" ) \
     --publish $PORT:80 \

@@ -4,8 +4,9 @@ COPY ./app /app
 COPY ./run.sh /app/run.sh
 WORKDIR /app
 
+# docker.io is needed for localrun_for_tests.sh
 RUN apt-get update && \
-    apt-get install -y zip=3.0-11build1 openjdk-21-jdk && \
+    apt-get install -y zip=3.0-11build1 openjdk-21-jdk docker.io git && \
     rm -rf /var/lib/apt/lists/*
 
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64

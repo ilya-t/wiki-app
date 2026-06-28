@@ -1,11 +1,9 @@
 set -e
-CLIENT_SIDE_DIR=../..
-rm -rf ./app
-rm -rf /tmp/app_shapshot
-mkdir /tmp/app_shapshot
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CLIENT_SIDE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-cp -R $CLIENT_SIDE_DIR /tmp/app_shapshot/
-mv /tmp/app_shapshot ./app
+rm -rf "$SCRIPT_DIR/app"
+cp -R "$CLIENT_SIDE_DIR" "$SCRIPT_DIR/app"
 
-docker build . --progress=plain --tag client_side_env:latest
-rm -rf ./app
+docker build "$SCRIPT_DIR" --progress=plain --tag client_side_env:latest
+rm -rf "$SCRIPT_DIR/app"
