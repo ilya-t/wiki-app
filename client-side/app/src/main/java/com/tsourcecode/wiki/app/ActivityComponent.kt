@@ -8,7 +8,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import com.tsourcecode.wiki.app.bottombar.BottomBarController
 import com.tsourcecode.wiki.app.navigation.ActivityNavigator
 import com.tsourcecode.wiki.app.navigation.ScreenFactory
 
@@ -28,11 +27,10 @@ class ActivityComponent(
             domain.quickStatusController,
     )
 
-    private val bottomBarView = BottomBarController(
+    private val pullToRefreshController = PullToRefreshController(
             activity,
             domain.navigator,
             domain.projectComponentResolver,
-            rootView = activity.findViewById(R.id.control_bar),
     )
 
     private val quickStateController = QuickStatusViewModel(

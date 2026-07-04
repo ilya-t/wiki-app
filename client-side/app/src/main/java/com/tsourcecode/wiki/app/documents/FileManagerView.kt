@@ -8,20 +8,17 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.tsourcecode.wiki.app.R
 import com.tsourcecode.wiki.app.navigation.ScreenView
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
 import com.tsourcecode.wiki.lib.domain.documents.Folder
 import com.tsourcecode.wiki.lib.domain.project.Project
-import com.tsourcecode.wiki.lib.domain.project.ProjectComponent
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.net.URI
 
 private const val ROOT_DIR_TITLE = "<root dir>"
@@ -32,7 +29,6 @@ class FileManagerView(
         private var fileManagerModel: FileManagerModel,
 ) : ScreenView {
     private val root: View = LayoutInflater.from(activity).inflate(R.layout.file_manager, null)
-    private val swipeRefreshLayout = root.findViewById<SwipeRefreshLayout>(R.id.pull_to_refresh_container)
     override val view: View = root
     private val scope = CoroutineScope(Dispatchers.Main)
     private val container = root.findViewById<ViewGroup>(R.id.files_list_container)
@@ -76,7 +72,6 @@ class FileManagerView(
                 renderFolder(component.project, it)
             }
         }
-        setupPullToRefresh(component)
         return true
     }
 
@@ -88,19 +83,6 @@ class FileManagerView(
             title.text = relativePath
         } else {
             title.text = ROOT_DIR_TITLE
-        }
-    }
-
-    private fun setupPullToRefresh(component: ProjectComponent) {
-        swipeRefreshLayout.setOnRefreshListener {
-            component.backendController.pullOrSync("pull-to-refresh")
-        }
-        scope.launch {
-            component.backendController.refreshFlow.collect { refreshing ->
-                withContext(Dispatchers.Main) {
-                    swipeRefreshLayout.isRefreshing = refreshing
-                }
-            }
         }
     }
 
