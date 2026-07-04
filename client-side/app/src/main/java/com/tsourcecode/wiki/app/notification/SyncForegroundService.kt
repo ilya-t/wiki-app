@@ -37,7 +37,7 @@ class SyncForegroundService : Service() {
             else -> {
                 ensureChannel()
                 val defaultTitle = getString(R.string.sync_notification_channel)
-                startForeground(NOTIFICATION_ID, buildNotification(defaultTitle))
+                startForeground(NotificationIds.SYNC_NOTIFICATION_ID, buildNotification(defaultTitle))
                 startCollecting()
             }
         }
@@ -58,7 +58,7 @@ class SyncForegroundService : Service() {
                     getString(R.string.sync_notification_channel)
                 }
                 val notification = buildNotification(title)
-                startForeground(NOTIFICATION_ID, notification)
+                startForeground(NotificationIds.SYNC_NOTIFICATION_ID, notification)
             }
         }
     }
@@ -73,6 +73,7 @@ class SyncForegroundService : Service() {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(getString(R.string.sync_notification_channel))
             .setContentText(text)
+            .setContentIntent(mainActivityPendingIntent())
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
@@ -90,6 +91,5 @@ class SyncForegroundService : Service() {
         const val ACTION_START = "com.tsourcecode.wiki.app.notification.START"
         const val ACTION_STOP = "com.tsourcecode.wiki.app.notification.STOP"
         private const val CHANNEL_ID = "repository_sync"
-        private const val NOTIFICATION_ID = 10_001
     }
 }
