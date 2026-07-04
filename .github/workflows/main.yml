@@ -50,3 +50,10 @@ jobs:
       with:
         name: client-side tests artifacts
         path: client-side/ci/build_artifacts
+
+    - name: debug apk artifact
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-side debug apk
+        path: client-side/ci/build_artifacts/app-debug.apk
