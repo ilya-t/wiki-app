@@ -316,7 +316,7 @@ private class ServerController(
     private val serverFiles: File,
     private val alias: String,
 ) {
-    val serverUrl = "http://127.0.0.1:8181"
+    val serverUrl = System.getenv("SYNC_TEST_SERVER_URL") ?: "http://127.0.0.1:8181"
     private val serverProcess: Process
 
     companion object {

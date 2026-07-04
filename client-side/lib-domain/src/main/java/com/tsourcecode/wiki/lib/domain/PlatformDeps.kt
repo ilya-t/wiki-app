@@ -11,6 +11,7 @@ interface PlatformDeps {
     val externalStorageAccess: ExternalStorageAccessHandler
     val notificationService: NotificationService
     val taskScheduler: TaskScheduler
+    val foregroundSyncService: ForegroundSyncService
     suspend fun filesDir(): File
     val internalFiles: File
 }

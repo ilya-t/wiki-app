@@ -38,6 +38,8 @@ class DomainComponent<T : PlatformDeps>(
     )
 
     val quickStatusController = QuickStatusController()
+    val activityForegroundState = ActivityForegroundState()
+    val serviceNotificationView = ServiceNotificationView(quickStatusController)
     private val dateFormat: DateFormat = SimpleDateFormat("dd.MM HH:mm:ss", Locale.US)
 
     private val logger = Logger { m ->
@@ -124,5 +126,12 @@ class DomainComponent<T : PlatformDeps>(
         workerScope = scopes.worker,
         notificationService = platformDeps.notificationService,
         taskScheduler = platformDeps.taskScheduler,
+    )
+
+    private val syncForegroundCoordinator = SyncForegroundCoordinator(
+        quickStatusController = quickStatusController,
+        activityForegroundState = activityForegroundState,
+        foregroundSyncService = platformDeps.foregroundSyncService,
+        scope = scopes.worker,
     )
 }

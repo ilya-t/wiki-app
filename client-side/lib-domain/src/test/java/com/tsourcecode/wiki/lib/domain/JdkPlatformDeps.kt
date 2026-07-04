@@ -33,4 +33,5 @@ class JdkPlatformDeps(
 
     override val notificationService: NotificationService = NoOpNotificationService
     override val taskScheduler: TaskScheduler = NoOpTaskScheduler
+    override val foregroundSyncService: ForegroundSyncService = NoOpForegroundSyncService
 }

@@ -28,8 +28,6 @@ class AndroidNotificationService(
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(context.getString(R.string.sync_notification_channel))
             .setContentText(trimmed)
-            .setAutoCancel(true)
-            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
         notificationManager.notify(NOTIFICATION_ID, notification)

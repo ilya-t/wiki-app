@@ -50,6 +50,7 @@ class ActivityComponent(
     init {
         requestStoragePermissions()
         requestNotificationPermissionIfNeeded()
+        bindActivityForegroundState()
     }
 
     private fun requestStoragePermissions() {
@@ -59,6 +60,19 @@ class ActivityComponent(
             override fun onDestroy(owner: LifecycleOwner) {
                 super.onDestroy(owner)
                 externalStorageAccess.bind(null)
+            }
+        })
+    }
+
+    private fun bindActivityForegroundState() {
+        val activityForegroundState = domain.activityForegroundState
+        activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) {
+                activityForegroundState.setInForeground(true)
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                activityForegroundState.setInForeground(false)
             }
         })
     }
