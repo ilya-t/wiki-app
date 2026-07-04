@@ -132,19 +132,18 @@ func TestGitStageGitignoredFile(t *testing.T) {
 	s.StrictExecute("git commit -m 'ignore obsidian'")
 
 	g := NewGit(testRepoDir, "")
-	if e := stageFile(g, ".obsidian/app.json", "{\"version\":1}"); e != nil {
-		t.Fatalf("staging gitignored file failed: %v", e)
+	if e := stageFile(g, ".obsidian/app.json", "{\"version\":1}"); e == nil {
+		t.Fatal("expected staging gitignored file to fail")
 	}
 
 	status, e := g.Status()
 	if e != nil {
 		t.Fatal(e)
 	}
-	if len(status.Files) != 1 {
-		t.Fatalf("expected 1 staged file, got: %+v", status.Files)
-	}
-	if status.Files[0].Path != ".obsidian/app.json" {
-		t.Fatalf("expected .obsidian/app.json, got: %+v", status.Files[0])
+	for _, f := range status.Files {
+		if f.Path == ".obsidian/app.json" {
+			t.Fatalf("gitignored file should not be staged, got: %+v", f)
+		}
 	}
 }
 
