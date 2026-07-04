@@ -25,7 +25,7 @@ class QuickStatusViewModel(
     private var lastStatus: StatusInfo? = null
 
     init {
-        quickStatusController.listener = { status ->
+        quickStatusController.addListener { status ->
             tvStatus.post {
                 updateStatus(status)
             }

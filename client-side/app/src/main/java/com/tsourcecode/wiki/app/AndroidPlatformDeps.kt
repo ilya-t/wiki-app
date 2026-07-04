@@ -2,10 +2,12 @@ package com.tsourcecode.wiki.app
 
 import android.content.Context
 import android.os.Environment
+import com.tsourcecode.wiki.app.notification.AndroidForegroundSyncService
 import com.tsourcecode.wiki.app.notification.AndroidNotificationService
 import com.tsourcecode.wiki.app.scheduler.AndroidTaskScheduler
 import com.tsourcecode.wiki.app.storage.AndroidStorageProvider
 import com.tsourcecode.wiki.app.storage.ExternalStorageAccessHandlerImpl
+import com.tsourcecode.wiki.lib.domain.ForegroundSyncService
 import com.tsourcecode.wiki.lib.domain.NotificationService
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,4 +36,5 @@ class AndroidPlatformDeps(
     override val threading = AndroidThreading()
     override val notificationService: NotificationService = AndroidNotificationService(context)
     override val taskScheduler = AndroidTaskScheduler(context)
+    override val foregroundSyncService: ForegroundSyncService = AndroidForegroundSyncService(context)
 }

@@ -42,7 +42,7 @@ object TestDomainComponentFactory {
             DebugLogger.impl = {
                 println(it)
             }
-            quickStatusController.listener = { info: StatusInfo ->
+            quickStatusController.addListener { info: StatusInfo ->
                 info.error?.let {
                     throw AssertionError("status: ${info.status} message: ${info.comment}", it)
                 }

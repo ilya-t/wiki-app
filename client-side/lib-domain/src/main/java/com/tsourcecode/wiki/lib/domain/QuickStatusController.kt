@@ -4,18 +4,26 @@ import com.tsourcecode.wiki.lib.domain.tests.OpenInTest
 
 @OpenInTest
 class QuickStatusController() {
-    var listener: ((StatusInfo) -> Unit)? = null
+    private val listeners = mutableListOf<(StatusInfo) -> Unit>()
+
+    fun addListener(listener: (StatusInfo) -> Unit) {
+        listeners.add(listener)
+    }
+
+    private fun notifyListeners(status: StatusInfo) {
+        listeners.forEach { it(status) }
+    }
 
     fun udpate(status: QuickStatus, comment: String = "") {
-        listener?.invoke(StatusInfo(status, error = null, comment = comment))
+        notifyListeners(StatusInfo(status, error = null, comment = comment))
     }
 
     fun error(e: Throwable) {
-        listener?.invoke(StatusInfo(QuickStatus.ERROR, e))
+        notifyListeners(StatusInfo(QuickStatus.ERROR, e))
     }
 
     fun error(status: QuickStatus, e: Throwable) {
-        listener?.invoke(StatusInfo(status, e))
+        notifyListeners(StatusInfo(status, e))
     }
 }
 
