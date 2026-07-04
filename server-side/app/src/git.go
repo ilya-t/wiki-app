@@ -128,7 +128,7 @@ func (g *Git) Stage(f *FileContent) error {
 		return e
 	}
 
-	_, err := g.execute("git add -f -- " + quoteShellPath(relPath))
+	_, err := g.execute("git add -- " + quoteShellPath(relPath))
 	return err
 }
 
@@ -195,7 +195,7 @@ func (g *Git) Pull() error {
 	if hadChanges {
 		return errors.New("got changes, pull declined")
 	}
-	
+
 	_, fetchErr := g.execute("git fetch " + g.remote + " " + g.branch)
 
 	if fetchErr != nil {
