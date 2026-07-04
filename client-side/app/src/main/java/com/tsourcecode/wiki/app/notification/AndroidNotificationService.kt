@@ -28,9 +28,10 @@ class AndroidNotificationService(
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(context.getString(R.string.sync_notification_channel))
             .setContentText(trimmed)
+            .setContentIntent(context.mainActivityPendingIntent())
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        notificationManager.notify(NotificationIds.SYNC_NOTIFICATION_ID, notification)
     }
 
     private fun ensureChannel() {
@@ -44,6 +45,5 @@ class AndroidNotificationService(
 
     companion object {
         private const val CHANNEL_ID = "repository_sync"
-        private const val NOTIFICATION_ID = 10_000
     }
 }
