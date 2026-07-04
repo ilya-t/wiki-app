@@ -5,8 +5,7 @@
     android:id="@+id/files_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:layout_marginBottom="@dimen/control_bar_height">
+    android:orientation="vertical">
 
     <ProgressBar
         android:id="@+id/files_trobber"
@@ -27,16 +26,10 @@
         tools:text="dir/path"
         />
 
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/pull_to_refresh_container"
+    <FrameLayout
+        android:id="@+id/files_list_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        >
-        <FrameLayout
-            android:id="@+id/files_list_container"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            />
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+        />
 
 </LinearLayout>

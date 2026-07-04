@@ -4,5 +4,4 @@
     android:id="@+id/tv_markwon"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_marginBottom="@dimen/control_bar_height"
     android:gravity="top" />
