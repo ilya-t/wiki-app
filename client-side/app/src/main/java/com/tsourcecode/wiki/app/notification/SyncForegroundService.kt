@@ -24,20 +24,26 @@ class SyncForegroundService : Service() {
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
     private var collectJob: Job? = null
+    private var lastTitle: String? = null
+    private var lastDesc: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                stopCollecting()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                val keepNotification = intent.getBooleanExtra(EXTRA_KEEP_NOTIFICATION, false)
+                stopService(keepNotification)
             }
             else -> {
                 ensureChannel()
                 val defaultTitle = getString(R.string.sync_notification_channel)
-                startForeground(NotificationIds.SYNC_NOTIFICATION_ID, buildNotification(defaultTitle))
+                lastTitle = defaultTitle
+                lastDesc = ""
+                startForeground(
+                    NotificationIds.SYNC_NOTIFICATION_ID,
+                    buildNotification(defaultTitle, "", ongoing = true),
+                )
                 startCollecting()
             }
         }
@@ -57,7 +63,9 @@ class SyncForegroundService : Service() {
                 val title = view.title.ifBlank {
                     getString(R.string.sync_notification_channel)
                 }
-                val notification = buildNotification(title)
+                lastTitle = title
+                lastDesc = view.desc
+                val notification = buildNotification(title, view.desc, ongoing = true)
                 startForeground(NotificationIds.SYNC_NOTIFICATION_ID, notification)
             }
         }
@@ -68,15 +76,31 @@ class SyncForegroundService : Service() {
         collectJob = null
     }
 
-    private fun buildNotification(text: String) =
-        NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(getString(R.string.sync_notification_channel))
-            .setContentText(text)
-            .setContentIntent(mainActivityPendingIntent())
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .build()
+    private fun stopService(keepNotification: Boolean) {
+        stopCollecting()
+        val title = lastTitle
+        if (keepNotification && title != null) {
+            val notification = buildNotification(title, lastDesc.orEmpty(), ongoing = false)
+            notificationManager.notify(NotificationIds.SYNC_NOTIFICATION_ID, notification)
+            stopForeground(STOP_FOREGROUND_DETACH)
+        } else {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        }
+        stopSelf()
+    }
+
+    private fun buildNotification(
+        title: String,
+        desc: String,
+        ongoing: Boolean,
+    ) = NotificationCompat.Builder(this, CHANNEL_ID)
+        .setSmallIcon(R.mipmap.ic_launcher)
+        .setContentTitle(title)
+        .setContentText(desc)
+        .setContentIntent(mainActivityPendingIntent())
+        .setPriority(NotificationCompat.PRIORITY_LOW)
+        .setOngoing(ongoing)
+        .build()
 
     private fun ensureChannel() {
         val channel = NotificationChannel(
@@ -90,6 +114,7 @@ class SyncForegroundService : Service() {
     companion object {
         const val ACTION_START = "com.tsourcecode.wiki.app.notification.START"
         const val ACTION_STOP = "com.tsourcecode.wiki.app.notification.STOP"
+        const val EXTRA_KEEP_NOTIFICATION = "keep_notification"
         private const val CHANNEL_ID = "repository_sync"
     }
 }

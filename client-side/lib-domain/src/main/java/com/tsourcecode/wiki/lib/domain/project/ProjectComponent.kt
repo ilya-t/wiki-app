@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.lib.domain.project
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
+import com.tsourcecode.wiki.lib.domain.sync.SyncStatusProvider
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
 import com.tsourcecode.wiki.lib.domain.backend.CurrentRevisionInfoController
@@ -31,6 +32,7 @@ class ProjectComponent(
     val project: Project,
     platformDeps: PlatformDeps,
     quickStatusController: QuickStatusController,
+    syncStatusProvider: SyncStatusProvider,
     navigator: AppNavigator,
     storageProvider: PersistentStorageProvider,
     private val backendFactory: BackendFactory,
@@ -90,6 +92,7 @@ class ProjectComponent(
     val backendController = BackendController(
             platformDeps,
             quickStatusController,
+            syncStatusProvider,
             elementHashProvider,
             project,
             currentRevisionInfoController,

@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.lib.domain.project
 import com.tsourcecode.wiki.lib.domain.AppNavigator
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
+import com.tsourcecode.wiki.lib.domain.sync.SyncStatusProvider
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.Logger
@@ -10,6 +11,7 @@ import com.tsourcecode.wiki.lib.domain.util.Logger
 class ProjectComponentProvider(
         private val platformDeps: PlatformDeps,
         private val quickStatusController: QuickStatusController,
+        private val syncStatusProvider: SyncStatusProvider,
         private val navigator: AppNavigator,
         private val backendFactory: BackendFactory,
         private val scopes: CoroutineScopes,
@@ -24,6 +26,7 @@ class ProjectComponentProvider(
                     p,
                     platformDeps,
                     quickStatusController,
+                    syncStatusProvider,
                     navigator,
                     platformDeps.persistentStorageProvider,
                     backendFactory,
