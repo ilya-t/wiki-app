@@ -1,21 +1,26 @@
 package com.tsourcecode.wiki.lib.domain
 
+import com.tsourcecode.wiki.lib.domain.sync.SyncData
+import com.tsourcecode.wiki.lib.domain.sync.SyncStatusProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 class SyncForegroundCoordinator(
-    quickStatusController: QuickStatusController,
+    private val syncStatusProvider: SyncStatusProvider,
     private val activityForegroundState: ActivityForegroundState,
     private val foregroundSyncService: ForegroundSyncService,
     scope: CoroutineScope,
 ) {
-    private var lastStatus: StatusInfo? = null
+    private var lastStatus: SyncData? = null
 
     init {
-        quickStatusController.addListener { status ->
-            lastStatus = status
-            updateForeground()
+        scope.launch {
+            syncStatusProvider.lastSync.collect {
+                lastStatus = it
+                updateForeground()
+            }
         }
         activityForegroundState.isInForeground
             .onEach { updateForeground() }
@@ -23,28 +28,16 @@ class SyncForegroundCoordinator(
     }
 
     private fun updateForeground() {
+        if (activityForegroundState.inForeground) {
+            foregroundSyncService.stop(keepNotification = false)
+            return
+        }
+
         val status = lastStatus
-        val syncing = status?.error == null && status?.status?.isBackendWorkInProgress() == true
-        val shouldShow = syncing && !activityForegroundState.inForeground
-        if (shouldShow) {
-            foregroundSyncService.start()
-        } else {
-            foregroundSyncService.stop()
+        when {
+            status?.isCompleted() == false -> foregroundSyncService.start()
+            status != null -> foregroundSyncService.stop(keepNotification = true)
+            else -> foregroundSyncService.stop(keepNotification = false)
         }
     }
-}
-
-private fun QuickStatus.isBackendWorkInProgress(): Boolean = when (this) {
-    QuickStatus.SYNC,
-    QuickStatus.DECOMPRESS,
-    QuickStatus.STATUS_UPDATE,
-    QuickStatus.STAGE,
-    QuickStatus.COMMIT,
-    -> true
-    QuickStatus.SYNCED,
-    QuickStatus.STAGED,
-    QuickStatus.COMMITED,
-    QuickStatus.STATUS_UPDATED,
-    QuickStatus.ERROR,
-    -> false
 }

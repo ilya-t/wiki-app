@@ -3,6 +3,7 @@ package com.tsourcecode.wiki.lib.domain.backend
 import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
+import com.tsourcecode.wiki.lib.domain.sync.SyncStatusProvider
 import com.tsourcecode.wiki.lib.domain.backend.api.SyncApiPayload
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.UnstagedResponse
@@ -14,6 +15,7 @@ import com.tsourcecode.wiki.lib.domain.hashing.Hashable
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.storage.KeyValueStorage
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
+import com.tsourcecode.wiki.lib.domain.sync.Revision
 import com.tsourcecode.wiki.lib.domain.util.Base64
 import com.tsourcecode.wiki.lib.domain.util.CompositeLogger
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
@@ -42,6 +44,7 @@ internal const val REVISION_ZIP_REPOSITORY_DIR = "repo"
 class BackendController(
     private val platformDeps: PlatformDeps,
     private val quickStatusController: QuickStatusController,
+    private val syncStatusProvider: SyncStatusProvider,
     private val elementHashProvider: ElementHashProvider,
     private val project: Project,
     private val currentRevisionInfoController: CurrentRevisionInfoController,
@@ -117,9 +120,17 @@ class BackendController(
         return job
     }
 
-    private suspend fun doSync(syncContext: SyncContext, sync: Logger): Result<Unit> {
+    private suspend fun doSync(syncContext: SyncContext, logger: Logger): Result<Unit> {
         _refreshFlow.compareAndSet(expect = false, update = true)
         quickStatusController.udpate(QuickStatus.SYNC, "waiting for previous sync to complete")
+        val originCommit = currentRevisionInfoController.state.value?.toRevision() ?: emptyCommit()
+        val syncStatusMutator = syncStatusProvider.beginSync(originCommit)
+        val sync = CompositeLogger(
+            logger,
+            Logger { msg ->
+                syncStatusMutator.appendLog("${project.name}: ${msg.trim()}")
+            },
+        )
         try {
             val localRevision: String? = currentRevisionInfoController.state.value?.revision
                 ?.trimEnd('\n') // TODO: fix server-side
@@ -140,9 +151,9 @@ class BackendController(
                             syncContext.rollbackSpecs.files.none { f -> f.path == relPath }
                         }
                     if (!tryStageChanges(localRevision, filesWithoutRollbacks, sync)) {
-                        return Result.failure(
-                            RuntimeException("Staging failed!")
-                        )
+                        val error = RuntimeException("Staging failed!")
+                        syncStatusMutator.failSync(error)
+                        return Result.failure(error)
                     }
                 } else {
                     sync.log { "staging skipped! No revision provided" }
@@ -154,6 +165,7 @@ class BackendController(
                 requestLastRevisionSnapshot(files)
             }.getOrElse {
                 quickStatusController.error(QuickStatus.SYNC, it)
+                syncStatusMutator.failSync(it)
                 return Result.failure(it)
             }
             lastRevisionSnapshot?.let { snapshot ->
@@ -163,6 +175,7 @@ class BackendController(
                     .getRevisionInfo(serverRevision)
                     .getOrElse { error ->
                         quickStatusController.error(QuickStatus.SYNC, error)
+                        syncStatusMutator.failSync(error)
                         return Result.failure(error)
                     }
                 quickStatusController.udpate(QuickStatus.DECOMPRESS)
@@ -182,9 +195,9 @@ class BackendController(
                     val result = syncedFiles.copyRecursively(project.repo, overwrite = true)
                     syncedFiles.deleteRecursively()
                     if (!result) {
-                        quickStatusController.error(
-                            RuntimeException("Move failed ($syncedFiles -> ${project.repo})")
-                        )
+                        val error = RuntimeException("Move failed ($syncedFiles -> ${project.repo})")
+                        quickStatusController.error(error)
+                        syncStatusMutator.failSync(error)
                     } else {
                         sync.log { "Move completed ($syncedFiles -> ${project.repo})" }
                     }
@@ -240,6 +253,7 @@ class BackendController(
                 syncedFiles.deleteRecursively()
 
                 dirRevision = snapshot.zipFile.nameWithoutExtension
+                syncStatusMutator.completeSync(serverRevisionInfo.toRevision())
                 scope.launch(threading.main) {
                     projectObserver?.invoke(dirRevision, project.repo)
                     quickStatusController.udpate(
@@ -255,6 +269,7 @@ class BackendController(
         } catch (e: Exception) {
             sync.log { "ERROR: $e" }
             e.printStackTrace()
+            syncStatusMutator.failSync(e)
             scope.launch(threading.main) {
                 quickStatusController.error(QuickStatus.SYNC, e)
             }
@@ -626,3 +641,11 @@ private fun RevisionInfo?.toComment(): String {
 
     return " (${this.date.replace("\n", "")})\n${this.revision}\n${this.message.replace("\n","")}"
 }
+
+private fun emptyCommit(): Revision = Revision(revision = "", date = "", message = "")
+
+private fun RevisionInfo.toRevision(): Revision = Revision(
+    revision = revision,
+    date = date,
+    message = message,
+)

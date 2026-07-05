@@ -1,5 +1,8 @@
 package com.tsourcecode.wiki.lib.domain
 
+import com.tsourcecode.wiki.lib.domain.sync.Revision
+import com.tsourcecode.wiki.lib.domain.sync.SyncStatusMutator
+import com.tsourcecode.wiki.lib.domain.sync.SyncStatusProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,7 +16,7 @@ class SyncForegroundCoordinatorTest {
     @Test
     fun startsForegroundWhenSyncingAndActivityPaused() = runCoordinatorTest {
         activityState.setInForeground(false)
-        quickStatusController.udpate(QuickStatus.SYNC, "syncing with backend")
+        startSync()
 
         assertTrue(foregroundService.isRunning)
     }
@@ -21,7 +24,7 @@ class SyncForegroundCoordinatorTest {
     @Test
     fun stopsForegroundWhenActivityResumes() = runCoordinatorTest {
         activityState.setInForeground(false)
-        quickStatusController.udpate(QuickStatus.SYNC, "syncing")
+        startSync()
         activityState.setInForeground(true)
 
         assertFalse(foregroundService.isRunning)
@@ -30,15 +33,15 @@ class SyncForegroundCoordinatorTest {
     @Test
     fun stopsForegroundWhenSyncCompletesWhilePaused() = runCoordinatorTest {
         activityState.setInForeground(false)
-        quickStatusController.udpate(QuickStatus.SYNC, "syncing")
-        quickStatusController.udpate(QuickStatus.SYNCED, "done")
+        startSync()
+        completeSync()
 
         assertFalse(foregroundService.isRunning)
     }
 
     @Test
     fun doesNotStartForegroundWhileActivityInForeground() = runCoordinatorTest {
-        quickStatusController.udpate(QuickStatus.SYNC, "syncing")
+        startSync()
 
         assertFalse(foregroundService.isRunning)
     }
@@ -46,8 +49,8 @@ class SyncForegroundCoordinatorTest {
     @Test
     fun stopsForegroundWhenSyncErrorsWhilePaused() = runCoordinatorTest {
         activityState.setInForeground(false)
-        quickStatusController.udpate(QuickStatus.SYNC, "syncing")
-        quickStatusController.error(QuickStatus.SYNC, RuntimeException("network failure"))
+        startSync()
+        failSync(RuntimeException("network failure"))
 
         assertFalse(foregroundService.isRunning)
     }
@@ -65,18 +68,35 @@ class SyncForegroundCoordinatorTest {
     private class CoordinatorTestContext(
         scope: CoroutineScope,
     ) {
-        val quickStatusController = QuickStatusController()
+        val syncStatusProvider = SyncStatusProvider()
         val activityState = ActivityForegroundState()
         val foregroundService = RecordingForegroundSyncService()
+        private var syncMutator: SyncStatusMutator? = null
 
         init {
             SyncForegroundCoordinator(
-                quickStatusController,
+                syncStatusProvider,
                 activityState,
                 foregroundService,
                 scope,
             )
         }
+
+        fun startSync() {
+            syncMutator = syncStatusProvider.beginSync(emptyRevision())
+        }
+
+        fun completeSync() {
+            syncMutator?.completeSync(
+                Revision(revision = "rev2", date = "2024-01-02", message = "done")
+            )
+        }
+
+        fun failSync(error: Throwable) {
+            syncMutator?.failSync(error)
+        }
+
+        private fun emptyRevision() = Revision(revision = "", date = "", message = "")
     }
 
     private class RecordingForegroundSyncService : ForegroundSyncService {
@@ -87,7 +107,7 @@ class SyncForegroundCoordinatorTest {
             isRunning = true
         }
 
-        override fun stop() {
+        override fun stop(keepNotification: Boolean) {
             isRunning = false
         }
     }

@@ -10,6 +10,7 @@ import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentResolver
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import com.tsourcecode.wiki.lib.domain.storage.StoredPrimitive
+import com.tsourcecode.wiki.lib.domain.sync.SyncStatusProvider
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 import com.tsourcecode.wiki.lib.domain.util.Logger
@@ -38,8 +39,9 @@ class DomainComponent<T : PlatformDeps>(
     )
 
     val quickStatusController = QuickStatusController()
+    val syncStatusProvider = SyncStatusProvider()
     val activityForegroundState = ActivityForegroundState()
-    val serviceNotificationView = ServiceNotificationView(quickStatusController)
+    val serviceNotificationView = ServiceNotificationView(syncStatusProvider, scopes)
     private val dateFormat: DateFormat = SimpleDateFormat("dd.MM HH:mm:ss", Locale.US)
 
     private val logger = Logger { m ->
@@ -89,6 +91,7 @@ class DomainComponent<T : PlatformDeps>(
     val projectComponents = ProjectComponentProvider(
         platformDeps,
         quickStatusController,
+        syncStatusProvider,
         navigator,
         backendFactory,
         scopes,
@@ -129,7 +132,7 @@ class DomainComponent<T : PlatformDeps>(
     )
 
     private val syncForegroundCoordinator = SyncForegroundCoordinator(
-        quickStatusController = quickStatusController,
+        syncStatusProvider = syncStatusProvider,
         activityForegroundState = activityForegroundState,
         foregroundSyncService = platformDeps.foregroundSyncService,
         scope = scopes.worker,

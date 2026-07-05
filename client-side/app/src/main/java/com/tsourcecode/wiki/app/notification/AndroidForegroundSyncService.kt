@@ -15,9 +15,10 @@ class AndroidForegroundSyncService(
         ContextCompat.startForegroundService(context, intent)
     }
 
-    override fun stop() {
+    override fun stop(keepNotification: Boolean) {
         val intent = Intent(context, SyncForegroundService::class.java).apply {
             action = SyncForegroundService.ACTION_STOP
+            putExtra(SyncForegroundService.EXTRA_KEEP_NOTIFICATION, keepNotification)
         }
         context.startService(intent)
     }
