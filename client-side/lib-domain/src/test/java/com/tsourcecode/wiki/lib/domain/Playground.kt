@@ -13,8 +13,8 @@ import java.io.File
  */
 class Playground(private val playgroundDir: File? = null) {
     private val domain = TestDomainComponentFactory.create(
+        platformDeps = playgroundDir?.let(::JdkPlatformDeps) ?: JdkPlatformDeps(),
         proxy = TestDomainComponentFactory.ProxyConfig("localhost", 9999),
-        filesRoot = playgroundDir,
     )
     val viewModels: ViewModels = domain.viewModels
 

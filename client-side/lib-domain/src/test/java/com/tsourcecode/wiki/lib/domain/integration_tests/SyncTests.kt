@@ -1,12 +1,17 @@
 package com.tsourcecode.wiki.lib.domain.integration_tests
 
 import com.tsourcecode.wiki.lib.domain.DomainComponent
+import com.tsourcecode.wiki.lib.domain.InMemoryStorageProvider
 import com.tsourcecode.wiki.lib.domain.JdkPlatformDeps
 import com.tsourcecode.wiki.lib.domain.TestDomainComponentFactory
+import com.tsourcecode.wiki.lib.domain.backend.SyncJob
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
 import com.tsourcecode.wiki.lib.domain.project.Project
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
@@ -23,6 +28,10 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 private const val TEST_PROJECT = "test_repo"
+private const val SLOW_REMOTE_FILE_PADDING_BYTES = 2 * 1024 * 1024
+
+private fun slowRemoteFileContent(name: String): String =
+    "content of $name\n" + "x".repeat(SLOW_REMOTE_FILE_PADDING_BYTES)
 
 /**
  * Heavy integrational test that will boot local server container against which sync will be checked.
@@ -43,7 +52,9 @@ class SyncTests {
         it.mkdirs()
     }
     private val clientFiles = File(testDir, "client-side")
-    private val domain = TestDomainComponentFactory.create(filesRoot = clientFiles)
+    private val domain = TestDomainComponentFactory.create(
+        platformDeps = JdkPlatformDeps(filesRoot = clientFiles),
+    )
     private val serverFiles = File(testDir, "server-side")
 
     @get:Rule val rule = TestName()
@@ -240,26 +251,88 @@ class SyncTests {
 
     @Test
     fun `recovers cleanly after interrupted multi-file pull`() = integrationTest {
-        val testClientFiles = File(testDir, "client-side-interrupted")
+        val context = partialMultiFilePullSetup("client-side-interrupted")
         val responseInterceptor = NetworkInterceptorByFileExistence()
         val testDomain = TestDomainComponentFactory.create(
+            platformDeps = context.platformDeps,
             responseInterceptor = responseInterceptor,
-            filesRoot = testClientFiles,
             throwOnQuickStatusError = false,
         )
-
         val statusModel = openFirstProjectStatus(testDomain)
         statusModel.sync("initial sync").wait()
 
-        val remoteFiles = listOf("remote-a.md", "remote-b.md", "remote-c.md")
-        val commitMessage = commitNewFilesAtServerSide(remoteFiles)
-
         val projectDir = captureTestProject(testDomain).dir
+        val commitMessage = commitNewFilesAtServerSide(context.remoteFiles)
         responseInterceptor.projectDir = projectDir
-        responseInterceptor.interruptStatusAfterOnFilesExists(remoteFiles)
+        responseInterceptor.interruptStatusAfterOnFilesExists(context.remoteFiles)
 
         statusModel.sync("interrupted pull").wait()
 
+        assertRevisionNotAdvanced(statusModel, commitMessage)
+
+        responseInterceptor.interruptStatusAfterOnFilesExists(emptyList())
+        completePartialPullRecovery(statusModel, projectDir, context.remoteFiles)
+    }
+
+    @Test
+    fun `recovers cleanly after coroutine shutdown during multi-file pull`() = integrationTest {
+        val context = partialMultiFilePullSetup("client-side-coroutine-interrupted")
+        val testDomain = TestDomainComponentFactory.create(
+            platformDeps = context.platformDeps,
+            throwOnQuickStatusError = false,
+        )
+        val statusModel = openFirstProjectStatus(testDomain)
+        statusModel.sync("initial sync").wait()
+
+        val projectDir = captureTestProject(testDomain).dir
+        val commitMessage = commitNewFilesAtServerSide(
+            remoteFiles = context.remoteFiles,
+            fileContent = ::slowRemoteFileContent,
+        )
+
+        interruptDomainAfterFirstFileCopied(
+            domain = testDomain,
+            projectDir = projectDir,
+            remoteFiles = context.remoteFiles,
+        ) {
+            statusModel.sync("interrupted pull")
+        }
+
+        assertRevisionNotAdvanced(statusModel, commitMessage)
+        assertPartialFilesOnDisk(projectDir, context.remoteFiles)
+
+        val recoveryDomain = TestDomainComponentFactory.create(
+            platformDeps = context.platformDeps,
+            throwOnQuickStatusError = false,
+        )
+        val recoveryStatusModel = openFirstProjectStatus(recoveryDomain)
+        completePartialPullRecovery(
+            recoveryStatusModel,
+            projectDir,
+            context.remoteFiles,
+            fileContent = ::slowRemoteFileContent,
+        )
+    }
+
+    private data class PartialMultiFilePullContext(
+        val platformDeps: JdkPlatformDeps,
+        val remoteFiles: List<String>,
+    )
+
+    private fun partialMultiFilePullSetup(clientFilesSuffix: String): PartialMultiFilePullContext {
+        return PartialMultiFilePullContext(
+            platformDeps = JdkPlatformDeps(
+                filesRoot = File(testDir, clientFilesSuffix),
+                persistentStorageProvider = InMemoryStorageProvider(),
+            ),
+            remoteFiles = listOf("remote-a.md", "remote-b.md", "remote-c.md"),
+        )
+    }
+
+    private fun assertRevisionNotAdvanced(
+        statusModel: StatusModel,
+        commitMessage: String,
+    ) {
         val revisionAfterInterrupt = statusModel.statusFlow.value.items
             .filterIsInstance<StatusViewItem.RevisionViewItem>()
             .firstOrNull()
@@ -268,8 +341,25 @@ class SyncTests {
             "Revision should not advance after interrupted sync, got: $revisionAfterInterrupt",
             revisionAfterInterrupt?.contains(commitMessage) == true,
         )
+    }
 
-        responseInterceptor.interruptStatusAfterOnFilesExists(emptyList())
+    private fun assertPartialFilesOnDisk(
+        projectDir: File,
+        remoteFiles: List<String>,
+    ) {
+        val present = remoteFiles.filter { File(projectDir, it).exists() }
+        Assert.assertTrue(
+            "Expected partial pull with some but not all remote files, found: $present",
+            present.isNotEmpty() && present.size < remoteFiles.size,
+        )
+    }
+
+    private suspend fun completePartialPullRecovery(
+        statusModel: StatusModel,
+        projectDir: File,
+        remoteFiles: List<String>,
+        fileContent: (String) -> String = { "content of $it" },
+    ) {
         statusModel.sync("recovery pull").waitResults().exceptionOrNull()?.let {
             throw AssertionError(it)
         }
@@ -287,7 +377,30 @@ class SyncTests {
         remoteFiles.forEach { name ->
             val file = File(projectDir, name)
             Assert.assertTrue("Expected $name to exist locally", file.exists())
-            Assert.assertEquals("content of $name", file.readText())
+            Assert.assertEquals(fileContent(name), file.readText())
+        }
+    }
+
+    private suspend fun interruptDomainAfterFirstFileCopied(
+        domain: DomainComponent<JdkPlatformDeps>,
+        projectDir: File,
+        remoteFiles: List<String>,
+        startSync: () -> SyncJob,
+    ) {
+        coroutineScope {
+            val interruptWatcher = async(Dispatchers.Default) {
+                while (true) {
+                    val present = remoteFiles.filter { File(projectDir, it).exists() }
+                    if (present.isNotEmpty()) {
+                        domain.close()
+                        return@async
+                    }
+                    Thread.yield()
+                }
+            }
+            val syncJob = startSync()
+            syncJob.wait()
+            interruptWatcher.await()
         }
     }
 
@@ -330,10 +443,11 @@ class SyncTests {
     private fun commitNewFilesAtServerSide(
         remoteFiles: List<String>,
         commitMessage: String = "add remote files",
+        fileContent: (String) -> String = { "content of $it" },
     ): String {
         val repo = File(serverFiles, "test_repo")
         remoteFiles.forEach { name ->
-            File(repo, name).writeText("content of $name")
+            File(repo, name).writeText(fileContent(name))
         }
         exec(
             cmd = "git add ${remoteFiles.joinToString(" ")} && git commit -m '$commitMessage' && git push origin master:master",
