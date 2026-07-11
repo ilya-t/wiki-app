@@ -137,4 +137,8 @@ class DomainComponent<T : PlatformDeps>(
         foregroundSyncService = platformDeps.foregroundSyncService,
         scope = scopes.worker,
     )
+
+    fun close() {
+        scopes.close()
+    }
 }

@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
@@ -235,10 +236,12 @@ class BackendController(
                         }
                         .toList()
                         .forEach { (backendRevision: File, localRevision: Document) ->
+                            yield()
                             var resolution: String? = null
                             if (true || canUpdateWithBackendRevision(syncContext, localRevision)) {
                                 localRevision.file.parentFile.mkdirs()
                                 backendRevision.copyTo(localRevision.file, overwrite = true)
+                                yield()
                                 resolution = "accepted from backend"
                             } else {
                                 resolution = "declined from backend, staged"
