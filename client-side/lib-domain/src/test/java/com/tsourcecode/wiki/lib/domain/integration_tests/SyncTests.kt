@@ -1,19 +1,16 @@
 package com.tsourcecode.wiki.lib.domain.integration_tests
 
+import com.tsourcecode.wiki.lib.domain.DomainComponent
+import com.tsourcecode.wiki.lib.domain.JdkPlatformDeps
 import com.tsourcecode.wiki.lib.domain.TestDomainComponentFactory
 import com.tsourcecode.wiki.lib.domain.commitment.StatusModel
 import com.tsourcecode.wiki.lib.domain.commitment.StatusViewItem
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenItem
 import com.tsourcecode.wiki.lib.domain.project.Project
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
@@ -241,8 +238,63 @@ class SyncTests {
         Assert.assertFalse(newFile.exists())
     }
 
-    private suspend fun openFirstProjectStatus(): StatusModel {
-        val projects: List<ConfigScreenItem> = importProjects()
+    @Test
+    fun `recovers cleanly after interrupted multi-file pull`() = integrationTest {
+        val testClientFiles = File(testDir, "client-side-interrupted")
+        val responseInterceptor = NetworkInterceptorByFileExistence()
+        val testDomain = TestDomainComponentFactory.create(
+            responseInterceptor = responseInterceptor,
+            filesRoot = testClientFiles,
+            throwOnQuickStatusError = false,
+        )
+
+        val statusModel = openFirstProjectStatus(testDomain)
+        statusModel.sync("initial sync").wait()
+
+        val remoteFiles = listOf("remote-a.md", "remote-b.md", "remote-c.md")
+        val commitMessage = commitNewFilesAtServerSide(remoteFiles)
+
+        val projectDir = captureTestProject(testDomain).dir
+        responseInterceptor.projectDir = projectDir
+        responseInterceptor.interruptStatusAfterOnFilesExists(remoteFiles)
+
+        statusModel.sync("interrupted pull").wait()
+
+        val revisionAfterInterrupt = statusModel.statusFlow.value.items
+            .filterIsInstance<StatusViewItem.RevisionViewItem>()
+            .firstOrNull()
+            ?.message
+        Assert.assertFalse(
+            "Revision should not advance after interrupted sync, got: $revisionAfterInterrupt",
+            revisionAfterInterrupt?.contains(commitMessage) == true,
+        )
+
+        responseInterceptor.interruptStatusAfterOnFilesExists(emptyList())
+        statusModel.sync("recovery pull").waitResults().exceptionOrNull()?.let {
+            throw AssertionError(it)
+        }
+
+        val items = statusModel.statusFlow.first { it.items.isNotEmpty() }.items
+        Assert.assertEquals(
+            "No changed files expected. Instead got: $items",
+            0, items.filterIsInstance<StatusViewItem.FileViewItem>().size,
+        )
+        Assert.assertEquals(
+            "Revision item should be present. Instead got: $items",
+            1, items.filterIsInstance<StatusViewItem.RevisionViewItem>().size,
+        )
+
+        remoteFiles.forEach { name ->
+            val file = File(projectDir, name)
+            Assert.assertTrue("Expected $name to exist locally", file.exists())
+            Assert.assertEquals("content of $name", file.readText())
+        }
+    }
+
+    private suspend fun openFirstProjectStatus(
+        domain: DomainComponent<JdkPlatformDeps> = this.domain,
+    ): StatusModel {
+        val projects: List<ConfigScreenItem> = importProjects(domain)
         val previewElement: ConfigScreenItem.PreviewElement = projects
             .filterIsInstance<ConfigScreenItem.PreviewElement>()
             .first()
@@ -255,7 +307,9 @@ class SyncTests {
         return statusModel
     }
 
-    private suspend fun importProjects(): List<ConfigScreenItem> {
+    private suspend fun importProjects(
+        domain: DomainComponent<JdkPlatformDeps> = this.domain,
+    ): List<ConfigScreenItem> {
         domain.viewModels.configScreenModel.submitImport(
             ConfigScreenItem.ImportFrom(
                 projectUrl = serverController.serverUrl
@@ -266,9 +320,26 @@ class SyncTests {
         }
     }
 
-    private suspend fun captureTestProject(): Project {
+    private suspend fun captureTestProject(
+        domain: DomainComponent<JdkPlatformDeps> = this.domain,
+    ): Project {
         val projects = domain.projectsRepository.data.first { it.isNotEmpty() }
         return projects.first { it.name == TEST_PROJECT }
+    }
+
+    private fun commitNewFilesAtServerSide(
+        remoteFiles: List<String>,
+        commitMessage: String = "add remote files",
+    ): String {
+        val repo = File(serverFiles, "test_repo")
+        remoteFiles.forEach { name ->
+            File(repo, name).writeText("content of $name")
+        }
+        exec(
+            cmd = "git add ${remoteFiles.joinToString(" ")} && git commit -m '$commitMessage' && git push origin master:master",
+            cwd = repo,
+        )
+        return commitMessage
     }
 
     private fun exec(cmd: String, cwd: File) {
@@ -310,110 +381,3 @@ class SyncTests {
         )
     }
 }
-
-private class ServerController(
-    private val serverSideDir: File,
-    private val serverFiles: File,
-    private val alias: String,
-) {
-    val serverUrl = System.getenv("SYNC_TEST_SERVER_URL") ?: "http://127.0.0.1:8181"
-    private val serverProcess: Process
-
-    companion object {
-        private const val HEARTBEAT_TIMEOUT_MS = 120_000L
-
-        fun ensureStopped(serverSideDir: File) {
-            runScript(serverSideDir, "./localstop.sh")
-        }
-
-        private fun runScript(serverSideDir: File, script: String) {
-            val process = ProcessBuilder("sh", "-c", script)
-                .directory(serverSideDir)
-                .redirectErrorStream(true)
-                .start()
-            val output = process.inputStream.bufferedReader().use { it.readText() }
-            val retCode = process.waitFor()
-            if (output.isNotBlank()) {
-                println(output.trim())
-            }
-            if (retCode != 0) {
-                println("$script exited with code $retCode")
-            }
-        }
-    }
-
-    init {
-        serverFiles.mkdirs()
-
-        val cmd = "./localrun_for_tests.sh $serverFiles '$alias'"
-        serverProcess = ProcessBuilder(
-            "sh", "-c",
-            cmd
-        )
-            .directory(serverSideDir)
-            .start()
-    }
-    fun start() {
-
-    }
-
-    fun waitHeartbeats() = runBlocking {
-        val timeout = System.currentTimeMillis() + HEARTBEAT_TIMEOUT_MS
-        while (System.currentTimeMillis() < timeout) {
-            if (checkHeartbeat()) return@runBlocking
-            delay(50)
-        }
-        throw IllegalStateException(
-            "Server did not respond with 200 within ${HEARTBEAT_TIMEOUT_MS / 1000} seconds. "
-        )
-    }
-
-    private fun checkHeartbeat(): Boolean {
-        val client = OkHttpClient()
-        val request = Request.Builder()
-            .url("$serverUrl/api/health")
-            .get()
-            .build()
-        try {
-            val response = client.newCall(request).execute()
-            if (response.code == 200) {
-                val body = response.body?.charStream()?.readText() ?: return false
-                val status = Json.decodeFromString(Heartbeat.serializer(), body)
-                println("heartbeat response body: '$body'")
-                return status.alias == alias
-            }
-        } catch (e: Exception) {
-            println("heartbeat failed: '$e'")
-
-            // Ignore exceptions and retry
-        }
-        return false
-    }
-
-    private fun waitHeartbeatsStop() = runBlocking {
-        val timeout = System.currentTimeMillis() + 5000 // 5 seconds timeout
-        while (System.currentTimeMillis() < timeout) {
-            if (!checkHeartbeat()) return@runBlocking
-            delay(50)
-        }
-    }
-
-    fun stop() {
-        ensureStopped(serverSideDir)
-        if (serverProcess.isAlive) {
-            serverProcess.destroy()
-        } else {
-            println("Server already finished with exit code: ${serverProcess.exitValue()}")
-            serverProcess.errorStream.bufferedReader().use { reader ->
-                println("Server stderr: ${reader.readText()}")
-            }
-        }
-        waitHeartbeatsStop()
-    }
-}
-
-@Serializable
-private data class Heartbeat(
-    val alias: String,
-    val status: String,
-)

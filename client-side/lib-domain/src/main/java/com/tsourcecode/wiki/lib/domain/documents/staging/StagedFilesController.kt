@@ -33,12 +33,9 @@ class StagedFilesController(
     }
 
     suspend fun update() {
-        projectAPIs.fileStatus().onSuccess { response: StatusResponse ->
-            _stagedFiles.value = response
-            store(response)
-        }.onFailure {
-            //TODO: handle error
-        }
+        val response = projectAPIs.fileStatus().getOrElse { throw it }
+        _stagedFiles.value = response
+        store(response)
     }
 
     private fun store(changes: StatusResponse) {

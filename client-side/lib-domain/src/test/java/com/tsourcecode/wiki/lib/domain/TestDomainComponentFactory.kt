@@ -16,6 +16,7 @@ object TestDomainComponentFactory {
         responseInterceptor: Interceptor? = null,
         proxy: ProxyConfig? = null,
         filesRoot: File? = null,
+        throwOnQuickStatusError: Boolean = true,
         ): DomainComponent<JdkPlatformDeps> {
         val platformDeps = if (filesRoot != null) {
             JdkPlatformDeps(filesRoot)
@@ -42,9 +43,11 @@ object TestDomainComponentFactory {
             DebugLogger.impl = {
                 println(it)
             }
-            quickStatusController.addListener { info: StatusInfo ->
-                info.error?.let {
-                    throw AssertionError("status: ${info.status} message: ${info.comment}", it)
+            if (throwOnQuickStatusError) {
+                quickStatusController.addListener { info: StatusInfo ->
+                    info.error?.let {
+                        throw AssertionError("status: ${info.status} message: ${info.comment}", it)
+                    }
                 }
             }
         }
