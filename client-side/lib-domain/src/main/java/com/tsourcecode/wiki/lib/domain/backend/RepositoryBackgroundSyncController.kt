@@ -5,30 +5,26 @@ import com.tsourcecode.wiki.lib.domain.TaskScheduler
 import com.tsourcecode.wiki.lib.domain.project.ProjectComponentProvider
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import com.tsourcecode.wiki.lib.domain.util.Logger
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import com.tsourcecode.wiki.lib.domain.util.Threading
+import kotlinx.coroutines.withContext
 
-class RepositorySyncScheduler(
+class RepositoryBackgroundSyncController(
     private val projectsRepository: ProjectsRepository,
     private val projectComponentProvider: ProjectComponentProvider,
-    private val workerScope: CoroutineScope,
+    private val threading: Threading,
     private val notificationService: NotificationService,
     taskScheduler: TaskScheduler,
+    private val appLogger: Logger,
 ) {
     init {
-        taskScheduler.scheduleRecurrentJob {
-            runBlocking {
-                workerScope
-                    .launch { syncAllProjects() }
-                    .join()
-            }
-        }
+        taskScheduler.scheduleRecurrentJob()
     }
 
-    private suspend fun syncAllProjects() {
+    suspend fun syncAllProjects(): Map<String, Throwable> = withContext(threading.io) {
+        val results = mutableMapOf<String, Throwable>()
         for (project in projectsRepository.data.value) {
             val component = projectComponentProvider.get(project)
+            appLogger.log { "Periodic background sync started!" }
             val notificationLogger = Logger { msg ->
                 notificationService.postNotification("${project.name}: ${msg.trim()}")
             }
@@ -48,10 +44,18 @@ class RepositorySyncScheduler(
                     notificationService.postNotification(text)
                 }
                 .onFailure {
+                    results["sync of '${project.name}' failed"] = it
                     notificationService.postNotification(
                         "${project.name} sync failed: ${it.message ?: it.javaClass.simpleName}"
                     )
                 }
         }
+
+        if (results.isEmpty()) {
+            appLogger.log { "Periodic background sync finished!" }
+        } else {
+            appLogger.log { "Periodic background sync finished with failures: $results" }
+        }
+        results
     }
 }

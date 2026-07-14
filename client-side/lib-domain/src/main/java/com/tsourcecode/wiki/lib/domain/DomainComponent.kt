@@ -1,7 +1,7 @@
 package com.tsourcecode.wiki.lib.domain
 
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
-import com.tsourcecode.wiki.lib.domain.backend.RepositorySyncScheduler
+import com.tsourcecode.wiki.lib.domain.backend.RepositoryBackgroundSyncController
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenModel
 import com.tsourcecode.wiki.lib.domain.documents.DocumentViewModelResolver
 import com.tsourcecode.wiki.lib.domain.documents.FileManagerModel
@@ -123,12 +123,13 @@ class DomainComponent<T : PlatformDeps>(
         quickStatusController,
     )
 
-    private val repositorySyncScheduler = RepositorySyncScheduler(
+    val repositoryBackgroundSyncController = RepositoryBackgroundSyncController(
         projectsRepository = projectsRepository,
         projectComponentProvider = projectComponents,
-        workerScope = scopes.worker,
+        threading = platformDeps.threading,
         notificationService = platformDeps.notificationService,
         taskScheduler = platformDeps.taskScheduler,
+        appLogger = logger,
     )
 
     private val syncForegroundCoordinator = SyncForegroundCoordinator(
