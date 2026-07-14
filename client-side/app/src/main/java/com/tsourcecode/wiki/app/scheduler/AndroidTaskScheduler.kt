@@ -10,11 +10,7 @@ import java.util.concurrent.TimeUnit
 class AndroidTaskScheduler(
     private val context: Context,
 ) : TaskScheduler {
-    private val _registeredJobs = mutableListOf<() -> Unit>()
-    override val registeredJobs: List<() -> Unit> = _registeredJobs
-
-    override fun scheduleRecurrentJob(job: () -> Unit) {
-        _registeredJobs.add(job)
+    override fun scheduleRecurrentJob() {
         val request = PeriodicWorkRequestBuilder<RepositorySyncWorker>(1, TimeUnit.HOURS)
             .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
