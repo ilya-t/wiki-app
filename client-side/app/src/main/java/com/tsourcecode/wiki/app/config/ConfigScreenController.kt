@@ -143,6 +143,11 @@ class ConfigScreenView(
                     value = item.repoUrl,
                     onValueChange = { configModel.edit(index, item.copy(repoUrl = it)) },
             )
+            InputField(
+                    label = "cmd after clone",
+                    value = item.repoCmdAfterClone,
+                    onValueChange = { configModel.edit(index, item.copy(repoCmdAfterClone = it)) },
+            )
 
             Button(modifier = Modifier
                     .fillMaxWidth(),

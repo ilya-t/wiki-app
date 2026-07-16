@@ -6,6 +6,7 @@ Prepare app data directory with structure.
 [
     {
         "name": "notes",
+        "repo_cmd_after_clone": "./setup.sh",
         "repo_url": "git@github.com:username/my-notes.git"
     }
 ]

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -12,8 +13,9 @@ const (
 )
 
 type ProjectConfig struct {
-	Name string `json:"name"`
-	Url  string `json:"repo_url"`
+	Name          string `json:"name"`
+	Url           string `json:"repo_url"`
+	CmdAfterClone string `json:"repo_cmd_after_clone,omitempty"`
 }
 
 func loadConfigurations() ([]*ProjectConfig, error) {
@@ -39,8 +41,23 @@ func toConfiguration(p *ProjectConfig) *Configuration {
 	repoName := strings.TrimRight(pathParts[len(pathParts)-1], ".git")
 
 	return &Configuration{
-		id:      repoName,
-		repoDir: REPOS_DIR + "/" + repoName,
-		repoUrl: p.Url,
+		id:            repoName,
+		repoDir:       REPOS_DIR + "/" + repoName,
+		repoUrl:       p.Url,
+		cmdAfterClone: p.CmdAfterClone,
 	}
+}
+
+func runCmdInRepo(repoDir, cmd string) error {
+	if cmd == "" {
+		return nil
+	}
+
+	fmt.Printf("Running after-clone command in '%s': %s\n", repoDir, cmd)
+	shell := &Shell{Cwd: repoDir}
+	out, err := shell.Execute(cmd)
+	if err != nil {
+		return fmt.Errorf("%w\nOutput: %s", err, out)
+	}
+	return nil
 }

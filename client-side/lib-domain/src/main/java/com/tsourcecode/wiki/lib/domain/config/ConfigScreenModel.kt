@@ -5,6 +5,7 @@ import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
 import com.tsourcecode.wiki.lib.domain.backend.ProjectBackendController
+import com.tsourcecode.wiki.lib.domain.backend.ProjectConfig
 import com.tsourcecode.wiki.lib.domain.project.Project
 import com.tsourcecode.wiki.lib.domain.project.ProjectsRepository
 import com.tsourcecode.wiki.lib.domain.util.Completion
@@ -83,6 +84,7 @@ class ConfigScreenModel(
                     filesDir = platformDeps.filesDir(),
                     serverUri = url,
                     repoUri = it.repoUrl,
+                    repoCmdAfterClone = it.repoCmdAfterClone,
                 )
             }
             val existingProjects = projectsRepository.data.value
@@ -104,6 +106,7 @@ class ConfigScreenModel(
             filesDir = platformDeps.filesDir(),
             serverUri = URI(this.serverAddress),
             repoUri = this.repoUrl,
+            repoCmdAfterClone = this.repoCmdAfterClone,
     )
 
     fun submit(item: ConfigScreenItem.EditableElement) {
@@ -120,6 +123,23 @@ class ConfigScreenModel(
                 e.printStackTrace()
                 quickStatusController.error(e)
                 return@launch
+            }
+
+            if (item.origin != null) {
+                val controller = ProjectBackendController(
+                    backendFactory,
+                    project.serverUri.toURL(),
+                )
+                controller.updateConfig(
+                    ProjectConfig(
+                        name = item.origin.name,
+                        repoUrl = project.repoUri,
+                        repoCmdAfterClone = project.repoCmdAfterClone,
+                    )
+                ).onFailure {
+                    quickStatusController.error(it)
+                    return@launch
+                }
             }
 
             val currentList = projectsRepository.data.value.toMutableList()
@@ -161,6 +181,7 @@ sealed interface ConfigScreenItem {
                 serverAddress = project.serverUri.toString(),
                 projectName = project.name,
                 repoUrl = project.repoUri,
+                repoCmdAfterClone = project.repoCmdAfterClone,
                 submitEnabled = true,
                 submitButton = SubmitButton.APPLY,
         )
@@ -171,6 +192,7 @@ sealed interface ConfigScreenItem {
             val repoUrl: String = "",
             val projectName: String = "",
             val serverAddress: String = "",
+            val repoCmdAfterClone: String = "",
             val submitButton: SubmitButton = SubmitButton.ADD,
             val submitEnabled: Boolean = true,
     ) : ConfigScreenItem
