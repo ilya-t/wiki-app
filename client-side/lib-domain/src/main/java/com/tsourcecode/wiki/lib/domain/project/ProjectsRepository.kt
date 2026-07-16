@@ -30,6 +30,7 @@ class ProjectsRepository(
                         platformDeps.filesDir(),
                         URI(sp.serverUrl),
                         sp.repoUrl,
+                        sp.repoCmdAfterClone,
                 )
             }
             _data.value = projects
@@ -53,6 +54,7 @@ private fun Project.toSerializableProject(): SerializableProject {
             this.name,
             this.repoUri,
             this.serverUri.toString(),
+            this.repoCmdAfterClone,
     )
 }
 
@@ -66,6 +68,6 @@ class SerializableProject(
         val repoUrl: String,
         @SerialName("serverUrl")
         val serverUrl: String,
-
-
+        @SerialName("repoCmdAfterClone")
+        val repoCmdAfterClone: String = "",
 )

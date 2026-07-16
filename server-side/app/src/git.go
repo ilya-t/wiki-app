@@ -303,7 +303,7 @@ func (g *Git) isValidGitRepo() bool {
 	return err == nil
 }
 
-func (g *Git) TryClone() {
+func (g *Git) TryClone(cmdAfterClone string) {
 	if g.isValidGitRepo() {
 		fmt.Println("Repo already cloned: '" + g.repoDir + "'")
 		return
@@ -322,6 +322,10 @@ func (g *Git) TryClone() {
 
 	fmt.Println("Cloning " + g.repoUrl + " to: " + g.repoDir)
 	g.shell.StrictExecute("git clone " + g.repoUrl + " \"" + g.repoDir + "\"")
+
+	if err := runCmdInRepo(g.repoDir, cmdAfterClone); err != nil {
+		panic(err)
+	}
 }
 
 func (g *Git) Status() (*Status, error) {

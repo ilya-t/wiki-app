@@ -2,13 +2,23 @@ package com.tsourcecode.wiki.lib.domain.backend
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Call
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.Path
 
 interface ProjectBackendAPIs {
     @GET("/api/1/projects")
     fun getProjects(): Call<ResponseBody>
+
+    @POST("/api/1/project/{name}")
+    fun updateProject(
+        @Path("name") name: String,
+        @Body body: RequestBody,
+    ): Call<ResponseBody>
 }
 /*
 * /api/1/revision/show

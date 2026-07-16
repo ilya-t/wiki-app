@@ -23,9 +23,10 @@ type ProjectHttpApi struct {
 }
 
 type Configuration struct {
-	id      string
-	repoDir string
-	repoUrl string
+	id            string
+	repoDir       string
+	repoUrl       string
+	cmdAfterClone string
 }
 
 func NewHttpProject(config *Configuration) *ProjectHttpApi {
@@ -47,7 +48,7 @@ func NewHttpProject(config *Configuration) *ProjectHttpApi {
 func (p *ProjectHttpApi) Start() {
 	fmt.Printf("Staring configuration: %+v!\n", p.config)
 
-	p.git.TryClone()
+	p.git.TryClone(p.config.cmdAfterClone)
 	p.shell.StrictExecute("git config --local user.email \"wiki-app@tsourcecode.com\"")
 	p.shell.StrictExecute("git config --local user.name \"Wiki Committer\"")
 	p.shell.StrictExecute("git status && git checkout " + BRANCH)
@@ -382,6 +383,7 @@ func (c ProjectApi) changeProject(w http.ResponseWriter, req *http.Request) {
 
 	for i, config := range c.Configs {
 		if config.Name == updatedConfig.Name {
+			cmdChanged := config.CmdAfterClone != updatedConfig.CmdAfterClone
 			c.Configs[i] = updatedConfig
 			jBytes, e := json.Marshal(c.Configs)
 
@@ -394,6 +396,14 @@ func (c ProjectApi) changeProject(w http.ResponseWriter, req *http.Request) {
 			if e != nil {
 				writeError(w, "saving config failed", join(e, string(r)))
 				return
+			}
+
+			if cmdChanged {
+				repoDir := toConfiguration(updatedConfig).repoDir
+				if err := runCmdInRepo(repoDir, updatedConfig.CmdAfterClone); err != nil {
+					writeError(w, "after-clone command", err)
+					return
+				}
 			}
 
 			break

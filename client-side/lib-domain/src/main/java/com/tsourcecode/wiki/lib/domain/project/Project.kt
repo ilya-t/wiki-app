@@ -10,7 +10,8 @@ data class Project(
     val name: String,
     private val filesDir: File,
     val serverUri: URI,
-    val repoUri: String
+    val repoUri: String,
+    val repoCmdAfterClone: String = "",
 ) {
     val dir = File(filesDir, id)
     val repo: File = dir
