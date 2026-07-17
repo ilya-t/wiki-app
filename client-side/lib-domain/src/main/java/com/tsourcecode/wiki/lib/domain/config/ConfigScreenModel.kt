@@ -153,6 +153,12 @@ class ConfigScreenModel(
 
             projectsRepository.update(currentList)
         }
+
+        //TODO: this is a crutch cause projectsRepository.update(currentList) will not trigger
+        // model rebuild that will outcome as exit from edit view. What's even worse:
+        // observe over projectsRepository.data may break currently made edits so we need a
+        // draft state in future.
+        buildModelData(projectsRepository.data.value)
     }
 
     fun addNewElement() {
