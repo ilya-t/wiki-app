@@ -193,7 +193,7 @@ func TestGitModifiedFileStatus(t *testing.T) {
 		if e := stageFile(g, fileName, "# sample"); e != nil {
 			return e
 		}
-		e := g.Commit(&Commitment{
+		_, e := g.Commit(&Commitment{
 			Message: "okay",
 		})
 
@@ -227,7 +227,7 @@ func TestGitModifiedFileStatusWhenStaged(t *testing.T) {
 		if e := stageFile(g, fileName, "# sample"); e != nil {
 			return e
 		}
-		e := g.Commit(&Commitment{
+		_, e := g.Commit(&Commitment{
 			Message: "okay",
 		})
 
@@ -298,7 +298,7 @@ func TestGitStatusDiff(t *testing.T) {
 		return
 	}
 
-	e = g.Commit(&Commitment{
+	_, e = g.Commit(&Commitment{
 		Message: "add readme.md",
 	})
 

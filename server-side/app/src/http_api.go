@@ -191,7 +191,7 @@ func (p *ProjectHttpApi) postCommit(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	commitErr := p.git.Commit(commitment)
+	commitOutput, commitErr := p.git.Commit(commitment)
 	if commitErr != nil {
 		writeError(w, "commit", join(commitErr, string(r)))
 		return
@@ -208,7 +208,16 @@ func (p *ProjectHttpApi) postCommit(w http.ResponseWriter, req *http.Request) {
 		writeError(w, "pushing", pushErr)
 		return
 	}
-	fmt.Fprint(w, "{ \"result\": \"true\"")
+
+	writeJsonStruct(CommitResponse{
+		Result:       "true",
+		CommitOutput: commitOutput,
+	}, w, req)
+}
+
+type CommitResponse struct {
+	Result       string `json:"result"`
+	CommitOutput string `json:"commit_output"`
 }
 
 func (p *ProjectHttpApi) pullChanges(w http.ResponseWriter, req *http.Request) {
