@@ -158,16 +158,17 @@ func (g *Git) ShowRevision(revision string) (*RevisionInfo, error) {
 	}, nil
 }
 
-func (g *Git) Commit(commitment *Commitment) error {
+func (g *Git) Commit(commitment *Commitment) (string, error) {
 	if commitment.Message == "" {
-		return errors.New("No commit message specified")
+		return "", errors.New("No commit message specified")
 	}
 
-	if output, commitErr := g.execute("git commit --message=\"" + commitment.Message + "\""); commitErr != nil {
-		return g.maybeIncludeDebugInfo(errors.New(commitErr.Error() + "\nstderr: " + output))
+	output, commitErr := g.execute("git commit --message=\"" + commitment.Message + "\"")
+	if commitErr != nil {
+		return output, g.maybeIncludeDebugInfo(errors.New(commitErr.Error() + "\nstderr: " + output))
 	}
 
-	return nil
+	return output, nil
 }
 
 func (g *Git) maybeIncludeDebugInfo(e error) error {
@@ -226,7 +227,7 @@ func (g *Git) Rebase() error {
 	if hadChanges {
 		// save against untracked and not staged files
 		g.shell.StrictExecute("git add *")
-		if err := g.Commit(&Commitment{Message: "temporary commit for rebasement"}); err != nil {
+		if _, err := g.Commit(&Commitment{Message: "temporary commit for rebasement"}); err != nil {
 			return err
 		}
 	}

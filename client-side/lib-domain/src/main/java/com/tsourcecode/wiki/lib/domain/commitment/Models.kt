@@ -16,6 +16,14 @@ data class UnstagedResponse(
 )
 
 @Serializable
+data class CommitResponse(
+        @SerialName("result")
+        val result: String,
+        @SerialName("commit_output")
+        val commitOutput: String,
+)
+
+@Serializable
 data class FileStatus(
         @SerialName("path")
         val path: String,

@@ -5,6 +5,7 @@ import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.sync.SyncStatusProvider
 import com.tsourcecode.wiki.lib.domain.backend.api.SyncApiPayload
+import com.tsourcecode.wiki.lib.domain.commitment.CommitResponse
 import com.tsourcecode.wiki.lib.domain.commitment.FileStatusProvider
 import com.tsourcecode.wiki.lib.domain.commitment.UnstagedResponse
 import com.tsourcecode.wiki.lib.domain.documents.Document
@@ -472,6 +473,15 @@ class BackendController(
         }
         val success = response.code() == 200
         if (success) {
+            val body = response.body()?.string()
+            if (body != null) {
+                try {
+                    val commitResponse = Json.decodeFromString(CommitResponse.serializer(), body)
+                    commit.log { "commit_output: ${commitResponse.commitOutput}" }
+                } catch (e: Exception) {
+                    commit.log { "Failed to parse commit response: ${e.message}" }
+                }
+            }
             quickStatusController.udpate(QuickStatus.COMMITED)
             fileStatusProvider.notifyCommitHappened()
         } else {
