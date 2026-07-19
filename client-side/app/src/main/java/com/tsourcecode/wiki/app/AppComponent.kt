@@ -2,7 +2,6 @@ package com.tsourcecode.wiki.app
 
 import android.content.Context
 import com.tsourcecode.wiki.lib.domain.DomainComponent
-import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 
 class AppComponent(private val appContext: Context) {
     internal val domain = DomainComponent(
@@ -13,7 +12,7 @@ class AppComponent(private val appContext: Context) {
 
     init {
         if (BuildConfig.DEBUG) {
-            DebugLogger.impl = { android.util.Log.d("_debug_", it) }
+            domain.debugLogger.impl = { android.util.Log.d("_debug_", it) }
         }
     }
 

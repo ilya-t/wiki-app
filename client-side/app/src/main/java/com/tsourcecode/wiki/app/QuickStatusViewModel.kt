@@ -16,10 +16,14 @@ import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.StatusInfo
 import com.tsourcecode.wiki.lib.domain.util.DebugLogger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class QuickStatusViewModel(
         private val activity: AppCompatActivity,
         quickStatusController: QuickStatusController,
+        private val debugLogger: DebugLogger,
 ) {
     private val tvStatus = activity.findViewById<AppCompatTextView>(R.id.tv_status)
     private var lastStatus: StatusInfo? = null
@@ -57,16 +61,14 @@ class QuickStatusViewModel(
                     )
                     Toast.makeText(activity, "Stack at clipboard!", Toast.LENGTH_SHORT).show()
                 } else {
-                    val logsBody: String = DebugLogger.inMemoryLogs.joinToString("\n")
-                    clipboardManager.setPrimaryClip(
-                        ClipData(
-                            ClipDescription("logs", arrayOf("")),
-                            ClipData.Item(logsBody)
-                        )
-                    )
-                    Toast.makeText(activity, "Logs at clipboard!", Toast.LENGTH_SHORT).show()
-                    Sharing.shareTextAsFile(activity, logsBody).onSuccess {
-                        activity.startActivity(it)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val logsBody: String = debugLogger.readLogs().joinToString("\n")
+                        activity.runOnUiThread {
+                            Toast.makeText(activity, "Logs at clipboard!", Toast.LENGTH_SHORT).show()
+                        }
+                        Sharing.shareTextAsFile(activity, logsBody).onSuccess {
+                            activity.startActivity(it)
+                        }
                     }
                 }
             }

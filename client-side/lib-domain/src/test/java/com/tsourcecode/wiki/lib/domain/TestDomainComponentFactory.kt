@@ -1,6 +1,5 @@
 package com.tsourcecode.wiki.lib.domain
 
-import com.tsourcecode.wiki.lib.domain.util.DebugLogger
 import okhttp3.Interceptor
 import java.net.InetSocketAddress
 import java.net.Proxy
@@ -34,7 +33,7 @@ object TestDomainComponentFactory {
                 builder
             },
         ).apply {
-            DebugLogger.impl = {
+            debugLogger.impl = {
                 println(it)
             }
             if (throwOnQuickStatusError) {

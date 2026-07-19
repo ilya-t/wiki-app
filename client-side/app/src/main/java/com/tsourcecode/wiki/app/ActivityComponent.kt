@@ -35,7 +35,8 @@ class ActivityComponent(
 
     private val quickStateController = QuickStatusViewModel(
             activity,
-            appComponent.quickStatusController)
+            appComponent.quickStatusController,
+            domain.debugLogger)
 
     fun dispatchBackPressed(): Boolean {
         if (appComponent.domain.navigator.goBack()) {
