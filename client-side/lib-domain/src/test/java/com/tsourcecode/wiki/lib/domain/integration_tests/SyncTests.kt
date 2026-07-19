@@ -275,6 +275,74 @@ class SyncTests {
     }
 
     @Test
+    fun `built-in pre-commit hook appends diff to commit`() = integrationTest {
+        val statusModel = openFirstProjectStatus()
+        statusModel.sync("testing").wait()
+
+        val project: Project = domain.projectsRepository.data
+            .first { it.isNotEmpty() }
+            .first { it.name == TEST_PROJECT }
+        val readme = File(project.dir, "README.md")
+        println("===> Initial README.md content: '${readme.readText()}'")
+
+        // Verify the pre-commit hook was installed by cmdAfterClone in the server's repo-store
+        assertPreCommitHookPresent()
+
+        // Edit README.md locally and sync to detect changes
+        println("===> Editing README.md locally")
+        val clientEdit = "<client edit content>"
+        readme.writeText(clientEdit)
+
+        println("===> Syncing to detect local changes")
+        statusModel.sync("sync after local edit").wait()
+
+        println("===> Waiting for changed files to appear in status")
+        val fileItems: List<StatusViewItem.FileViewItem> = statusModel.statusFlow
+            .map { it.items.filterIsInstance<StatusViewItem.FileViewItem>() }
+            .first { it.isNotEmpty() }
+        Assert.assertEquals("Expected 1 changed file", 1, fileItems.size)
+        Assert.assertEquals("README.md", fileItems.first().fileStatus.path)
+
+        // Set commit message so that CommitViewItem.commitAction becomes non-null
+        println("===> Setting commit text and waiting for commitAction to become available")
+        val commitMessage = "commit with pre-commit hook"
+        statusModel.updateCommitText(commitMessage)
+
+        // Wait for the status flow to emit a CommitViewItem with a non-null commitAction
+        val commitViewItem: StatusViewItem.CommitViewItem = statusModel.statusFlow
+            .map { viewModel ->
+                viewModel.items.filterIsInstance<StatusViewItem.CommitViewItem>()
+                    .firstOrNull { it.commitAction != null }
+            }
+            .first { it != null }!!
+
+        println("===> Invoking commitAction (server-side postCommit: git commit → hook fires → rebase → push)")
+        commitViewItem.commitAction!!.invoke()
+
+        // The commitAction launches a coroutine that calls backendController.commit() then
+        // pullOrSync("after commit"). Wait for the new revision to appear in the status flow.
+        println("===> Waiting for revision to appear in status after commit")
+        statusModel.statusFlow
+            .map { it.items.filterIsInstance<StatusViewItem.RevisionViewItem>() }
+            .first { items ->
+                items.any { it.message.contains(commitMessage) }
+            }
+
+        println("===> Verifying local README.md content after commit and sync")
+        val body = readme.readText()
+        println("Final README.md content: '$body'")
+        Assert.assertTrue("Should contain client edit '$clientEdit'. Got: '$body'", body.contains(clientEdit))
+        Assert.assertTrue("Should contain hook append 'appended by hook'. Got: '$body'", body.contains("appended by hook"))
+    }
+
+    private fun assertPreCommitHookPresent() {
+        val serverRepo = File(serverFiles, "repo-store/$TEST_PROJECT")
+        val hookFile = File(serverRepo, ".git/hooks/pre-commit")
+        Assert.assertTrue("Pre-commit hook should exist in server's repo-store", hookFile.exists())
+        println("===> Pre-commit hook exists at: ${hookFile.absolutePath}")
+    }
+
+    @Test
     fun `recovers cleanly after coroutine shutdown during multi-file pull`() = integrationTest {
         val context = partialMultiFilePullSetup("client-side-coroutine-interrupted")
         val testDomain = TestDomainComponentFactory.create(
@@ -456,7 +524,7 @@ class SyncTests {
         return commitMessage
     }
 
-    private fun exec(cmd: String, cwd: File) {
+    private fun exec(cmd: String, cwd: File): String {
         val process = ProcessBuilder(
             "sh", "-c",
             cmd
@@ -471,6 +539,11 @@ class SyncTests {
         println("Standard Output:\n$stdout")
         println("Standard Error:\n$stderr")
         Assert.assertEquals(0, retCode)
+        return stdout.trim()
+    }
+
+    private fun gitShow(repo: File, ref: String): String {
+        return exec("git show $ref", repo)
     }
 
     private fun locateServerSideDir(): File {
