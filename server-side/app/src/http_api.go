@@ -400,7 +400,7 @@ func (c ProjectApi) changeProject(w http.ResponseWriter, req *http.Request) {
 
 			if cmdChanged {
 				repoDir := toConfiguration(updatedConfig).repoDir
-				if err := runCmdInRepo(repoDir, updatedConfig.CmdAfterClone); err != nil {
+				if err := runAfterCloneIfNeeded(repoDir, updatedConfig.CmdAfterClone); err != nil {
 					writeError(w, "after-clone command", err)
 					return
 				}

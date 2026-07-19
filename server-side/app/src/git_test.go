@@ -417,41 +417,77 @@ func TestTryCloneRecoversFromInvalidGitDir(t *testing.T) {
 }
 
 func TestTryCloneRunsCmdAfterCloneInRepoRoot(t *testing.T) {
-	bareRepo := "/tmp/test_bare_after_clone.git"
-	targetDir := "/tmp/test_after_clone_target"
-	initDir := "/tmp/test_after_clone_init"
-	markerFile := "after_clone_ran.txt"
+	withAfterCloneStateFile(t, func(stateFile string) {
+		bareRepo := "/tmp/test_bare_after_clone.git"
+		targetDir := "/tmp/test_after_clone_target"
+		initDir := "/tmp/test_after_clone_init"
+		markerFile := "after_clone_ran.txt"
 
-	defer os.RemoveAll(bareRepo)
-	defer os.RemoveAll(targetDir)
-	defer os.RemoveAll(initDir)
+		defer os.RemoveAll(bareRepo)
+		defer os.RemoveAll(targetDir)
+		defer os.RemoveAll(initDir)
 
-	initShell := &Shell{"/tmp"}
-	initShell.StrictExecute("rm -rf " + initDir + " " + bareRepo + " " + targetDir)
-	initShell.StrictExecute("mkdir -p " + initDir)
-	initShell = &Shell{initDir}
-	initShell.StrictExecute("git init")
-	initShell.StrictExecute("git config user.email \"test@mail.com\"")
-	initShell.StrictExecute("git config user.name \"Tester\"")
-	initShell.StrictExecute("echo '# test' > README.md")
-	initShell.StrictExecute("git add README.md")
-	initShell.StrictExecute("git commit -m \"Initial Commit\"")
-	initShell.StrictExecute("git clone --bare .git " + bareRepo)
+		initShell := &Shell{"/tmp"}
+		initShell.StrictExecute("rm -rf " + initDir + " " + bareRepo + " " + targetDir)
+		initShell.StrictExecute("mkdir -p " + initDir)
+		initShell = &Shell{initDir}
+		initShell.StrictExecute("git init")
+		initShell.StrictExecute("git config user.email \"test@mail.com\"")
+		initShell.StrictExecute("git config user.name \"Tester\"")
+		initShell.StrictExecute("echo '# test' > README.md")
+		initShell.StrictExecute("git add README.md")
+		initShell.StrictExecute("git commit -m \"Initial Commit\"")
+		initShell.StrictExecute("git clone --bare .git " + bareRepo)
 
-	g := NewGit(targetDir, bareRepo)
-	g.TryClone("touch " + markerFile)
+		g := NewGit(targetDir, bareRepo)
+		g.TryClone("touch " + markerFile)
 
-	markerPath := filepath.Join(targetDir, markerFile)
-	if _, err := os.Stat(markerPath); err != nil {
-		t.Fatalf("expected after-clone command to create %s in repo root, got: %v", markerPath, err)
-	}
+		markerPath := filepath.Join(targetDir, markerFile)
+		if _, err := os.Stat(markerPath); err != nil {
+			t.Fatalf("expected after-clone command to create %s in repo root, got: %v", markerPath, err)
+		}
 
-	// Second call should not re-run the command for an already-cloned repo.
-	if err := os.Remove(markerPath); err != nil {
-		t.Fatal(err)
-	}
-	g.TryClone("touch " + markerFile)
-	if _, err := os.Stat(markerPath); !os.IsNotExist(err) {
-		t.Fatalf("expected after-clone command to be skipped when repo already exists")
-	}
+		// Second call should not re-run the command for an already-cloned repo.
+		if err := os.Remove(markerPath); err != nil {
+			t.Fatal(err)
+		}
+		g.TryClone("touch " + markerFile)
+		if _, err := os.Stat(markerPath); !os.IsNotExist(err) {
+			t.Fatalf("expected after-clone command to be skipped when repo already exists")
+		}
+	})
+}
+
+func TestTryCloneRunsCmdAfterCloneForExistingRepoInNewContainer(t *testing.T) {
+	withAfterCloneStateFile(t, func(stateFile string) {
+		bareRepo := "/tmp/test_bare_after_clone_existing.git"
+		targetDir := "/tmp/test_after_clone_existing_target"
+		initDir := "/tmp/test_after_clone_existing_init"
+		markerFile := "after_clone_ran.txt"
+
+		defer os.RemoveAll(bareRepo)
+		defer os.RemoveAll(targetDir)
+		defer os.RemoveAll(initDir)
+
+		initShell := &Shell{"/tmp"}
+		initShell.StrictExecute("rm -rf " + initDir + " " + bareRepo + " " + targetDir)
+		initShell.StrictExecute("mkdir -p " + initDir)
+		initShell = &Shell{initDir}
+		initShell.StrictExecute("git init")
+		initShell.StrictExecute("git config user.email \"test@mail.com\"")
+		initShell.StrictExecute("git config user.name \"Tester\"")
+		initShell.StrictExecute("echo '# test' > README.md")
+		initShell.StrictExecute("git add README.md")
+		initShell.StrictExecute("git commit -m \"Initial Commit\"")
+		initShell.StrictExecute("git clone --bare .git " + bareRepo)
+		initShell.StrictExecute("git clone " + bareRepo + " " + targetDir)
+
+		g := NewGit(targetDir, bareRepo)
+		g.TryClone("touch " + markerFile)
+
+		markerPath := filepath.Join(targetDir, markerFile)
+		if _, err := os.Stat(markerPath); err != nil {
+			t.Fatalf("expected after-clone command to run for existing repo in new container, got: %v", err)
+		}
+	})
 }
