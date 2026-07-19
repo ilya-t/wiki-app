@@ -307,9 +307,16 @@ func (g *Git) isValidGitRepo() bool {
 func (g *Git) TryClone(cmdAfterClone string) {
 	if g.isValidGitRepo() {
 		fmt.Println("Repo already cloned: '" + g.repoDir + "'")
-		return
+	} else {
+		g.doClone()
 	}
 
+	if err := runAfterCloneIfNeeded(g.repoDir, cmdAfterClone); err != nil {
+		panic(err)
+	}
+}
+
+func (g *Git) doClone() {
 	if _, err := os.Stat(g.repoDir); err == nil {
 		fmt.Printf("Removing invalid repo directory: '%s'\n", g.repoDir)
 		if e := os.RemoveAll(g.repoDir); e != nil {
@@ -323,10 +330,6 @@ func (g *Git) TryClone(cmdAfterClone string) {
 
 	fmt.Println("Cloning " + g.repoUrl + " to: " + g.repoDir)
 	g.shell.StrictExecute("git clone " + g.repoUrl + " \"" + g.repoDir + "\"")
-
-	if err := runCmdInRepo(g.repoDir, cmdAfterClone); err != nil {
-		panic(err)
-	}
 }
 
 func (g *Git) Status() (*Status, error) {
