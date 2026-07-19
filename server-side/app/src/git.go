@@ -163,12 +163,112 @@ func (g *Git) Commit(commitment *Commitment) (string, error) {
 		return "", errors.New("No commit message specified")
 	}
 
-	output, commitErr := g.execute("git commit --message=\"" + commitment.Message + "\"")
-	if commitErr != nil {
-		return output, g.maybeIncludeDebugInfo(errors.New(commitErr.Error() + "\nstderr: " + output))
+	// --- Hook diagnostics ---
+	debugBuf := &strings.Builder{}
+	debugBuf.WriteString("\n===== HOOK DIAGNOSTICS =====\n")
+
+	// 1. Check core.hooksPath git config
+	if hp, err := g.execute("git config core.hooksPath"); err == nil {
+		line := fmt.Sprintf("git config core.hooksPath = '%s'", strings.TrimSpace(hp))
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	} else {
+		line := "git config core.hooksPath is NOT set (using default .git/hooks/)"
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
 	}
 
-	return output, nil
+	// 2. List .git/hooks/ directory
+	if hooksList, err := g.execute("ls -la .git/hooks/ 2>&1"); err == nil {
+		line := fmt.Sprintf(".git/hooks/ contents:\n%s", hooksList)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	} else {
+		line := fmt.Sprintf("Failed to list .git/hooks/: %s", hooksList)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	}
+
+	// 3. Check .githooks/pre-commit existence and executable bit
+	if ghInfo, err := g.execute("ls -la .githooks/pre-commit 2>&1"); err == nil {
+		line := fmt.Sprintf(".githooks/pre-commit exists:\n%s", ghInfo)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	} else {
+		line := fmt.Sprintf(".githooks/pre-commit does NOT exist or is inaccessible: %s", ghInfo)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	}
+
+	// 4. Check .githooks/bin/lua -v
+	if luaOut, err := g.execute(".githooks/bin/lua -v 2>&1"); err == nil {
+		line := fmt.Sprintf(".githooks/bin/lua -v output:\n%s", luaOut)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	} else {
+		line := fmt.Sprintf(".githooks/bin/lua -v failed: %s", luaOut)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	}
+
+	// 5. Current shell info
+	if shellOut, err := g.execute("echo $SHELL"); err == nil {
+		line := fmt.Sprintf("SHELL env var = '%s'", strings.TrimSpace(shellOut))
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	}
+	if shOut, err := g.execute("/bin/sh --version 2>&1"); err == nil {
+		line := fmt.Sprintf("/bin/sh --version:\n%s", shOut)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	} else {
+		line := fmt.Sprintf("/bin/sh --version failed: %s", shOut)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	}
+
+	// 6. Check if the standard pre-commit hook is executable
+	if pcInfo, err := g.execute("ls -la .git/hooks/pre-commit 2>&1"); err == nil {
+		line := fmt.Sprintf(".git/hooks/pre-commit details:\n%s", pcInfo)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	} else {
+		line := fmt.Sprintf(".git/hooks/pre-commit does NOT exist: %s", pcInfo)
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	}
+
+	// 7. Check git version
+	if gvOut, err := g.execute("git --version"); err == nil {
+		line := fmt.Sprintf("git --version: %s", strings.TrimSpace(gvOut))
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	}
+
+	// 8. Check if hooks are globally disabled (core.hooksPath pointing to /dev/null or similar)
+	if hpOut, err := g.execute("git config --global core.hooksPath 2>&1"); err == nil {
+		line := fmt.Sprintf("git config --global core.hooksPath = '%s'", strings.TrimSpace(hpOut))
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	} else {
+		line := "git config --global core.hooksPath is NOT set"
+		fmt.Println(line)
+		debugBuf.WriteString(line + "\n")
+	}
+
+	debugBuf.WriteString("===== END HOOK DIAGNOSTICS =====\n")
+	fmt.Print(debugBuf.String())
+	// --- End hook diagnostics ---
+
+	cmd := "git commit --message=\"" + commitment.Message + "\""
+	fmt.Printf("Executing: %s\n", cmd)
+	output, commitErr := g.execute(cmd)
+	if commitErr != nil {
+		outputWithDebug := output + debugBuf.String()
+		return outputWithDebug, g.maybeIncludeDebugInfo(errors.New(commitErr.Error() + "\nstderr: " + outputWithDebug))
+	}
+
+	return output + debugBuf.String(), nil
 }
 
 func (g *Git) maybeIncludeDebugInfo(e error) error {
