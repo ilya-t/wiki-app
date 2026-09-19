@@ -491,3 +491,240 @@ func TestTryCloneRunsCmdAfterCloneForExistingRepoInNewContainer(t *testing.T) {
 		}
 	})
 }
+
+// withConflictingRemote builds a clone whose local commit and the remote's
+// commit both touch the same file, so any rebase between them conflicts.
+// It returns the Git of the clone and the path to the bare remote.
+func withConflictingRemote(t *testing.T, name string) (*Git, string) {
+	t.Helper()
+
+	bareRepo := "/tmp/test_bare_" + name + ".git"
+	originDir := "/tmp/test_origin_" + name
+	cloneDir := "/tmp/test_clone_" + name
+
+	t.Cleanup(func() {
+		os.RemoveAll(bareRepo)
+		os.RemoveAll(originDir)
+		os.RemoveAll(cloneDir)
+	})
+
+	tmp := &Shell{"/tmp"}
+	tmp.StrictExecute("rm -rf " + originDir + " " + bareRepo + " " + cloneDir)
+	tmp.StrictExecute("mkdir -p " + originDir)
+
+	origin := &Shell{originDir}
+	origin.StrictExecute("git init")
+	origin.StrictExecute("git config user.email \"test@mail.com\"")
+	origin.StrictExecute("git config user.name \"Tester\"")
+	origin.StrictExecute("git checkout -B master")
+	origin.StrictExecute("echo 'base' > README.md")
+	origin.StrictExecute("git add README.md")
+	origin.StrictExecute("git commit -m \"Initial Commit\"")
+	origin.StrictExecute("git clone --bare .git " + bareRepo)
+
+	tmp.StrictExecute("git clone " + bareRepo + " " + cloneDir)
+	clone := &Shell{cloneDir}
+	clone.StrictExecute("git config user.email \"wiki@mail.com\"")
+	clone.StrictExecute("git config user.name \"Wiki Committer\"")
+
+	// Diverge: the remote and the clone edit the same line of the same file.
+	origin.StrictExecute("git remote add bare " + bareRepo + " || true")
+	origin.StrictExecute("echo 'by remote' > README.md")
+	origin.StrictExecute("git add README.md")
+	origin.StrictExecute("git commit -m \"remote edit\"")
+	origin.StrictExecute("git push bare master")
+
+	clone.StrictExecute("echo 'by wiki' > README.md")
+	clone.StrictExecute("git add README.md")
+	clone.StrictExecute("git commit -m \"local edit\"")
+
+	return NewGit(cloneDir, bareRepo), bareRepo
+}
+
+func TestRebaseConflictIsPreservedAtRemoteBranch(t *testing.T) {
+	g, bareRepo := withConflictingRemote(t, "rebase_conflict")
+
+	localHead, headErr := g.execute("git rev-parse HEAD")
+	if headErr != nil {
+		t.Fatal(headErr)
+	}
+
+	err := g.Rebase()
+
+	var conflict *ConflictError
+	if !errors.As(err, &conflict) {
+		t.Fatalf("expected a ConflictError, got: %v", err)
+	}
+
+	if !strings.HasPrefix(conflict.Branch, CONFLICT_BRANCH_PREFIX) {
+		t.Fatalf("expected branch prefixed with '%s', got: '%s'", CONFLICT_BRANCH_PREFIX, conflict.Branch)
+	}
+
+	// The conflicting work must be reachable at the remote...
+	refs, refsErr := (&Shell{"/tmp"}).Execute("git ls-remote " + bareRepo)
+	if refsErr != nil {
+		t.Fatal(refsErr)
+	}
+	if !strings.Contains(refs, conflict.Branch) {
+		t.Fatalf("expected '%s' at the remote, got refs:\n%s", conflict.Branch, refs)
+	}
+	if !strings.Contains(refs, strings.TrimSpace(localHead)) {
+		t.Fatalf("expected the local commit '%s' at the remote, got refs:\n%s",
+			strings.TrimSpace(localHead), refs)
+	}
+
+	// ...and the local repo must be unblocked, sitting exactly on the remote.
+	head, headErr := g.execute("git rev-parse HEAD")
+	if headErr != nil {
+		t.Fatal(headErr)
+	}
+	remoteHead, remoteErr := g.execute("git rev-parse origin/master")
+	if remoteErr != nil {
+		t.Fatal(remoteErr)
+	}
+	if strings.TrimSpace(head) != strings.TrimSpace(remoteHead) {
+		t.Fatalf("expected HEAD to match origin/master after a conflict, got '%s' vs '%s'",
+			strings.TrimSpace(head), strings.TrimSpace(remoteHead))
+	}
+
+	if g.isRebaseInProgress() {
+		t.Fatal("expected no rebase left in progress")
+	}
+}
+
+func TestRebaseConflictPreservesUncommittedChanges(t *testing.T) {
+	g, bareRepo := withConflictingRemote(t, "rebase_conflict_dirty")
+
+	// An unstaged edit on top of the conflicting commit: Rebase() wraps it into
+	// a temporary commit, which must reach the conflict branch with a real message.
+	(&Shell{g.repoDir}).StrictExecute("echo 'not yet committed' > notes.md")
+
+	err := g.Rebase()
+
+	var conflict *ConflictError
+	if !errors.As(err, &conflict) {
+		t.Fatalf("expected a ConflictError, got: %v", err)
+	}
+
+	log, logErr := (&Shell{"/tmp"}).Execute(
+		"git --git-dir=" + bareRepo + " log -1 --pretty=%s " + conflict.Branch)
+	if logErr != nil {
+		t.Fatal(logErr)
+	}
+	if strings.TrimSpace(log) != conflictAmendMessage {
+		t.Fatalf("expected the preserved commit to be re-worded to '%s', got: '%s'",
+			conflictAmendMessage, strings.TrimSpace(log))
+	}
+
+	files, filesErr := (&Shell{"/tmp"}).Execute(
+		"git --git-dir=" + bareRepo + " ls-tree --name-only " + conflict.Branch)
+	if filesErr != nil {
+		t.Fatal(filesErr)
+	}
+	if !strings.Contains(files, "notes.md") {
+		t.Fatalf("expected uncommitted work at the conflict branch, got:\n%s", files)
+	}
+}
+
+func TestRebaseWithoutConflictStillSucceeds(t *testing.T) {
+	bareRepo := "/tmp/test_bare_no_conflict.git"
+	originDir := "/tmp/test_origin_no_conflict"
+	cloneDir := "/tmp/test_clone_no_conflict"
+
+	defer os.RemoveAll(bareRepo)
+	defer os.RemoveAll(originDir)
+	defer os.RemoveAll(cloneDir)
+
+	tmp := &Shell{"/tmp"}
+	tmp.StrictExecute("rm -rf " + originDir + " " + bareRepo + " " + cloneDir)
+	tmp.StrictExecute("mkdir -p " + originDir)
+
+	origin := &Shell{originDir}
+	origin.StrictExecute("git init")
+	origin.StrictExecute("git config user.email \"test@mail.com\"")
+	origin.StrictExecute("git config user.name \"Tester\"")
+	origin.StrictExecute("git checkout -B master")
+	origin.StrictExecute("echo 'base' > README.md")
+	origin.StrictExecute("git add README.md")
+	origin.StrictExecute("git commit -m \"Initial Commit\"")
+	origin.StrictExecute("git clone --bare .git " + bareRepo)
+
+	tmp.StrictExecute("git clone " + bareRepo + " " + cloneDir)
+	clone := &Shell{cloneDir}
+	clone.StrictExecute("git config user.email \"wiki@mail.com\"")
+	clone.StrictExecute("git config user.name \"Wiki Committer\"")
+
+	// Different files on each side: this rebases cleanly.
+	origin.StrictExecute("git remote add bare " + bareRepo + " || true")
+	origin.StrictExecute("echo 'remote only' > remote.md")
+	origin.StrictExecute("git add remote.md")
+	origin.StrictExecute("git commit -m \"remote edit\"")
+	origin.StrictExecute("git push bare master")
+
+	clone.StrictExecute("echo 'local only' > local.md")
+	clone.StrictExecute("git add local.md")
+	clone.StrictExecute("git commit -m \"local edit\"")
+
+	g := NewGit(cloneDir, bareRepo)
+	if err := g.Rebase(); err != nil {
+		t.Fatalf("expected a clean rebase, got: %v", err)
+	}
+
+	refs, refsErr := (&Shell{"/tmp"}).Execute("git ls-remote " + bareRepo)
+	if refsErr != nil {
+		t.Fatal(refsErr)
+	}
+	if strings.Contains(refs, CONFLICT_BRANCH_PREFIX) {
+		t.Fatalf("expected no conflict branch after a clean rebase, got refs:\n%s", refs)
+	}
+}
+
+func TestConflictBranchesAreListedFromRemote(t *testing.T) {
+	g, _ := withConflictingRemote(t, "conflict_listing")
+
+	branches, e := g.ConflictBranches()
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(branches) != 0 {
+		t.Fatalf("expected no conflict branches before a conflict, got: %v", branches)
+	}
+
+	err := g.Rebase()
+	var conflict *ConflictError
+	if !errors.As(err, &conflict) {
+		t.Fatalf("expected a ConflictError, got: %v", err)
+	}
+
+	branches, e = g.ConflictBranches()
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(branches) != 1 || branches[0] != conflict.Branch {
+		t.Fatalf("expected exactly ['%s'], got: %v", conflict.Branch, branches)
+	}
+
+	status, statusErr := g.Status()
+	if statusErr != nil {
+		t.Fatal(statusErr)
+	}
+	if len(status.ConflictBranches) != 1 || status.ConflictBranches[0] != conflict.Branch {
+		t.Fatalf("expected status to report ['%s'], got: %v", conflict.Branch, status.ConflictBranches)
+	}
+}
+
+func TestConflictBranchesToleratesUnreachableRemote(t *testing.T) {
+	if e := initRepo(); e != nil {
+		t.Fatal(e)
+	}
+	g := NewGit(testRepoDir, "")
+
+	// No remote configured at all: status must still work.
+	status, e := g.Status()
+	if e != nil {
+		t.Fatalf("expected status to survive an unreachable remote, got: %v", e)
+	}
+	if len(status.ConflictBranches) != 0 {
+		t.Fatalf("expected no conflict branches, got: %v", status.ConflictBranches)
+	}
+}

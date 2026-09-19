@@ -1,6 +1,7 @@
 package com.tsourcecode.wiki.lib.domain
 
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
+import com.tsourcecode.wiki.lib.domain.backend.ConflictController
 import com.tsourcecode.wiki.lib.domain.backend.RepositoryBackgroundSyncController
 import com.tsourcecode.wiki.lib.domain.config.ConfigScreenModel
 import com.tsourcecode.wiki.lib.domain.documents.DocumentViewModelResolver
@@ -81,6 +82,11 @@ class DomainComponent<T : PlatformDeps>(
         return timePassed + m
     }
 
+    val conflictController = ConflictController(
+        storage = platformDeps.persistentStorageProvider.getKeyValueStorage("conflicts"),
+        logger = logger,
+    )
+
     private val backendFactory = BackendFactory(
         logger,
         networkConfigurator)
@@ -92,6 +98,7 @@ class DomainComponent<T : PlatformDeps>(
         syncStatusProvider,
         navigator,
         backendFactory,
+        conflictController,
         scopes,
         logger,
     )

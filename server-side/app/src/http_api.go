@@ -70,7 +70,7 @@ func (p *ProjectHttpApi) Start() {
 }
 
 func (p *ProjectHttpApi) getOutdatedAtLastRevision(w http.ResponseWriter, req *http.Request) {
-	p.tryRebase() //TODO: log error somewhere
+	p.tryRebase()
 	revision, e := p.git.LastRevision()
 
 	if e != nil {
@@ -199,6 +199,18 @@ func (p *ProjectHttpApi) postCommit(w http.ResponseWriter, req *http.Request) {
 
 	rebaseErr := p.git.Rebase()
 
+	if conflictBranch := ConflictBranchOf(rebaseErr); conflictBranch != "" {
+		// The commit is safe at its own remote branch and the local repo is back
+		// in sync with the remote, so there is nothing left to push. The branch
+		// itself is reported by the status endpoint.
+		fmt.Printf("Commit preserved at conflict branch '%s': %v\n", conflictBranch, rebaseErr)
+		writeJsonStruct(CommitResponse{
+			Result:       "true",
+			CommitOutput: commitOutput,
+		}, w, req)
+		return
+	}
+
 	if rebaseErr != nil {
 		writeError(w, "rebasing", rebaseErr)
 		return
@@ -221,10 +233,16 @@ type CommitResponse struct {
 }
 
 func (p *ProjectHttpApi) pullChanges(w http.ResponseWriter, req *http.Request) {
-	if e := p.git.Pull(); e != nil {
-		p.git.AbortRebase()
-		writeError(w, "Pull failed", e)
+	pullErr := p.git.Pull()
+	conflictBranch := ConflictBranchOf(pullErr)
+
+	if pullErr != nil && conflictBranch == "" {
+		writeError(w, "Pull failed", pullErr)
 		return
+	}
+
+	if conflictBranch != "" {
+		fmt.Printf("Pull preserved at conflict branch '%s': %v\n", conflictBranch, pullErr)
 	}
 
 	revision, e := p.git.ShowRevision("HEAD~0")
@@ -302,6 +320,11 @@ func (p *ProjectHttpApi) tryRebase() error {
 	}
 
 	if e := p.git.Rebase(); e != nil {
+		if branch := ConflictBranchOf(e); branch != "" {
+			fmt.Printf("Sync preserved at conflict branch '%s': %v\n", branch, e)
+		} else {
+			fmt.Printf("Rebase during sync failed: %v\n", e)
+		}
 		return e
 	}
 
@@ -309,7 +332,7 @@ func (p *ProjectHttpApi) tryRebase() error {
 }
 
 func (p *ProjectHttpApi) getLastRevision(w http.ResponseWriter, req *http.Request) {
-	p.tryRebase() //TODO: log error somewhere
+	p.tryRebase()
 
 	revision, e := p.git.LastRevision()
 
@@ -328,10 +351,20 @@ func (p *ProjectHttpApi) getLastRevision(w http.ResponseWriter, req *http.Reques
 	writeFile(revision+".zip", revision_zip, w, req)
 }
 
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
 func writeError(w http.ResponseWriter, stage string, err error) {
-	e := fmt.Sprintf("{\"error\": \"\nStage: %s\n%v\" }", stage, err)
 	fmt.Printf("API error [%s]: %v\n", stage, err)
-	http.Error(w, e, 500)
+	body, marshalErr := json.Marshal(ErrorResponse{
+		Error: fmt.Sprintf("\nStage: %s\n%v", stage, err),
+	})
+	if marshalErr != nil {
+		http.Error(w, "{\"error\": \"error serialization failed\"}", 500)
+		return
+	}
+	http.Error(w, string(body), 500)
 }
 
 func writeFile(filename string, file string, w http.ResponseWriter, req *http.Request) {

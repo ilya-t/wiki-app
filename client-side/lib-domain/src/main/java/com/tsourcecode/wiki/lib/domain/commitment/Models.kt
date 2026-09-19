@@ -7,6 +7,12 @@ import kotlinx.serialization.Serializable
 data class StatusResponse(
         @SerialName("files")
         val files: List<FileStatus>,
+        /**
+         * Remote branches holding local work that could not be rebased.
+         * Reported by the server straight from the remote on every status check.
+         */
+        @SerialName("conflict_branches")
+        val conflictBranches: List<String> = emptyList(),
 )
 
 @Serializable

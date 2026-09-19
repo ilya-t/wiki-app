@@ -15,23 +15,38 @@ import com.tsourcecode.wiki.app.util.Sharing
 import com.tsourcecode.wiki.lib.domain.QuickStatus
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.StatusInfo
+import com.tsourcecode.wiki.lib.domain.backend.ConflictController
+import com.tsourcecode.wiki.lib.domain.backend.Conflicts
 import com.tsourcecode.wiki.lib.domain.util.DebugLogger
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class QuickStatusViewModel(
         private val activity: AppCompatActivity,
         quickStatusController: QuickStatusController,
+        private val conflictController: ConflictController,
         private val debugLogger: DebugLogger,
 ) {
     private val tvStatus = activity.findViewById<AppCompatTextView>(R.id.tv_status)
     private var lastStatus: StatusInfo? = null
+    private var conflicts: Conflicts? = null
 
     init {
         quickStatusController.addListener { status ->
             tvStatus.post {
                 updateStatus(status)
+            }
+        }
+
+        // A conflict needs the user to act on it, so it outlives the statuses
+        // that follow - the sync completing must not bury it.
+        activity.lifecycleScope.launch {
+            conflictController.state.collect { value ->
+                conflicts = value
+                lastStatus?.let { updateStatus(it) } ?: renderConflict(value)
             }
         }
 
@@ -51,8 +66,22 @@ class QuickStatusViewModel(
                 val clipboardManager =
                     activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val error = lastStatus?.error
+                val conflict = conflicts
 
-                if (error != null) {
+                if (conflict != null) {
+                    clipboardManager.setPrimaryClip(
+                        ClipData(
+                            ClipDescription("conflict", arrayOf("")),
+                            ClipData.Item(conflict.branches.joinToString("\n"))
+                        )
+                    )
+                    Toast.makeText(
+                        activity,
+                        activity.getString(R.string.status_conflict_copied),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    conflictController.clear()
+                } else if (error != null) {
                     clipboardManager.setPrimaryClip(
                         ClipData(
                             ClipDescription("stack", arrayOf("")),
@@ -77,6 +106,13 @@ class QuickStatusViewModel(
 
     @SuppressLint("SetTextI18n")
     private fun updateStatus(status: StatusInfo) {
+        this.lastStatus = status
+
+        conflicts?.let {
+            renderConflict(it)
+            return
+        }
+
         if (status.error != null) {
             Log.e("QuickStatusViewModel", "unexpected error! (status comment: ${status.comment})", status.error)
             tvStatus.setBackgroundColor(
@@ -93,8 +129,17 @@ class QuickStatusViewModel(
                 "${status.status.name}: ${status.comment}"
             }
         }
+    }
 
-        this.lastStatus = status
+    private fun renderConflict(conflicts: Conflicts?) {
+        val conflict = conflicts ?: return
+        tvStatus.setBackgroundColor(
+                activity.resources.getColor(R.color.status_conflict)
+        )
+        tvStatus.text = activity.getString(
+            R.string.status_conflict,
+            conflict.branches.joinToString(", "),
+        )
     }
 
     private fun QuickStatus.color(): Int {
@@ -108,6 +153,7 @@ class QuickStatusViewModel(
             QuickStatus.COMMITED -> R.color.status_ok
             QuickStatus.STATUS_UPDATE -> R.color.status_progress
             QuickStatus.STATUS_UPDATED -> R.color.status_ok
+            QuickStatus.CONFLICT -> R.color.status_conflict
             QuickStatus.ERROR -> R.color.status_error
         }
     }

@@ -43,6 +43,12 @@ import java.net.URLDecoder
 
 internal const val REVISION_ZIP_REPOSITORY_DIR = "repo"
 
+/**
+ * Lenient on purpose: the backend adds response fields over time and an older
+ * client must not break on the ones it does not know yet.
+ */
+private val json = Json { ignoreUnknownKeys = true }
+
 class BackendController(
     private val platformDeps: PlatformDeps,
     private val quickStatusController: QuickStatusController,
@@ -56,6 +62,7 @@ class BackendController(
     private val keyValueStorage: KeyValueStorage,
     private val defaultLogger: Logger,
     private val fileStatusProvider: FileStatusProvider,
+    private val conflictController: ConflictController,
 ) {
     private val mutex = Mutex(locked = false)
     private val dirRevisionStorage = StoredPrimitive.string("dir_revision", keyValueStorage)
@@ -133,6 +140,7 @@ class BackendController(
                 syncStatusMutator.appendLog("${project.name}: ${msg.trim()}")
             },
         )
+        val conflictBeforeSync: Conflicts? = conflictController.state.value
         try {
             val localRevision: String? = currentRevisionInfoController.state.value?.revision
                 ?.trimEnd('\n') // TODO: fix server-side
@@ -278,9 +286,23 @@ class BackendController(
                 quickStatusController.error(QuickStatus.SYNC, e)
             }
         }
+        reportConflictRaisedDuring(conflictBeforeSync, sync)
         sync.log { "completed!" }
         _refreshFlow.compareAndSet(expect = true, update = false)
         return Result.success(Unit)
+    }
+
+    /**
+     * Surfaces a conflict that appeared in the backend's status while this
+     * operation was in flight.
+     */
+    private fun reportConflictRaisedDuring(before: Conflicts?, logger: Logger) {
+        val current: Conflicts = conflictController.state.value ?: return
+        if (current == before || current.projectName != project.name) {
+            return
+        }
+        logger.log { current.describe() }
+        quickStatusController.udpate(QuickStatus.CONFLICT, current.comment())
     }
 
     private suspend fun tryStageChanges(
@@ -317,7 +339,7 @@ class BackendController(
         val body = response.body()?.string() ?: throw IllegalStateException("Empty body received!")
         logger.log { "Detecting non staged. request: $localStatus" }
         logger.log { "Detecting non staged. response: $body" }
-        val notStaged = Json.decodeFromString(UnstagedResponse.serializer(), body)
+        val notStaged = json.decodeFromString(UnstagedResponse.serializer(), body)
 
         notStaged.files.forEach {
             val file = File(project.dir, it)
@@ -457,6 +479,7 @@ class BackendController(
             "message: '$message' current revision: '${r}'"
         }
         quickStatusController.udpate(QuickStatus.COMMIT)
+        val conflictBeforeCommit: Conflicts? = conflictController.state.value
         val response: Response<ResponseBody> = try {
             backendApi.commit(
                 project.name,
@@ -476,14 +499,17 @@ class BackendController(
             val body = response.body()?.string()
             if (body != null) {
                 try {
-                    val commitResponse = Json.decodeFromString(CommitResponse.serializer(), body)
+                    val commitResponse = json.decodeFromString(CommitResponse.serializer(), body)
                     commit.log { "commit_output: ${commitResponse.commitOutput}" }
                 } catch (e: Exception) {
                     commit.log { "Failed to parse commit response: ${e.message}" }
                 }
             }
             quickStatusController.udpate(QuickStatus.COMMITED)
+            // Refreshes the status, which is what reports a conflict raised by
+            // the rebase this commit triggered server-side.
             fileStatusProvider.notifyCommitHappened()
+            reportConflictRaisedDuring(conflictBeforeCommit, commit)
         } else {
             val failureMessage = "Commit failed with ${response.errorBody()?.string()}"
             commit.log { failureMessage }
@@ -572,7 +598,7 @@ class BackendController(
             pulling.log { "Pull failed: Body is empty!" }
             return Result.failure(IllegalStateException("Body is empty"))
         }
-        val revision = Json.decodeFromString(RevisionInfo.serializer(), body)
+        val revision = json.decodeFromString(RevisionInfo.serializer(), body)
         quickStatusController.udpate(QuickStatus.STATUS_UPDATE, "Pulled to: ${revision.revision}")
         pulling.log { "Pull completed: server's head now ${revision}!" }
         return Result.success(revision)

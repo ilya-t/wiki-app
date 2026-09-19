@@ -15,6 +15,12 @@ const (
 	StatusNew       = "new"
 	StatusModified  = "modified"
 	StatusUntracked = "untracked"
+
+	// CONFLICT_BRANCH_PREFIX names the remote branches that hold work which
+	// could not be rebased. The suffix is the short sha of the preserved commit.
+	CONFLICT_BRANCH_PREFIX = "note_conflict_"
+
+	conflictAmendMessage = "wiki-app: local changes preserved on conflict"
 )
 
 type FileRollback struct {
@@ -207,14 +213,101 @@ func (g *Git) Pull() error {
 
 	if rebaseErr != nil {
 		out, _ := g.shell.Execute("git status")
-		return errors.New("Pull failed! " + rebaseErr.Error() + "\nCurrent status:\n" + out)
+		cause := errors.New("Pull failed! " + rebaseErr.Error() + "\nCurrent status:\n" + out)
+		return g.preserveConflict(cause, "")
 	}
 
 	return nil
 }
 
-func (g *Git) AbortRebase() {
-	g.execute("git rebase --abort")
+// ConflictError reports that a rebase conflict was preserved at a remote branch
+// instead of being thrown away. The local repo is back in sync with the remote,
+// so it is safe to keep serving requests.
+type ConflictError struct {
+	Branch string
+	Cause  error
+}
+
+func (e *ConflictError) Error() string {
+	return "Conflict preserved at remote branch '" + e.Branch + "'\nCause: " + e.Cause.Error()
+}
+
+// ConflictBranchOf returns the branch a conflict was preserved at, or "" when
+// the error is not a conflict.
+func ConflictBranchOf(e error) string {
+	var conflict *ConflictError
+	if errors.As(e, &conflict) {
+		return conflict.Branch
+	}
+	return ""
+}
+
+func (g *Git) isRebaseInProgress() bool {
+	for _, dir := range []string{"rebase-merge", "rebase-apply"} {
+		if _, err := os.Stat(filepath.Join(g.repoDir, ".git", dir)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// preserveConflict pushes the local work that failed to rebase to a dedicated
+// remote branch and then hard-aligns the local branch with the remote, so that
+// nothing is lost and the next sync is not blocked by the same conflict.
+//
+// amendMessage, when not empty, rewrites the message of the commit being
+// preserved - used to replace the throwaway "temporary commit for rebasement".
+func (g *Git) preserveConflict(cause error, amendMessage string) error {
+	if !g.isRebaseInProgress() {
+		// Not a conflict: leave the previous behaviour to the caller.
+		return cause
+	}
+
+	if _, abortErr := g.execute("git rebase --abort"); abortErr != nil {
+		return errors.New("Both rebase and abort failed!" +
+			"\nRebase error: " + cause.Error() +
+			"\nAbort error: " + abortErr.Error())
+	}
+
+	if amendMessage != "" {
+		if _, amendErr := g.execute("git commit --amend --message=\"" + amendMessage + "\""); amendErr != nil {
+			return errors.New("Conflict preservation failed at amend!" +
+				"\nRebase error: " + cause.Error() +
+				"\nAmend error: " + amendErr.Error())
+		}
+	}
+
+	sha, shaErr := g.execute("git rev-parse --short HEAD")
+	if shaErr != nil {
+		return errors.New("Conflict preservation failed at revision resolve!" +
+			"\nRebase error: " + cause.Error() +
+			"\nRevision error: " + shaErr.Error())
+	}
+
+	branch := CONFLICT_BRANCH_PREFIX + strings.TrimSpace(sha)
+	fmt.Println("Conflict detected. Preserving local work at '" + branch + "'")
+
+	if _, pushErr := g.execute("git push " + g.remote + " HEAD:refs/heads/" + branch); pushErr != nil {
+		// Nothing is confirmed at the remote yet: never discard local work here.
+		if resetErr := g.softReset(); resetErr != nil {
+			return errors.New("Rebase, conflict push and reset failed!" +
+				"\nRebase error: " + cause.Error() +
+				"\nPush error: " + pushErr.Error() +
+				"\nReset error: " + resetErr.Error())
+		}
+		return errors.New("Conflict preservation failed at push!" +
+			"\nRebase error: " + cause.Error() +
+			"\nPush error: " + pushErr.Error())
+	}
+
+	if _, resetErr := g.execute("git reset --hard " + g.remote + "/" + g.branch); resetErr != nil {
+		return errors.New("Conflict preservation failed at reset!" +
+			"\nLocal work is safe at '" + branch + "'" +
+			"\nRebase error: " + cause.Error() +
+			"\nReset error: " + resetErr.Error())
+	}
+
+	return &ConflictError{Branch: branch, Cause: cause}
 }
 
 func (g *Git) Rebase() error {
@@ -247,19 +340,11 @@ func (g *Git) Rebase() error {
 	}
 
 	if _, rebaseErr := g.execute("git rebase " + g.remote + "/" + g.branch); rebaseErr != nil {
-		if _, abortErr := g.execute("git rebase --abort"); abortErr != nil {
-			return errors.New("Both rebase and abort failed!" +
-				"\nRebase error: " + rebaseErr.Error() +
-				"\nAbort error: " + abortErr.Error())
+		amendMessage := ""
+		if hadChanges {
+			amendMessage = conflictAmendMessage
 		}
-
-		if resetErr := g.softReset(); resetErr != nil {
-			return errors.New("Both rebase and reset failed!" +
-				"\nRebase error: " + rebaseErr.Error() +
-				"\nReset error: " + resetErr.Error())
-		}
-
-		return rebaseErr
+		return g.preserveConflict(rebaseErr, amendMessage)
 	}
 
 	if hadChanges {
@@ -369,9 +454,42 @@ func (g *Git) Status() (*Status, error) {
 			Diff:   diff,
 		})
 	}
+	// A remote that cannot be reached must not take the whole status down:
+	// local file status is still useful offline.
+	conflictBranches, e := g.ConflictBranches()
+	if e != nil {
+		fmt.Printf("Could not list conflict branches: %v\n", e)
+		conflictBranches = []string{}
+	}
+
 	return &Status{
-		Files: files,
+		Files:            files,
+		ConflictBranches: conflictBranches,
 	}, nil
+}
+
+// ConflictBranches asks the remote which conflict branches exist right now.
+func (g *Git) ConflictBranches() ([]string, error) {
+	out, e := g.execute("git ls-remote --heads " + g.remote + " \"" + CONFLICT_BRANCH_PREFIX + "*\"")
+	if e != nil {
+		return nil, e
+	}
+
+	branches := make([]string, 0)
+	for _, line := range strings.Split(out, "\n") {
+		// "<sha>\trefs/heads/<branch>"
+		tab := strings.Index(line, "\t")
+		if tab < 0 {
+			continue
+		}
+		ref := strings.TrimSpace(line[tab+1:])
+		branch := strings.TrimPrefix(ref, "refs/heads/")
+		if strings.HasPrefix(branch, CONFLICT_BRANCH_PREFIX) {
+			branches = append(branches, branch)
+		}
+	}
+
+	return branches, nil
 }
 
 type porcelainEntry struct {
@@ -484,4 +602,8 @@ type FileStatus struct {
 }
 type Status struct {
 	Files []*FileStatus `json:"files"`
+	// ConflictBranches lists the remote branches holding work that could not be
+	// rebased. Read straight from the remote, so a branch the user has merged
+	// and deleted stops being reported without any local bookkeeping.
+	ConflictBranches []string `json:"conflict_branches"`
 }

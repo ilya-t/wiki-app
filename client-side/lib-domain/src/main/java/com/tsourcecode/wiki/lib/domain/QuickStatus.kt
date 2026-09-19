@@ -14,5 +14,7 @@ enum class QuickStatus {
     STATUS_UPDATE,
     STATUS_UPDATED,
 
+    CONFLICT,
+
     ERROR,
 }
