@@ -36,6 +36,7 @@ class ActivityComponent(
     private val quickStateController = QuickStatusViewModel(
             activity,
             appComponent.quickStatusController,
+            domain.conflictController,
             domain.debugLogger)
 
     fun dispatchBackPressed(): Boolean {

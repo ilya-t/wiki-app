@@ -6,6 +6,7 @@ import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.sync.SyncStatusProvider
 import com.tsourcecode.wiki.lib.domain.backend.BackendController
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
+import com.tsourcecode.wiki.lib.domain.backend.ConflictController
 import com.tsourcecode.wiki.lib.domain.backend.CurrentRevisionInfoController
 import com.tsourcecode.wiki.lib.domain.backend.ProjectAPIs
 import com.tsourcecode.wiki.lib.domain.backend.WikiBackendAPIs
@@ -36,6 +37,7 @@ class ProjectComponent(
     navigator: AppNavigator,
     storageProvider: PersistentStorageProvider,
     private val backendFactory: BackendFactory,
+    conflictController: ConflictController,
     scopes: CoroutineScopes,
     logger: Logger,
 ) {
@@ -74,6 +76,7 @@ class ProjectComponent(
     private val projectAPIs = ProjectAPIs(
         wikiBackendAPIs,
         project,
+        conflictController,
     )
 
     private val stagedFiles = StagedFilesController(
@@ -102,6 +105,7 @@ class ProjectComponent(
             projectStorage,
             projectLogger,
         fileStatusProvider,
+            conflictController,
     )
 
     val statusModel = StatusModel(

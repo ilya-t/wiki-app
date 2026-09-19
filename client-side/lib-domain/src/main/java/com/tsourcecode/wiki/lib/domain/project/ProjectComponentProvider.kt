@@ -5,6 +5,7 @@ import com.tsourcecode.wiki.lib.domain.PlatformDeps
 import com.tsourcecode.wiki.lib.domain.QuickStatusController
 import com.tsourcecode.wiki.lib.domain.sync.SyncStatusProvider
 import com.tsourcecode.wiki.lib.domain.backend.BackendFactory
+import com.tsourcecode.wiki.lib.domain.backend.ConflictController
 import com.tsourcecode.wiki.lib.domain.util.CoroutineScopes
 import com.tsourcecode.wiki.lib.domain.util.Logger
 
@@ -14,6 +15,7 @@ class ProjectComponentProvider(
         private val syncStatusProvider: SyncStatusProvider,
         private val navigator: AppNavigator,
         private val backendFactory: BackendFactory,
+        private val conflictController: ConflictController,
         private val scopes: CoroutineScopes,
         private val logger: Logger,
 ) {
@@ -30,6 +32,7 @@ class ProjectComponentProvider(
                     navigator,
                     platformDeps.persistentStorageProvider,
                     backendFactory,
+                    conflictController,
                     scopes,
                     logger,
             )

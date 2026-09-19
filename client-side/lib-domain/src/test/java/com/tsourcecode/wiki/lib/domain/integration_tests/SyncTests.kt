@@ -12,6 +12,7 @@ import com.tsourcecode.wiki.lib.domain.project.Project
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
@@ -333,6 +334,77 @@ class SyncTests {
         println("Final README.md content: '$body'")
         Assert.assertTrue("Should contain client edit '$clientEdit'. Got: '$body'", body.contains(clientEdit))
         Assert.assertTrue("Should contain hook append 'appended by hook'. Got: '$body'", body.contains("appended by hook"))
+    }
+
+    @Test
+    fun `conflicting commit is preserved at a remote branch and reported`() = integrationTest {
+        val statusModel = openFirstProjectStatus()
+        statusModel.sync("testing").wait()
+
+        val project: Project = domain.projectsRepository.data
+            .first { it.isNotEmpty() }
+            .first { it.name == TEST_PROJECT }
+
+        Assert.assertNull(
+            "No conflict expected before one happens",
+            domain.conflictController.state.value,
+        )
+
+        // Both sides rewrite the same file, so the server-side rebase cannot resolve it.
+        println("===> Editing README.md locally")
+        File(project.dir, "README.md").writeText("<client edit content>")
+        statusModel.sync("sync after local edit").wait()
+
+        println("===> Committing a conflicting README.md at the remote")
+        commitNewFilesAtServerSide(
+            remoteFiles = listOf("README.md"),
+            commitMessage = "conflicting edit by another contributor",
+            fileContent = { "<remote edit content>" },
+        )
+
+        val commitMessage = "commit that conflicts"
+        statusModel.updateCommitText(commitMessage)
+        val commitViewItem: StatusViewItem.CommitViewItem = statusModel.statusFlow
+            .map { viewModel ->
+                viewModel.items.filterIsInstance<StatusViewItem.CommitViewItem>()
+                    .firstOrNull { it.commitAction != null }
+            }
+            .first { it != null }!!
+
+        println("===> Invoking commitAction (server-side: commit -> rebase -> conflict)")
+        commitViewItem.commitAction!!.invoke()
+
+        println("===> Waiting for the conflict to be reported")
+        val conflicts = domain.conflictController.state.filterNotNull().first()
+
+        Assert.assertEquals(TEST_PROJECT, conflicts.projectName)
+        Assert.assertEquals(
+            "Expected exactly one conflict branch, got: ${conflicts.branches}",
+            1,
+            conflicts.branches.size,
+        )
+        val branch = conflicts.branches.first()
+        Assert.assertTrue(
+            "Expected a 'note_conflict_' branch, got: '$branch'",
+            branch.startsWith("note_conflict_"),
+        )
+
+        // The work must really be at the remote, not just announced.
+        val remoteRefs = exec(
+            cmd = "git ls-remote --heads origin",
+            cwd = File(serverFiles, "test_repo"),
+        )
+        Assert.assertTrue(
+            "Expected '$branch' at the remote, got refs:\n$remoteRefs",
+            remoteRefs.contains(branch),
+        )
+
+        // ...and it must be visible in the shared logs.
+        val logs = domain.debugLogger.readLogs()
+        Assert.assertTrue(
+            "Expected a CONFLICT log line naming '$branch'",
+            logs.any { it.contains("CONFLICT:") && it.contains(branch) },
+        )
     }
 
     private fun assertPreCommitHookPresent() {

@@ -174,6 +174,54 @@ class AcceptanceTests(unittest.TestCase):
         # assert
         self.assertNotEquals(old_head, new_head)
 
+    def test_conflict_preserved_at_remote_branch(self):
+        # Both sides add the same path with different content, so the rebase
+        # on the server cannot resolve it. A dedicated path keeps the shared
+        # test repo's README.md intact for the neighbouring tests.
+        conflicting_file = 'conflict_file.md'
+        self.api_user.stage(file=conflicting_file, content='# content by api')
+        self.repo_user.submit(file=conflicting_file, content='# content by git')
+
+        response = self.api_user.commit(message='conflicting commit by api')
+        if response.status_code != 200:
+            self.fail(
+                "response returned non-200 code: " + str(response.status_code) + "\n response body:\n" + response.text)
+
+        # The status check is what reports conflicts, read straight from the remote.
+        status = self.api_user.status()
+        branches = status['conflict_branches']
+        self.assertEqual(1, len(branches), msg='Unexpected branches: ' + json.dumps(status, indent=4))
+        branch = branches[0]
+        self.assertTrue(branch.startswith('note_conflict_'), msg='Unexpected branch: ' + branch)
+
+        # The conflicting work is safe at the remote...
+        refs = subprocess.check_output('git ls-remote ' + BARE_REPO_PATH, universal_newlines=True, shell=True)
+        self.assertTrue(branch in refs, msg='Branch "' + branch + '" not found in refs:\n' + refs)
+
+        # ...and the server is unblocked, sitting exactly on the remote.
+        head = subprocess.check_output('cd ' + REPO_DIR + ' && git rev-parse HEAD',
+                                       universal_newlines=True, shell=True)
+        remote_head = subprocess.check_output('cd ' + REPO_DIR + ' && git rev-parse origin/master',
+                                              universal_newlines=True, shell=True)
+        self.assertEqual(head, remote_head, msg='Server repo did not recover to origin/master')
+
+        # The remote's version is what the client now receives.
+        _, files = self.api_user.latest_revision()
+        self.assertEqual('# content by git', files[conflicting_file], msg=json.dumps(files, indent=4))
+
+        # Resolving the conflict at the remote makes it disappear from status,
+        # with no local bookkeeping to go stale.
+        subprocess.check_output(
+            'git --git-dir=' + BARE_REPO_PATH + ' branch -D ' + branch,
+            universal_newlines=True, shell=True)
+        status_after = self.api_user.status()
+        self.assertEqual([], status_after['conflict_branches'],
+                         msg=json.dumps(status_after, indent=4))
+
+    def test_status_reports_no_conflicts_by_default(self):
+        status = self.api_user.status()
+        self.assertEqual([], status['conflict_branches'], msg=json.dumps(status, indent=4))
+
     def test_not_staged_detection(self):
         file_path = 'status/modified_file.md'
         

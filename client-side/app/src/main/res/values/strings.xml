@@ -2,4 +2,6 @@
 <resources>
     <string name="app_name">Wiki App</string>
     <string name="sync_notification_channel">Repository sync</string>
+    <string name="status_conflict">Conflict — saved to branch %1$s</string>
+    <string name="status_conflict_copied">Conflict branch at clipboard!</string>
 </resources>
